@@ -18,6 +18,7 @@ import os
 
 import numpy as np
 
+from padpd.cfr import cfr_clip_filter
 from padpd.dpd import ILAPredistorter
 from padpd.metrics import (aclr, check_mask, default_wifi_mask, evm_of_signal,
                            psd)
@@ -34,6 +35,10 @@ def main():
     ap.add_argument("--qam", type=int, default=1024)
     ap.add_argument("--symbols", type=int, default=20)
     ap.add_argument("--drive", type=float, default=0.14)
+    ap.add_argument("--cfr-papr", type=float, default=None,
+                    help="enable CFR (iterative clipping and filtering) to "
+                         "this target PAPR in dB before the PA; lets DPD "
+                         "work at aggressive operating points (drive>=0.22)")
     ap.add_argument("--results", default="results")
     args = ap.parse_args()
     os.makedirs(args.results, exist_ok=True)
@@ -56,23 +61,32 @@ def main():
           f"oversampling)")
     print(f"waveform PAPR  : {papr_db(train.x):.2f} dB")
 
-    # --- 2. PA (virtual DUT) ----------------------------------------------
-    pa = ReferencePA(drive=args.drive)
-    y_train = pa(train.x)
-    y_val = pa(val.x)
+    # --- 2. optional CFR ----------------------------------------------------
+    x_train, x_val = train.x, val.x
+    if args.cfr_papr is not None:
+        x_train = cfr_clip_filter(x_train, args.cfr_papr, fs, bw)
+        x_val = cfr_clip_filter(x_val, args.cfr_papr, fs, bw)
+        print(f"CFR            : target {args.cfr_papr:.1f} dB -> "
+              f"PAPR {papr_db(x_val):.2f} dB, "
+              f"EVM cost {evm_of_signal(x_val, val).db:.1f} dB")
 
-    # --- 3. behavioral models ---------------------------------------------
-    mp = MemoryPolynomialModel(order=7, memory_depth=4).fit(train.x, y_train)
-    gmp = GMPModel().fit(train.x, y_train)
+    # --- 3. PA (virtual DUT) ----------------------------------------------
+    pa = ReferencePA(drive=args.drive)
+    y_train = pa(x_train)
+    y_val = pa(x_val)
+
+    # --- 4. behavioral models ---------------------------------------------
+    mp = MemoryPolynomialModel(order=7, memory_depth=4).fit(x_train, y_train)
+    gmp = GMPModel().fit(x_train, y_train)
     print("\n-- PA behavioral modeling (validation NMSE, unseen signal) --")
     print(f"Memory Polynomial (order 7, mem 4)  : "
-          f"{nmse_db(y_val, mp(val.x)):7.2f} dB")
+          f"{nmse_db(y_val, mp(x_val)):7.2f} dB")
     print(f"GMP ({gmp.n_coeffs} coeffs)                    : "
-          f"{nmse_db(y_val, gmp(val.x)):7.2f} dB")
+          f"{nmse_db(y_val, gmp(x_val)):7.2f} dB")
 
-    # --- 4. DPD -------------------------------------------------------------
-    dpd = ILAPredistorter(n_iterations=2).fit(pa, train.x)
-    y_dpd_val = dpd.linearize(pa, val.x)
+    # --- 5. DPD -------------------------------------------------------------
+    dpd = ILAPredistorter(n_iterations=2).fit(pa, x_train)
+    y_dpd_val = pa(dpd(x_val))
 
     mask = default_wifi_mask(bw)
     rows = []
@@ -93,7 +107,7 @@ def main():
         print(f"{r[0]:<14}{r[1]:>10.2f}{r[2]:>13.2f}{r[3]:>13.2f}"
               f"{r[4]:>12.2f} {r[5]:>6}")
 
-    # --- 5. plots -----------------------------------------------------------
+    # --- 6. plots -----------------------------------------------------------
     plot_psd_comparison(
         {"input (ideal)": val.x, "PA, no DPD": y_val,
          "PA + ILA-GMP DPD": y_dpd_val},
@@ -104,7 +118,7 @@ def main():
          "ILA-GMP DPD": demodulate_ofdm(y_dpd_val / g, val)},
         path=os.path.join(args.results, "constellation.png"))
     plot_am_curves(
-        {"no DPD": (val.x, y_val), "DPD": (val.x, y_dpd_val)},
+        {"no DPD": (x_val, y_val), "DPD": (x_val, y_dpd_val)},
         path=os.path.join(args.results, "am_am_am_pm.png"))
     print(f"\nplots saved to {args.results}/ (psd_comparison.png, "
           f"constellation.png, am_am_am_pm.png)")

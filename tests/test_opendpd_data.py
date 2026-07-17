@@ -110,3 +110,22 @@ def test_align_delay_negative_lag():
     x_a, y_a, info = align_delay(x, y, max_lag=50)
     assert info["lag"] == -5
     np.testing.assert_allclose(y_a, x_a, rtol=1e-9)
+
+
+def test_align_delay_fractional():
+    rng = np.random.default_rng(5)
+    # band-limited signal so a fractional shift is well defined
+    n = 8192
+    spec = np.zeros(n, complex)
+    spec[:n // 8] = rng.standard_normal(n // 8) + 1j * rng.standard_normal(n // 8)
+    spec[-n // 8:] = rng.standard_normal(n // 8) + 1j * rng.standard_normal(n // 8)
+    x = np.fft.ifft(spec)
+    delay = 3.4
+    freq = np.fft.fftfreq(n)
+    y = np.fft.ifft(np.fft.fft(x) * np.exp(-2j * np.pi * freq * delay))
+    x_a, y_a, info = align_delay(x, y, max_lag=100)
+    assert info["lag"] == 3
+    assert info["lag_total"] == pytest.approx(delay, abs=0.05)
+    # residual after fractional correction is small
+    resid = np.mean(np.abs(y_a - info["gain"] * x_a) ** 2)
+    assert 10 * np.log10(resid / np.mean(np.abs(x_a) ** 2)) < -30

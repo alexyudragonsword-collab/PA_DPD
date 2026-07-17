@@ -29,6 +29,10 @@ class SalehPA(PAModel):
         unit = np.where(r > 0, x / np.where(r > 0, r, 1), 0)
         return amp * unit * np.exp(1j * phase)
 
+    def get_config(self) -> dict:
+        return {"alpha_a": self.alpha_a, "beta_a": self.beta_a,
+                "alpha_p": self.alpha_p, "beta_p": self.beta_p}
+
     @property
     def small_signal_gain(self) -> float:
         return self.alpha_a

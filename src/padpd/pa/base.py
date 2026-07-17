@@ -21,6 +21,25 @@ class PAModel(ABC):
     def fit(self, x: np.ndarray, y: np.ndarray) -> "PAModel":
         raise NotImplementedError(f"{type(self).__name__} is not trainable")
 
+    def get_config(self) -> dict:
+        """Constructor kwargs needed to re-instantiate this model."""
+        raise NotImplementedError(f"{type(self).__name__} has no get_config")
+
+    def save(self, path: str) -> None:
+        """Persist the model (class, config, fitted coefficients) as .npz.
+
+        Reload with :func:`padpd.pa.load_model`. This is also the handoff
+        format for coefficient download to FPGA/ASIC implementations.
+        """
+        payload = {
+            "class_name": type(self).__name__,
+            "config": repr(self.get_config()),
+        }
+        coeffs = getattr(self, "coeffs", None)
+        if coeffs is not None:
+            payload["coeffs"] = coeffs
+        np.savez(path, **payload)
+
 
 def lstsq_fit(phi: np.ndarray, y: np.ndarray,
               regularization: float = 0.0) -> np.ndarray:

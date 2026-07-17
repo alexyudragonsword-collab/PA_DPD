@@ -93,8 +93,12 @@ spec = ds["spec"]        # fs、带宽、nperseg 等,同时也在各 split 的 m
 ```python
 from padpd.data import align_delay
 x_a, y_a, info = align_delay(x, y, max_lag=4096)
-# info = {"lag": 整数延迟(正=y滞后), "gain": 对齐后 LS 复增益}
+# info = {"lag": 整数延迟(正=y滞后), "lag_total": 含分数部分的总延迟(浮点),
+#         "gain": 对齐后 LS 复增益}
 ```
+
+分数延迟(如 DAC/ADC 时钟相位差)由相关峰抛物线插值自动估计,超过
+0.02 采样时用 FFT 相位斜坡校正,无需额外参数。
 
 注意:OpenDPD 数据集已预对齐,无需此步骤;Cadence Envelope 导出与
 仪器采集通常需要。

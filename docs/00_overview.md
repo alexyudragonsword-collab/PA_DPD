@@ -171,11 +171,26 @@ EVM -19.0 → **-57.4 dB**,ACLR -31 → **-55 dBc**,mask FAIL → PASS。
 `Input IQ → Neural Network → Predistorted IQ → PA → Linear output`,
 损失函数通常为 `|y_target - y_out|^2`。
 
-### 6.4 工程注意:可逆性与工作点
+### 6.4 工程注意:可逆性、工作点与 CFR
 
 DPD 只能线性化到 PA 最大输出为止。OFDM 峰值超过 AM-AM 拐点时 ILA 发散
-(本框架 `ReferencePA` 在 `drive ≥ 0.22` 时可复现该现象)。真实系统需要
-CFR(削峰)或足够 back-off 配合。
+(本框架 `ReferencePA` 在 `drive ≥ 0.18` 时可复现该现象)。工业解法是在
+DPD 前加 **CFR 削峰**(`padpd.cfr.cfr_clip_filter`,迭代削峰滤波 ICF):
+用有界的带内 EVM 代价换取数 dB PAPR,使整个包络回到 PA 可逆区。
+
+实测(160 MHz / 1024-QAM / drive=0.18,`run_baseline_demo.py` 输出):
+
+| 链路 | EVM | ACLR(上邻道) | Mask |
+|------|-----|--------------|------|
+| PA(无 DPD) | -18.3 dB | -28.8 dBc | FAIL |
+| DPD(无 CFR) | -27.7 dB(峰值不可逆,受限) | -31.7 dBc | FAIL |
+| **CFR(8 dB)+ DPD** | **-36.9 dB** | **-56.3 dBc** | **PASS** |
+
+规律:DPD 收敛后残余 EVM ≈ CFR 自身代价(本例 -37.6 dB),即线性化
+已完全,瓶颈转移到削峰失真——这是 CFR 目标 PAPR 的选取依据(教科书式
+的 EVM–效率权衡)。复现:
+`python scripts/run_baseline_demo.py --drive 0.18 --cfr-papr 8`。
+峰值统计用 CCDF 曲线(`padpd.metrics.ccdf`)观察,不止看单点 PAPR。
 
 ## 7. AI 训练平台
 

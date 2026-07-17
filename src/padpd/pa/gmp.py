@@ -32,6 +32,13 @@ class GMPModel(PAModel):
         self.lead_span = lead_span
         self.coeffs: np.ndarray | None = None
 
+    def get_config(self) -> dict:
+        return {"order": self.order, "memory_depth": self.memory_depth,
+                "lag_order": self.lag_order, "lag_memory": self.lag_memory,
+                "lag_span": self.lag_span, "lead_order": self.lead_order,
+                "lead_memory": self.lead_memory,
+                "lead_span": self.lead_span}
+
     def basis_matrix(self, x: np.ndarray) -> np.ndarray:
         a = np.abs(x)
         cols = []

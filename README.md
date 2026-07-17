@@ -1,5 +1,7 @@
 # WiFi 7 PA + DPD AI 辅助研发工程
 
+![CI](https://github.com/alexyudragonsword-collab/PA_DPD/actions/workflows/ci.yml/badge.svg)
+
 面向 RFIC/Analog IC 团队的 WiFi 7(802.11be)功率放大器(PA)+ 数字预失真(DPD)研发框架,覆盖:
 
 ```
@@ -7,7 +9,7 @@ CMOS/SOI PA 设计 → 电路仿真(Spectre)→ 行为建模(GMP baseline / 神�
      → DPD(ILA / Neural)→ FPGA/ASIC 部署 → WiFi 系统验证(EVM/ACLR/Mask)
 ```
 
-**Phase 1**:可运行的 Python 基线框架 —— 802.11be 风格 OFDM 波形、经典 PA 行为模型(Saleh/MP/GMP)、ILA-GMP DPD、完整系统指标(EVM/ACLR/频谱 Mask/AM-AM/AM-PM),用合成数据端到端跑通。
+**Phase 1**:可运行的 Python 基线框架 —— 802.11be 风格 OFDM 波形、经典 PA 行为模型(Saleh/MP/GMP)、ILA-GMP DPD、CFR 削峰、完整系统指标(EVM/ACLR/频谱 Mask/AM-AM/AM-PM/CCDF),模型持久化,CI,用合成数据端到端跑通。
 **Phase 1.5**:以 [OpenDPD](https://github.com/lab-emi/OpenDPD) 为参照完成整体检视 —— 其数据集格式、指标口径、~500 参数基准配置全部纳入,并在三套真实 PA 测量数据上复现其经典 baseline。
 
 ## 快速开始
@@ -32,6 +34,15 @@ python scripts/run_opendpd_baseline.py --opendpd-root ../OpenDPD
 | 发射 Mask | FAIL | **PASS** |
 
 GMP 行为模型验证集 NMSE:**-57.8 dB**(52 系数),优于 Memory Polynomial 的 -52.2 dB。
+
+深压缩工作点(`--drive 0.18 --cfr-papr 8`,CFR + DPD 组合):
+
+| 链路 | EVM | ACLR(上邻道) | Mask |
+|------|-----|--------------|------|
+| DPD(无 CFR,峰值不可逆) | -27.7 dB | -31.7 dBc | FAIL |
+| **CFR(8 dB)+ DPD** | **-36.9 dB** | **-56.3 dBc** | **PASS** |
+
+拟合好的模型/DPD 可持久化复用:`model.save("gmp.npz")` → `padpd.pa.load_model(...)`;`dpd.save(...)` → `ILAPredistorter.load(...)`。
 
 ### 真实测量数据 baseline(OpenDPD 数据集,OpenDPD 指标口径)
 
@@ -68,8 +79,9 @@ src/padpd/               # Python 包(代码与注释为英文)
   metrics/               #   星座 EVM / ACLR / PSD+Mask / AM-AM & AM-PM
   │                      #   + opendpd_compat.py(OpenDPD 论文口径)
   data/                  #   IQDataset + Cadence/MATLAB/OpenDPD 加载器
-  │                      #   + align.py(实测数据延迟对齐)
-  plotting.py            #   标准对比图
+  │                      #   + align.py(整数+分数延迟对齐)
+  cfr.py                 #   CFR 削峰(迭代削峰滤波,DPD 前级)
+  plotting.py            #   标准对比图(PSD/星座/AM-AM/CCDF)
 scripts/                 # 合成 demo / 数据集生成 / OpenDPD 真实数据 baseline
 tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数值等价测试)
 ```

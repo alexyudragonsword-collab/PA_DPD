@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .metrics.amam import am_am_am_pm
+from .metrics.ccdf import ccdf
 from .metrics.spectrum import psd
 
 
@@ -51,6 +52,24 @@ def plot_constellation(points_by_label: dict[str, np.ndarray],
         ax.set_ylabel("Q")
         ax.set_aspect("equal")
         ax.grid(True, alpha=0.3)
+    fig.tight_layout()
+    if path:
+        fig.savefig(path, dpi=150)
+        plt.close(fig)
+    return fig
+
+
+def plot_ccdf(cases: dict[str, np.ndarray], path: str | None = None):
+    """Overlay power CCDF curves of several signals."""
+    fig, ax = plt.subplots(figsize=(7, 5))
+    for label, x in cases.items():
+        level, prob = ccdf(x)
+        ax.semilogy(level, np.maximum(prob, 1e-8), label=label, lw=1.2)
+    ax.set_xlabel("dB above average power")
+    ax.set_ylabel("CCDF  P(power > level)")
+    ax.set_ylim(1e-6, 1.1)
+    ax.grid(True, which="both", alpha=0.3)
+    ax.legend()
     fig.tight_layout()
     if path:
         fig.savefig(path, dpi=150)

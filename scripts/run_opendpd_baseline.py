@@ -40,7 +40,7 @@ from padpd.dpd import ILAPredistorter
 from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,
                            target_gain_opendpd)
 from padpd.pa import gmp_opendpd_510, mp_opendpd_500, nmse_db
-from padpd.plotting import plot_psd_comparison
+from padpd.plotting import plot_am_curves, plot_psd_comparison
 
 # Published numbers from OpenDPD benchmark/benchmark_report.md
 # (~500-param fair comparison): (ACLR_AVG dB, EVM dB)
@@ -116,7 +116,11 @@ def run_dataset(root: str, name: str, results_dir: str):
         {"input (scaled)": g * test.x, "PA, no DPD": test.y,
          "PA + ILA-GMP DPD (surrogate)": y_dpd},
         fs, path=os.path.join(out_dir, "psd_comparison.png"))
-    print(f"PSD plot saved to {out_dir}/psd_comparison.png")
+    plot_am_curves(
+        {"measured PA": (test.x, test.y),
+         "DPD (surrogate)": (test.x, y_dpd)},
+        path=os.path.join(out_dir, "am_am_am_pm.png"))
+    print(f"plots saved to {out_dir}/ (psd_comparison.png, am_am_am_pm.png)")
 
 
 def main():

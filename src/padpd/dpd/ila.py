@@ -84,3 +84,23 @@ class ILAPredistorter:
                   x: np.ndarray) -> np.ndarray:
         """Convenience: PA output with DPD applied, i.e. pa(dpd(x))."""
         return pa(self(x))
+
+    def save(self, path: str) -> None:
+        """Persist the fitted predistorter (model + target gain) as .npz."""
+        if self.dpd_model is None:
+            raise RuntimeError("predistorter is not fitted; nothing to save")
+        np.savez(path,
+                 class_name=type(self.dpd_model).__name__,
+                 config=repr(self.dpd_model.get_config()),
+                 coeffs=self.dpd_model.coeffs,
+                 target_gain=np.complex128(self.target_gain))
+
+    @classmethod
+    def load(cls, path: str) -> "ILAPredistorter":
+        """Load a predistorter saved with :meth:`save`."""
+        from ..pa import load_model
+        dpd = cls()
+        dpd.dpd_model = load_model(path)
+        d = np.load(path, allow_pickle=False)
+        dpd.target_gain = complex(d["target_gain"])
+        return dpd

@@ -27,6 +27,18 @@
 **真实数据基准(Phase 2 必须超越的线)**:DPA_160MHz 上 GMP-510
 PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
 
+## Phase 1 收尾 ✅
+
+- [x] CFR 削峰模块(`padpd.cfr.cfr_clip_filter`,迭代削峰滤波);
+      drive=0.18 深压缩工作点 CFR(8 dB)+DPD:EVM -27.7 → -36.9 dB、
+      ACLR -31.7 → -56.3 dBc、mask FAIL → PASS(见 00_overview §6.4)
+- [x] 模型持久化:`PAModel.save` / `padpd.pa.load_model` /
+      `ILAPredistorter.save/load`(npz,亦为 FPGA 系数下发格式起点)
+- [x] CI:GitHub Actions push/PR 全量 pytest
+- [x] `align_delay` 分数延迟(相关峰抛物线插值 + FFT 相位斜坡)
+- [x] CCDF 峰值统计(`padpd.metrics.ccdf` + `plot_ccdf`)
+- [x] 真实数据 baseline 补 AM-AM/AM-PM 图
+
 ## Phase 2:神经 PA 建模 + Neural DPD
 
 目标:在相同数据/指标下超过 GMP baseline。以 OpenDPD 实证过的配方为
@@ -50,7 +62,6 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
       (星座域)< -47 dB
 - [ ] Cadence Envelope 真实数据接入(用 `align_delay` 预处理)
 - [ ] 1D-CNN/TCN 变体(面向 ASIC);Transformer 探索(320 MHz 记忆效应)
-- [ ] CFR(削峰)模块,解决深压缩工作点的可逆性问题
 
 经验教训(已实证,勿重蹈):线性参数模型(MP/GMP)必须 LS 闭式解,
 SGD 训练同一模型差 9 dB+ ACLR;神经模型才需要梯度训练。
@@ -83,7 +94,8 @@ SGD 训练同一模型差 9 dB+ ACLR;神经模型才需要梯度训练。
 ```
 Phase 1 (baseline) ✅
    └─→ Phase 1.5 (OpenDPD 对标检视) ✅
-          └─→ Phase 2 (neural, 真实数据)
-                 └─→ Phase 3 (部署)
-                 └─→ Phase 4 (联合设计,可与 Phase 3 并行)
+          └─→ Phase 1 收尾 (CFR/持久化/CI) ✅
+                 └─→ Phase 2 (neural, 真实数据)
+                        └─→ Phase 3 (部署)
+                        └─→ Phase 4 (联合设计,可与 Phase 3 并行)
 ```
