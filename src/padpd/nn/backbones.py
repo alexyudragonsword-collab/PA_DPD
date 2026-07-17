@@ -85,4 +85,29 @@ class DGRUBackbone(nn.Module):
         return self.fc_out(out)
 
 
-BACKBONES = {"gru": GRUBackbone, "dgru": DGRUBackbone}
+class TCNBackbone(nn.Module):
+    """Dilated depthwise 1-D CNN (OpenDPD TCN, IMS2025): hardware-friendly,
+    no recurrence. 6 engineered features -> pointwise conv -> 4 depthwise
+    dilated convs (d=1,2,4,8, 'same' padding) -> pointwise -> + (I,Q)
+    input residual. ``hidden_size`` is the channel count."""
+
+    def __init__(self, hidden_size: int = 16, num_layers: int = 1):
+        super().__init__()
+        if num_layers != 1:
+            raise ValueError("TCNBackbone supports num_layers=1 only")
+        self.hidden_size = h = hidden_size
+        k = 5
+        layers = [nn.Conv1d(6, h, kernel_size=1), nn.Hardswish()]
+        for d in (1, 2, 4, 8):
+            layers += [nn.Conv1d(h, h, k, padding=(k - 3) * d, dilation=d,
+                                 groups=h, bias=False), nn.Hardswish()]
+        layers += [nn.Conv1d(h, 2, kernel_size=1, bias=False)]
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        feats = iq_features(x)
+        out = self.network(feats.transpose(1, 2)).transpose(1, 2)
+        return out + x
+
+
+BACKBONES = {"gru": GRUBackbone, "dgru": DGRUBackbone, "tcn": TCNBackbone}

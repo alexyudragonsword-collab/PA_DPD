@@ -4,8 +4,9 @@ import pytest
 torch = pytest.importorskip("torch")
 
 from padpd.nn import (DGRUBackbone, DLAPredistorter, FrameDataset,
-                      GRUBackbone, NeuralPAModel, complex_to_iq,
-                      count_params, iq_features, iq_to_complex)
+                      GRUBackbone, NeuralPAModel, TCNBackbone,
+                      complex_to_iq, count_params, iq_features,
+                      iq_to_complex)
 from padpd.pa import MemoryPolynomialModel, ReferencePA, nmse_db
 from padpd.waveform import OFDMConfig, generate_ofdm
 
@@ -43,12 +44,21 @@ def test_frame_dataset_shapes():
 
 def test_backbone_shapes_and_params():
     x = torch.randn(4, 32, 2)
-    for net in (GRUBackbone(hidden_size=11), DGRUBackbone(hidden_size=8)):
+    for net in (GRUBackbone(hidden_size=11), DGRUBackbone(hidden_size=8),
+                TCNBackbone(hidden_size=16)):
         out = net(x)
         assert out.shape == (4, 32, 2)
         assert count_params(net) > 0
     # OpenDPD reference: dgru H8 ~= 500 params
     assert 400 < count_params(DGRUBackbone(hidden_size=8)) < 600
+
+
+def test_tcn_learns_nonlinearity(pa_data):
+    x, y = pa_data
+    model = NeuralPAModel(backbone="tcn", hidden_size=16, n_epochs=30,
+                          verbose=False, seed=0)
+    model.fit(x, y)
+    assert nmse_db(y, model(x)) < -25
 
 
 @pytest.fixture(scope="module")

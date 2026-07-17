@@ -27,11 +27,14 @@ def main():
     ap.add_argument("--dataset-dir", required=True)
     ap.add_argument("--pa-model", required=True,
                     help="NeuralPAModel checkpoint (.pt)")
-    ap.add_argument("--backbone", default="dgru", choices=["gru", "dgru"])
+    ap.add_argument("--backbone", default="dgru",
+                    choices=["gru", "dgru", "tcn"])
     ap.add_argument("--hidden", type=int, default=8)
     ap.add_argument("--epochs", type=int, default=100)
     ap.add_argument("--frame-length", type=int, default=50)
     ap.add_argument("--frame-stride", type=int, default=1)
+    ap.add_argument("--lr", type=float, default=1e-3)
+    ap.add_argument("--batch-size", type=int, default=64)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--output", default=None)
     ap.add_argument("--results", default="results/neural")
@@ -50,7 +53,8 @@ def main():
     dpd = DLAPredistorter(
         backbone=args.backbone, hidden_size=args.hidden,
         n_epochs=args.epochs, frame_length=args.frame_length,
-        stride=args.frame_stride, seed=args.seed, target_gain=g,
+        stride=args.frame_stride, lr=args.lr, batch_size=args.batch_size,
+        seed=args.seed, target_gain=g,
         aclr_spec={"fs": fs, "bw_main_ch": bw, "n_sub_ch": n_sub,
                    "nperseg": nperseg})
     print(f"training DLA DPD {args.backbone}-H{args.hidden} "

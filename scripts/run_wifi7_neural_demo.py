@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--drive", type=float, default=0.14)
     ap.add_argument("--cfr-papr", type=float, default=None)
     ap.add_argument("--epochs", type=int, default=40)
+    ap.add_argument("--hidden", type=int, default=8)
     ap.add_argument("--frame-stride", type=int, default=4)
     ap.add_argument("--results", default="results/neural")
     args = ap.parse_args()
@@ -53,7 +54,7 @@ def main():
           f"PAPR {papr_db(x_val):.2f} dB, drive {args.drive}")
 
     # 1. neural PA surrogate
-    surrogate = NeuralPAModel(backbone="dgru", hidden_size=8,
+    surrogate = NeuralPAModel(backbone="dgru", hidden_size=args.hidden,
                               n_epochs=args.epochs,
                               stride=args.frame_stride, seed=0)
     print(f"\nfitting neural PA surrogate ({surrogate.n_params} params)...")
@@ -62,7 +63,7 @@ def main():
           f"{nmse_db(pa(x_val), surrogate(x_val)):.2f} dB")
 
     # 2. DLA neural DPD through the surrogate
-    dpd = DLAPredistorter(backbone="dgru", hidden_size=8,
+    dpd = DLAPredistorter(backbone="dgru", hidden_size=args.hidden,
                           n_epochs=args.epochs, stride=args.frame_stride,
                           seed=0)
     print("\ntraining DLA neural DPD...")

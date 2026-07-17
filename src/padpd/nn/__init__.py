@@ -13,7 +13,8 @@ except ImportError as e:  # pragma: no cover
         "https://download.pytorch.org/whl/cpu)") from e
 
 from .features import iq_features, complex_to_iq, iq_to_complex
-from .backbones import GRUBackbone, DGRUBackbone, count_params
+from .backbones import (GRUBackbone, DGRUBackbone, TCNBackbone,
+                        count_params)
 from .frame_data import FrameDataset
 from .torch_model import NeuralPAModel
 from .dla import DLAPredistorter
@@ -24,6 +25,7 @@ __all__ = [
     "iq_to_complex",
     "GRUBackbone",
     "DGRUBackbone",
+    "TCNBackbone",
     "count_params",
     "FrameDataset",
     "NeuralPAModel",
