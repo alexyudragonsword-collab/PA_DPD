@@ -22,6 +22,25 @@ class PAModel(ABC):
         raise NotImplementedError(f"{type(self).__name__} is not trainable")
 
 
+def lstsq_fit(phi: np.ndarray, y: np.ndarray,
+              regularization: float = 0.0) -> np.ndarray:
+    """Solve y ~= phi @ w by (optionally ridge-regularized) least squares.
+
+    ``regularization`` is a relative Tikhonov factor: the ridge term is
+    ``regularization * mean(diag(phi^H phi))``, so it is invariant to
+    signal scale. Ill-conditioned polynomial bases (condition numbers of
+    1e7+ on measured PA data) otherwise produce huge, delicately
+    cancelling coefficients that blow up on memory-warmup boundaries.
+    """
+    if regularization > 0:
+        a = phi.conj().T @ phi
+        lam = regularization * np.trace(a).real / a.shape[0]
+        return np.linalg.solve(a + lam * np.eye(a.shape[0]),
+                               phi.conj().T @ y)
+    coeffs, *_ = np.linalg.lstsq(phi, y, rcond=None)
+    return coeffs
+
+
 def nmse_db(y_ref: np.ndarray, y_est: np.ndarray) -> float:
     """Normalized mean squared error in dB between two complex sequences."""
     err = np.abs(y_ref - y_est) ** 2

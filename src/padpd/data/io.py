@@ -20,7 +20,8 @@ from .dataset import IQDataset
 
 
 def _read_csv_columns(path: str) -> dict[str, np.ndarray]:
-    with open(path, newline="") as f:
+    # utf-8-sig strips a UTF-8 BOM if present (seen in OpenDPD examples)
+    with open(path, newline="", encoding="utf-8-sig") as f:
         reader = csv.reader(f)
         header = [h.strip().lower() for h in next(reader)]
         rows = [row for row in reader if row]

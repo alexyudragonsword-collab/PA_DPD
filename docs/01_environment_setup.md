@@ -37,8 +37,11 @@ Phase 1 依赖(见 `requirements.txt`):numpy、scipy、matplotlib、pytest。
 
 1. **合成数据(当前)**:`python scripts/generate_dataset.py` —— OFDM 波形
    过虚拟 `ReferencePA`,输出 `.npz`(`IQDataset` 格式)。
-2. **OpenDPD 公开数据**:数字功放(DPA)实测 IQ 数据,可用
-   `padpd.data.load_opendpd_csv` 加载,作为第一份"真实 PA"数据。
+2. **OpenDPD 公开数据**(已接入):4 套实测 PA 数据集(DPA_160MHz、
+   DPA_200MHz、APA_200MHz、APA_200MHz_b,共 55 MB,已预对齐、预切分)。
+   `git clone --depth 1 https://github.com/lab-emi/OpenDPD.git` 后用
+   `padpd.data.load_opendpd_dataset` 加载(自动解析 spec.json),
+   `scripts/run_opendpd_baseline.py` 一键复现经典 baseline。
 3. **Cadence Envelope 仿真数据(目标)**:见下节导出流程,用
    `padpd.data.load_cadence_csv` 加载。
 

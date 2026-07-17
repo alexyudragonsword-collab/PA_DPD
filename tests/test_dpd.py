@@ -52,6 +52,15 @@ def test_dpd_generalizes_to_unseen_signal(setup):
     assert e_dpd < e_raw - 15
 
 
+def test_fit_measured_linearizes(setup):
+    """Single-shot data-driven ILA (OpenDPD protocol) also linearizes."""
+    wf, pa, _ = setup
+    dpd = ILAPredistorter().fit_measured(wf.x, pa(wf.x))
+    e_raw = evm_of_signal(pa(wf.x), wf).db
+    e_dpd = evm_of_signal(dpd.linearize(pa, wf.x), wf).db
+    assert e_dpd < e_raw - 15
+
+
 def test_unfitted_dpd_raises():
     with pytest.raises(RuntimeError):
         ILAPredistorter()(np.zeros(8, dtype=complex))

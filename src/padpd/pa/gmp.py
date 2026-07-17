@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .base import PAModel
+from .base import PAModel, lstsq_fit
 from .memory_polynomial import delayed
 
 
@@ -60,9 +60,9 @@ class GMPModel(PAModel):
                 + self.lag_order * self.lag_memory * self.lag_span
                 + self.lead_order * self.lead_memory * self.lead_span)
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "GMPModel":
-        phi = self.basis_matrix(x)
-        self.coeffs, *_ = np.linalg.lstsq(phi, y, rcond=None)
+    def fit(self, x: np.ndarray, y: np.ndarray,
+            regularization: float = 0.0) -> "GMPModel":
+        self.coeffs = lstsq_fit(self.basis_matrix(x), y, regularization)
         return self
 
     def __call__(self, x: np.ndarray) -> np.ndarray:

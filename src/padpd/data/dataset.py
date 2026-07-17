@@ -30,14 +30,30 @@ class IQDataset:
     def __len__(self) -> int:
         return len(self.x)
 
-    def split(self, train_fraction: float = 0.8) -> tuple["IQDataset", "IQDataset"]:
-        """Contiguous train/test split (preserves memory-effect continuity)."""
-        n = int(len(self) * train_fraction)
-        train = IQDataset(self.x[:n], self.y[:n], self.sample_rate_hz,
-                          {**self.meta, "split": "train"})
-        test = IQDataset(self.x[n:], self.y[n:], self.sample_rate_hz,
-                         {**self.meta, "split": "test"})
-        return train, test
+    def split(self, fractions=0.8) -> tuple["IQDataset", ...]:
+        """Contiguous split (preserves memory-effect continuity).
+
+        ``fractions`` may be a single float f (two-way split f / 1-f) or a
+        sequence like (0.6, 0.2, 0.2) for a train/val/test split (OpenDPD
+        convention); the last part receives all remaining samples.
+        """
+        if np.isscalar(fractions):
+            fractions = (float(fractions), 1.0 - float(fractions))
+        if sum(fractions) > 1.0 + 1e-9:
+            raise ValueError("split fractions must sum to <= 1")
+        names = (("train", "test") if len(fractions) == 2
+                 else ("train", "val", "test") if len(fractions) == 3
+                 else tuple(f"part{i}" for i in range(len(fractions))))
+        parts = []
+        start = 0
+        for i, frac in enumerate(fractions):
+            stop = len(self) if i == len(fractions) - 1 else \
+                start + int(len(self) * frac)
+            parts.append(IQDataset(self.x[start:stop], self.y[start:stop],
+                                   self.sample_rate_hz,
+                                   {**self.meta, "split": names[i]}))
+            start = stop
+        return tuple(parts)
 
     def normalized(self) -> "IQDataset":
         """Return a copy with x scaled to unit average power.

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from .base import PAModel
+from .base import PAModel, lstsq_fit
 
 
 def delayed(x: np.ndarray, m: int) -> np.ndarray:
@@ -40,9 +40,9 @@ class MemoryPolynomialModel(PAModel):
                 cols.append(xm * am**k)
         return np.stack(cols, axis=1)
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "MemoryPolynomialModel":
-        phi = self.basis_matrix(x)
-        self.coeffs, *_ = np.linalg.lstsq(phi, y, rcond=None)
+    def fit(self, x: np.ndarray, y: np.ndarray,
+            regularization: float = 0.0) -> "MemoryPolynomialModel":
+        self.coeffs = lstsq_fit(self.basis_matrix(x), y, regularization)
         return self
 
     def __call__(self, x: np.ndarray) -> np.ndarray:

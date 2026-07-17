@@ -24,11 +24,24 @@ from ..pa.gmp import GMPModel
 
 class ILAPredistorter:
     def __init__(self, model_factory: Callable[[], PAModel] | None = None,
-                 n_iterations: int = 2):
+                 n_iterations: int = 2,
+                 target_gain: complex | None = None,
+                 fit_kwargs: dict | None = None):
+        """``target_gain`` fixes the linearization target G in y ≈ G*x.
+
+        By default G is estimated as the least-squares scalar gain of the
+        first PA pass. Pass an explicit value to use another convention
+        (e.g. OpenDPD's peak-amplitude ratio, ``target_gain_opendpd``).
+
+        ``fit_kwargs`` are forwarded to the post-inverse model's ``fit``
+        (e.g. ``{"regularization": 1e-9}`` for ridge-stabilized LS on
+        ill-conditioned measured data).
+        """
         self.model_factory = model_factory or GMPModel
         self.n_iterations = n_iterations
         self.dpd_model: PAModel | None = None
-        self.target_gain: complex | None = None
+        self.target_gain: complex | None = target_gain
+        self.fit_kwargs = fit_kwargs or {}
 
     def fit(self, pa: Callable[[np.ndarray], np.ndarray],
             x: np.ndarray) -> "ILAPredistorter":
@@ -36,13 +49,29 @@ class ILAPredistorter:
         u = x
         for it in range(self.n_iterations):
             y = pa(u)
-            if it == 0:
+            if it == 0 and self.target_gain is None:
                 # Target linear gain: least-squares scalar of the first pass.
                 self.target_gain = complex(np.vdot(x, y) / np.vdot(x, x))
             model = self.model_factory()
-            model.fit(y / self.target_gain, u)
+            model.fit(y / self.target_gain, u, **self.fit_kwargs)
             self.dpd_model = model
             u = model(x)
+        return self
+
+    def fit_measured(self, x: np.ndarray, y: np.ndarray) -> "ILAPredistorter":
+        """Single-shot ILA from a measured input/output pair.
+
+        Fits the post-inverse directly on measured data (y/G -> x) without
+        running any PA model in the loop — the protocol used by OpenDPD's
+        classical benchmark. Use this when you have a captured dataset but
+        no executable PA; use :meth:`fit` when a PA (model or testbench)
+        can be driven iteratively.
+        """
+        if self.target_gain is None:
+            self.target_gain = complex(np.vdot(x, y) / np.vdot(x, x))
+        model = self.model_factory()
+        model.fit(y / self.target_gain, x, **self.fit_kwargs)
+        self.dpd_model = model
         return self
 
     def __call__(self, x: np.ndarray) -> np.ndarray:

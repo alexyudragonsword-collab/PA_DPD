@@ -7,8 +7,9 @@
 ## 0. 通用约定
 
 - **复基带 IQ**:所有序列为等效复基带(envelope)信号,不含载波。
-- **采样对齐**:`x[n]` 与 `y[n]` 必须是同一时刻的输入/输出(环回/仿真
-  中的固定延迟需在导出前对齐;后续版本会提供自动对齐工具)。
+- **采样对齐**:`x[n]` 与 `y[n]` 必须是同一时刻的输入/输出。环回/仿真/
+  实测数据的固定整数延迟可用 `padpd.data.align_delay(x, y)` 自动估计并
+  消除(互相关求延迟 + LS 复增益),见第 5 节。
 - **采样率**:≥ 4× 信道带宽(320 MHz 信道 → ≥ 1.28 GSPS envelope 步长),
   保证 5 阶以内频谱再生可观测。
 - **单位**:幅度单位任意(V 或归一化均可),框架内部按需归一化
@@ -50,17 +51,33 @@ ds = load_cadence_csv("pa_envelope.csv")   # ds.sample_rate_hz 自动推断
 变量名可通过 `x_var/y_var/fs_var` 参数改写。MATLAB 侧:
 `save('cap.mat','x','y','fs')`(v5/v7 格式;v7.3 需另行支持)。
 
-## 3. OpenDPD 风格 CSV(`load_opendpd_csv`)
+## 3. OpenDPD 数据集(`load_opendpd_dataset`,推荐)
 
-输入/输出各一个 CSV,均含 `I,Q` 两列(表头不区分大小写),采样率由调用方
-提供:
+加载一个完整的 OpenDPD 数据集文件夹(https://github.com/lab-emi/OpenDPD),
+自动解析 `spec.json` 元数据:
 
 ```python
-ds = load_opendpd_csv("train_input.csv", "train_output.csv",
-                      sample_rate_hz=800e6)
+from padpd.data import load_opendpd_dataset
+ds = load_opendpd_dataset("/path/to/OpenDPD/datasets/DPA_160MHz")
+train, val, test = ds["train"], ds["val"], ds["test"]   # IQDataset ×3
+spec = ds["spec"]        # fs、带宽、nperseg 等,同时也在各 split 的 meta 里
 ```
 
-两文件长度不一致时按较短者截断。
+文件夹格式(两种皆支持):
+
+| 格式 | 文件 | 说明 |
+|------|------|------|
+| `split_csv` | `{train,val,test}_{input,output}.csv`,各含 `I,Q` 两列 | 预切分、逐样本时间对齐 |
+| `single_csv` | `data.csv`,含 `I_in,Q_in,I_out,Q_out` 四列 | 按 `split_ratios`(默认 0.6/0.2/0.2)连续切分 |
+
+`spec.json` 关键字段:`input_signal_fs`(采样率)、`bw_main_ch`、
+`bw_sub_ch`、`n_sub_ch`、`nperseg`(OpenDPD 指标分段长度)、
+`modulation`;APA 类数据集另有 `scs`、`ofdm_nfft`、`n_active`、CP 参数。
+这些字段是计算 OpenDPD 兼容指标(`padpd.metrics.aclr_opendpd` 等)的
+必要输入。
+
+低层加载器 `load_opendpd_csv(input_csv, output_csv, sample_rate_hz)`
+仍可用于加载单对 CSV(两文件长度不一致时按较短者截断)。
 
 ## 4. 内部格式:IQDataset `.npz`(`IQDataset.save/load`)
 
@@ -69,7 +86,20 @@ ds = load_opendpd_csv("train_input.csv", "train_output.csv",
 合成数据的 `meta` 记录带宽、QAM 阶数、符号数、过采样率、PA 工作点、种子,
 保证可复现。
 
-## 5. 数据规模建议
+## 5. 时间对齐工具(`align_delay`)
+
+实测/EDA 数据常有未知整数延迟与复增益。拟合行为模型前先对齐:
+
+```python
+from padpd.data import align_delay
+x_a, y_a, info = align_delay(x, y, max_lag=4096)
+# info = {"lag": 整数延迟(正=y滞后), "gain": 对齐后 LS 复增益}
+```
+
+注意:OpenDPD 数据集已预对齐,无需此步骤;Cadence Envelope 导出与
+仪器采集通常需要。
+
+## 6. 数据规模建议
 
 | 用途 | 样本量 |
 |------|--------|

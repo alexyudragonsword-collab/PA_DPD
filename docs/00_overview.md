@@ -115,6 +115,21 @@ IQ input/output dataset (IQDataset)
 Phase 1 实测(160 MHz / 1024-QAM / ReferencePA,验证集 NMSE):
 MP(阶 7、记忆 4)-52.2 dB;GMP(52 系数)**-57.8 dB**。
 
+Phase 1.5 真实测量数据实测(OpenDPD 数据集,~500 实参数预算,测试集 NMSE):
+
+| 数据集 | MP-500 | GMP-510 | OpenDPD GRU 代理(参考) |
+|--------|--------|---------|------------------------|
+| DPA_200MHz(Doherty) | -35.0 dB | -33.7 dB | — |
+| DPA_160MHz(Doherty) | -38.3 dB | **-39.2 dB** | -38.4 dB(2066 参数) |
+| APA_200MHz(GaN) | -37.1 dB | -35.5 dB | -43.5 dB(1911 参数) |
+
+工程要点(踩坑记录):高阶多项式基条件数可达 1e7+,系数向量靠列间精细
+抵消工作——评估时若记忆抽头零填充(直接喂 test 段)会产生巨幅边界瞬态,
+污染整段指标。解决:①拟合可加相对岭正则(`fit(x, y, regularization=1e-9)`);
+②评估时用前一段数据做记忆预热上下文(见 `scripts/run_opendpd_baseline.py`)。
+另:线性参数模型必须用 LS 闭式解,OpenDPD 实测 LS 比 SGD 训练同一 GMP
+好 9 dB+ ACLR。
+
 ## 5. AI PA 建模(Phase 2 重点)
 
 - **LSTM**:捕获热记忆、偏置网络记忆效应。
@@ -131,13 +146,20 @@ MP(阶 7、记忆 4)-52.2 dB;GMP(52 系数)**-57.8 dB**。
 
 ### 6.1 间接学习架构(ILA,工业经典)
 
-实现:`padpd.dpd.ILAPredistorter`。
+实现:`padpd.dpd.ILAPredistorter`,两种使用方式:
 
 ```
+闭环迭代(fit):有可驱动的 PA(模型/仿真/台架)时
 1. u = x 驱动 PA,得 y
 2. 拟合后逆模型:y/G → u(G 为目标线性增益)
 3. 把后逆模型复制到 PA 前作为预失真器,u = DPD(x),迭代 2~3 次
+
+数据驱动单次辨识(fit_measured):只有一份实测 (x, y) 数据时
+直接拟合 y/G → x 作为预失真器,与 OpenDPD 经典 benchmark 协议一致
 ```
+
+目标增益 G 默认为 LS 标量;可显式传入其他口径(如 OpenDPD 的峰值比
+`target_gain_opendpd`)。
 
 ### 6.2 评价指标
 
@@ -183,6 +205,37 @@ Spectre output → Python Dataset → PyTorch Training → ONNX → FPGA/ASIC
 | DSP | GNU Radio | https://github.com/gnuradio/gnuradio |
 | RF 分析 | scikit-rf | https://github.com/scikit-rf/scikit-rf |
 | AI | PyTorch | https://github.com/pytorch/pytorch |
+
+### 10.1 OpenDPD 对标结论(Phase 1.5 检视)
+
+已完成对 OpenDPD 的整体检视并纳入其关键规范。本仓库与 OpenDPD 的分工:
+
+- **已纳入**:数据集格式(spec.json 元数据 + 两种 CSV 布局,
+  `load_opendpd_dataset`)、其指标口径的精确复刻
+  (`padpd.metrics.opendpd_compat`,与其原版代码数值一致到 1e-9)、
+  ~500 实参数的 MP/GMP 基准配置(`padpd.pa.presets`)、数据驱动单次
+  ILA 协议(`fit_measured`)。
+- **保留自己的实现**:星座域 EVM(OpenDPD 的 EVM 是谱域近似,其 README
+  自认不精确;两套并存,横向对比用其口径、工程验收用星座 EVM)、
+  802.11 风格 ACLR/Mask(其 ACLR 参考是最强带内子信道,面向多载波 LTE)。
+- **两套指标不可混比**:OpenDPD ACLR 的参考功率是最强带内子信道(非总
+  带内功率)、邻道积分宽度是一个子信道;数值上与 3GPP/802.11 口径差异
+  可达数 dB。
+
+真实数据 DPD 复现结果(GMP-510 数据驱动 ILA + GMP-510 代理评估,
+OpenDPD 口径):
+
+| 数据集 | 无 DPD ACLR | DPD 后 ACLR / EVM(谱) | OpenDPD 发表 GMP-QR | 其神经最优(~500 参数) |
+|--------|------------|----------------------|--------------------|--------------------|
+| DPA_200MHz | -30.6 | **-48.7 / -46.7** | — | — |
+| DPA_160MHz | -34.5 | **-52.8 / -54.0** | -54.0 / -51.1 | -56.8 / -54.0 |
+| APA_200MHz | -27.7 | -26.2 / **-38.4** | -38.8 / -38.5 | -53.4 / -49.1 |
+
+解读:DPA_160MHz 上与发表值高度一致(ACLR 差 1.2 dB,EVM 更好 3 dB),
+协议复现成功。APA_200MHz(强非线性 GaN PA)上 EVM 与发表值精确吻合,
+但 ACLR 受**评估代理保真度**限制(我们用 GMP-510 代理 NMSE -35.5 dB,
+其用 GRU 代理 -43.5 dB;实验证明代理 NMSE 每提升 3 dB,ACLR 读数改善
+约 6 dB)——这是 Phase 2 引入神经 PA 代理最直接的立项依据。
 
 ## 11. 团队组织建议(AI for RFIC PA 团队)
 
