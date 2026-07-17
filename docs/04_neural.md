@@ -67,27 +67,45 @@ python scripts/run_wifi7_neural_demo.py
 
 (以下数字为本仓库实际运行输出;训练环境 4 核 CPU。)
 
-### 5.1 PA 行为建模(测试集 NMSE,dB)
+### 5.1 PA 行为建模(测试集 NMSE,dB;100 epochs、frame_length=50、单 seed)
 
-| 数据集 | GMP-510(经典基准) | GRU | DGRU | OpenDPD 参考 |
-|--------|--------------------|-----|------|--------------|
-| DPA_200MHz | -33.7 | TBD | TBD | — |
-| APA_200MHz | -35.5 | — | TBD | GRU-H23 -43.5 |
-| DPA_160MHz(减量) | -39.2 | — | TBD | GRU-H24 -38.4 |
+| 数据集 | GMP-510(经典基准) | GRU-H11 | DGRU-H8 | DGRU-H23 | OpenDPD 参考 |
+|--------|--------------------|---------|---------|----------|--------------|
+| DPA_200MHz | **-33.7** | -31.0 | -31.4 | — | — |
+| APA_200MHz | **-35.5** | — | — | -31.7 | GRU-H23 -43.5(F=200) |
+| DPA_160MHz(stride=4 减量) | **-39.2** | — | -37.4 | — | GRU-H24 -38.4 |
 
-### 5.2 DPD 线性化(OpenDPD 口径,测试集)
+结论(诚实记录):在同参数预算、frame_length=50、单 seed、CPU 100 epoch
+的条件下,神经模型的 NMSE 尚未超过 GMP-510。OpenDPD 的 -43.5 dB 参考值
+使用 frame_length=200 训练(长帧捕获 GaN PA 长记忆),这是下一步最明确
+的改进方向(见 §6)。**但注意 §5.3:代理的 NMSE 并不是 DPD 评估保真度
+的完整指标。**
 
-| 数据集 | 无 DPD ACLR | ILA-GMP-510 | DLA DGRU-H8 | OpenDPD 发表 |
-|--------|------------|-------------|-------------|--------------|
-| DPA_200MHz | -30.6 | -48.7 | TBD | — |
+### 5.2 DPD 线性化(OpenDPD 口径,DPA_200MHz 测试集)
 
-### 5.3 APA 代理重评(同一 ILA-GMP-510 DPD,不同评估代理)
+| 方案 | 评估代理 | ACLR_AVG | EVM(谱) |
+|------|----------|----------|---------|
+| 无 DPD(实测) | — | -30.6 | -11.6 |
+| ILA-GMP-510(Phase 1.5) | GMP-510 | -48.7 | -46.7 |
+| DLA DGRU-H8(486 参数) | 神经 DGRU-H8 | -45.1 | -35.1 |
+
+注:两行 DPD 用了不同评估代理,不能直接横比;DLA 结果受 H8 代理
+NMSE(-31.4)限制。
+
+### 5.3 APA 代理重评 ⭐(同一 ILA-GMP-510 DPD,只换评估代理)
 
 | 评估代理 | 代理 NMSE | ACLR_AVG | EVM(谱) |
 |----------|-----------|----------|---------|
 | GMP-510(Phase 1.5) | -35.5 | -26.2 | -38.4 |
-| 神经 DGRU | TBD | TBD | TBD |
-| OpenDPD GRU(发表) | -43.5 | -38.8 | -38.5 |
+| **神经 DGRU-H23** | -31.7 | **-38.53** | **-38.94** |
+| OpenDPD GRU(发表) | -43.5 | -38.80 | -38.53 |
+
+**Phase 2 的核心验证结果**:换用神经代理后,同一个经典 DPD 的 ACLR 读数
+从 -26.2 收敛到 **-38.53**,与 OpenDPD 发表值(-38.80)几乎逐位吻合——
+即使我们的神经代理全局 NMSE(-31.7)数值上低于 GMP 代理(-35.5)。
+结论:多项式代理的带外外推不可信(高阶项在峰值区伪造频谱溅射),而
+神经代理激活有界、带外行为忠实。**DPD 的代理评估必须用神经代理**;
+代理的全局 NMSE 高不代表 ACLR 读数可信。
 
 ### 5.4 WiFi 7 合成链路(320 MHz / 4096-QAM,ReferencePA 在环)
 
@@ -103,5 +121,9 @@ python scripts/run_wifi7_neural_demo.py
   (OpenDPD 实证 LS 比 SGD 训练同一 GMP 好 9 dB+ ACLR)。
 - 代理评估的读数只在代理 NMSE 之上可信;强非线性 PA(APA/GaN)
   必须用神经代理评估 DPD。
-- 后续增量(Phase 2.5 候选):TCN(ASIC 友好)、DeltaGRU/TRes-DeltaGRU
-  (OpenDPD v2 最优)、多 seed 统计、Transformer 探索。
+- 后续增量(Phase 2.5 候选,按预期收益排序):
+  1. **frame_length=200 训练**(OpenDPD 的 -43.5 dB APA 代理即 F=200;
+     长帧捕获长记忆,预计是 NMSE 差距的主因;CPU 上约 4× 训练时间)
+  2. lr=5e-3 + 240 epochs(OpenDPDv2 配方)、多 seed 统计
+  3. TCN(ASIC 友好)、DeltaGRU/TRes-DeltaGRU(OpenDPD v2 最优)
+  4. Transformer 探索(320 MHz 长记忆)
