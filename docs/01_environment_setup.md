@@ -13,7 +13,19 @@ pytest tests/           # 验证环境:42 项测试应全部通过
 ```
 
 Phase 1 依赖(见 `requirements.txt`):numpy、scipy、matplotlib、pytest。
-**刻意不引入 PyTorch**,保证 baseline 环境轻量;Phase 2 再加。
+核心包保持纯 numpy;PyTorch 是 **可选依赖**(仅 `padpd.nn` 需要):
+
+```bash
+# 标准安装(CPU 版,推荐)
+pip install torch --index-url https://download.pytorch.org/whl/cpu
+# 或 GPU 环境直接 pip install torch
+# 若网络策略屏蔽 download.pytorch.org(只有 PyPI 可达),PyPI 的 Linux
+# 轮子是 CUDA 版,需完整安装其 nvidia 依赖(约 3 GB,纯 CPU 也能跑):
+pip install torch
+```
+
+无 torch 时 `padpd` 其余功能与全部经典测试不受影响(`tests/test_nn.py`
+自动跳过)。
 
 ## 2. GPU 训练环境(Phase 2 起)
 
