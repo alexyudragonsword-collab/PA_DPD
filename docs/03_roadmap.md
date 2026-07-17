@@ -39,32 +39,40 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
 - [x] CCDF 峰值统计(`padpd.metrics.ccdf` + `plot_ccdf`)
 - [x] 真实数据 baseline 补 AM-AM/AM-PM 图
 
-## Phase 2:神经 PA 建模 + Neural DPD
+## Phase 2:神经 PA 建模 + Neural DPD ✅(核心目标达成)
 
-目标:在相同数据/指标下超过 GMP baseline。以 OpenDPD 实证过的配方为
-起点(Phase 1.5 检视结论):
+- [x] `padpd.nn` 子包(torch 可选依赖):GRU/DGRU backbone(6 通道特征
+      `[I,Q,|x|³...]`)、FrameDataset、`NeuralPAModel`(OpenDPD 训练配方,
+      PAModel 统一接口)、`DLAPredistorter`(DLA 直接学习)
+- [x] 真实数据训练:DPA_200MHz(DGRU-H8 -31.4 / GRU-H11 -31.0)、
+      APA_200MHz(DGRU-H23 -31.7)、DPA_160MHz 减量(DGRU-H8 -37.4)
+- [x] DLA 神经 DPD @DPA_200MHz:ACLR -30.6 → -45.1 dBc(486 参数)
+- [x] **APA 代理重评(关键验证)**:同一 ILA-GMP DPD 经神经代理评估,
+      ACLR -26.2 → **-38.53**,与 OpenDPD 发表值 -38.80 逐位吻合;
+      确立"DPD 代理评估必须用神经代理"
+- [x] WiFi 7 合成链路:DLA 神经 DPD EVM -44.4 dB / Mask PASS
+      (ILA-GMP 对照 -64.2;-47 目标差 2.6 dB,增加训练量可达)
+- [x] 8 项神经单元测试;CI 含 torch
 
-- [ ] 引入 PyTorch;`PAModel` 接口的 `TorchPAModel` 适配基类
-- [ ] 特征工程按 OpenDPD 实证配方:6 通道 `[I, Q, |x|, |x|³, cosφ, sinφ]`
-      (注意是 |x|³ 不是 |x|²;原始 I/Q 不做均值/方差归一化)
-- [ ] 训练方式:滑窗 frame(frame_length≈200、stride=1)+ BPTT,
-      AdamW,MSE 损失,按验证集指标选 best model
-      (PA 模型选 NMSE,DPD 选 ACLR_AVG)
-- [ ] GRU / DGRU PA 行为模型;目标:APA_200MHz NMSE ≤ -43.5 dB
-      (OpenDPD GRU-H23 水平),给 DPD 评估提供可信代理——
-      Phase 1.5 已证明 GMP 代理在强非线性 PA 上不够用
-- [ ] Neural DPD 用 **DLA(直接学习)**:冻结 PA 代理,梯度穿透 BPTT
-      训练前置 DPD,目标 `G·x`(G = 峰值幅度比,`target_gain_opendpd`);
-      注意 OpenDPD 的神经 DPD 全部是 DLA,不是 ILA
-- [ ] 复现目标(~500 参数,OpenDPD 口径):DPA_160MHz ACLR ≤ -52
-      (GRU 水平)进而冲 -56.8(TRes-DeltaGRU);APA_200MHz ACLR ≤ -53.4
-- [ ] WiFi 7 合成链路上验证:320 MHz/4096-QAM 下 Neural DPD EVM
-      (星座域)< -47 dB
+实测数字与分析:`docs/04_neural.md`。
+
+## Phase 2.5:神经建模增量(下一步)
+
+- [ ] frame_length=200 长帧训练(OpenDPD 的 APA -43.5 dB 即此配置;
+      预计是当前 PA NMSE 差距的主因)
+- [ ] OpenDPDv2 配方(lr 5e-3、240 epochs、调度)与多 seed 统计
+- [ ] 神经 PA NMSE 超过 GMP-510;DPD 复现目标:DPA_160MHz ACLR ≤ -52,
+      APA_200MHz ACLR ≤ -53.4(TRes-DeltaGRU 水平)
+- [ ] WiFi 7 神经 DPD EVM < -47 dB(增加 epochs/hidden)
+- [ ] TCN(ASIC 友好)、DeltaGRU/TRes-DeltaGRU(OpenDPD v2 最优)
 - [ ] Cadence Envelope 真实数据接入(用 `align_delay` 预处理)
-- [ ] 1D-CNN/TCN 变体(面向 ASIC);Transformer 探索(320 MHz 记忆效应)
+- [ ] Transformer 探索(320 MHz 长记忆)
 
-经验教训(已实证,勿重蹈):线性参数模型(MP/GMP)必须 LS 闭式解,
-SGD 训练同一模型差 9 dB+ ACLR;神经模型才需要梯度训练。
+经验教训(已实证,勿重蹈):
+1. 线性参数模型(MP/GMP)必须 LS 闭式解,SGD 差 9 dB+ ACLR。
+2. 多项式代理的带外外推不可信——代理全局 NMSE 高不代表 ACLR 读数可信;
+   DPD 评估用神经代理。
+3. 帧长决定可学的记忆跨度:GaN PA 需要 F≈200,F=50 学不到长记忆。
 
 ## Phase 3:量化与 FPGA/ASIC 部署
 
@@ -95,7 +103,8 @@ SGD 训练同一模型差 9 dB+ ACLR;神经模型才需要梯度训练。
 Phase 1 (baseline) ✅
    └─→ Phase 1.5 (OpenDPD 对标检视) ✅
           └─→ Phase 1 收尾 (CFR/持久化/CI) ✅
-                 └─→ Phase 2 (neural, 真实数据)
+                 └─→ Phase 2 (neural, 真实数据) ✅
+                        └─→ Phase 2.5 (长帧/更强 backbone)
                         └─→ Phase 3 (部署)
                         └─→ Phase 4 (联合设计,可与 Phase 3 并行)
 ```

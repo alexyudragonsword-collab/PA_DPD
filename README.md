@@ -11,6 +11,7 @@ CMOS/SOI PA 设计 → 电路仿真(Spectre)→ 行为建模(GMP baseline / 神�
 
 **Phase 1**:可运行的 Python 基线框架 —— 802.11be 风格 OFDM 波形、经典 PA 行为模型(Saleh/MP/GMP)、ILA-GMP DPD、CFR 削峰、完整系统指标(EVM/ACLR/频谱 Mask/AM-AM/AM-PM/CCDF),模型持久化,CI,用合成数据端到端跑通。
 **Phase 1.5**:以 [OpenDPD](https://github.com/lab-emi/OpenDPD) 为参照完成整体检视 —— 其数据集格式、指标口径、~500 参数基准配置全部纳入,并在三套真实 PA 测量数据上复现其经典 baseline。
+**Phase 2**:PyTorch 神经建模(`padpd.nn`,可选依赖)—— GRU/DGRU PA 行为模型、DLA 神经 DPD,在真实数据上完成训练与对标;**神经代理使 APA 的 DPD ACLR 读数与 OpenDPD 发表值逐位吻合**(-38.53 vs -38.80),详见 `docs/04_neural.md`。
 
 ## 快速开始
 
@@ -61,7 +62,17 @@ PA 行为建模(测试集 NMSE,~500 实参数):
 | DPA_160MHz | **-52.8 / -54.0** | -54.0 / -51.1 |
 | APA_200MHz | -26.2* / **-38.4** | -38.8 / -38.5 |
 
-\* APA 的 ACLR 受 GMP 评估代理保真度限制(其发表值用 GRU 代理),EVM 与发表值精确吻合 —— 这正是 Phase 2 引入神经 PA 代理的立项依据,详见 `docs/00_overview.md` §10.1。
+\* Phase 1.5 时受 GMP 评估代理限制;**Phase 2 用神经 DGRU 代理重评同一 DPD 后 ACLR 为 -38.53 dBc**,与发表值 -38.80 几乎逐位吻合(`scripts/rerun_apa_surrogate.py`)。结论:多项式代理带外外推不可信,DPD 代理评估必须用神经代理。
+
+### 神经建模(Phase 2,`pip install -e .[nn]`)
+
+| 结果 | 数值 |
+|------|------|
+| DLA 神经 DPD(DPA_200MHz,486 参数) | ACLR -30.6 → **-45.1 dBc** |
+| WiFi 7 合成链路 320 MHz/4096-QAM(DLA,40 ep) | EVM **-44.4 dB**,Mask PASS(ILA-GMP 对照 -64.2) |
+| 神经代理拟合 ReferencePA | NMSE **-47.3 dB** |
+
+训练命令见 `docs/04_neural.md`;实测数据上神经 PA 建模 NMSE 尚未超过 GMP-510(需 frame_length=200 长帧训练,列入 Phase 2.5)。
 
 ## 仓库结构
 

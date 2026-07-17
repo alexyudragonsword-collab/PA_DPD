@@ -107,13 +107,22 @@ NMSE(-31.4)限制。
 神经代理激活有界、带外行为忠实。**DPD 的代理评估必须用神经代理**;
 代理的全局 NMSE 高不代表 ACLR 读数可信。
 
-### 5.4 WiFi 7 合成链路(320 MHz / 4096-QAM,ReferencePA 在环)
+### 5.4 WiFi 7 合成链路(320 MHz / 4096-QAM,真实 ReferencePA 在环)
 
-| 链路 | 星座 EVM | ACLR | Mask |
-|------|----------|------|------|
-| 无 DPD | TBD | TBD | TBD |
-| ILA-GMP | TBD | TBD | TBD |
-| DLA 神经 DPD | TBD | TBD | TBD |
+神经代理拟合 ReferencePA:NMSE **-47.3 dB**(486 参数,40 epochs——
+合成数据无测量噪声,神经模型上限远高于实测数据)。
+
+| 链路 | 星座 EVM | ACLR(上邻道) | Mask |
+|------|----------|--------------|------|
+| 无 DPD | -19.0 dB | -31.0 dBc | FAIL |
+| ILA-GMP | **-64.2 dB** | -65.7 dBc | PASS |
+| DLA 神经 DPD(486 参数,40 ep) | -44.4 dB | -46.8 dBc | PASS |
+
+解读:在 ReferencePA(Wiener-Hammerstein,天然属于多项式模型族)上,
+经典 GMP 逆近乎精确,ILA-GMP 占优;DLA 神经 DPD 40 epochs 达 -44.4 dB
+(接近 -47 dB 目标,增加 epochs/参数可继续逼近)。神经方案的真正价值
+在多项式失效的场景:真实 GaN PA 的代理评估(§5.3)与后续更强记忆效应
+的 PA。两类方法互为 sanity check,这正是"GMP 黄金 baseline"原则的意义。
 
 ## 6. 经验与注意
 
