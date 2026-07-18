@@ -45,7 +45,7 @@ def no_prefs_io(monkeypatch):
 
 def test_all_pages_instantiate_and_switch(app, window):
     from gui_qt.main import PAGES
-    assert window.stack.count() == len(PAGES) == 8
+    assert window.stack.count() == len(PAGES) == 9
     for i in range(len(PAGES)):
         window.nav.setCurrentRow(i)
         app.processEvents()
@@ -107,6 +107,16 @@ def test_theme_switch_updates_mpl_and_qss(app, window, no_prefs_io):
     assert "#f4f6fb" in app.styleSheet()
     window._on_theme(0)  # back to dark
     assert matplotlib.rcParams["figure.facecolor"] == "#121828"
+
+
+def test_manual_page_renders_chapters(app, window):
+    page = window._pages["manual"]
+    assert page.toc.count() == 8
+    html = page.view.toHtml()
+    assert "padpd" in html
+    page.toc.setCurrentRow(5)  # benchmarks chapter
+    app.processEvents()
+    assert "TCN" in page.view.toPlainText()
 
 
 def test_grab_screenshots(app, window, tmp_path):

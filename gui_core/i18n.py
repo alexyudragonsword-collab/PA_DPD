@@ -29,6 +29,23 @@ _EN = {
     "联合设计": "Co-Design",
     "语言": "Language",
     "主题": "Theme",
+    "用户手册": "User Manual",
+    "目录": "Contents",
+    "章节": "Chapter",
+    "内置双语用户手册:整合快速入门、工作流、逐页操作指南、"
+    "数据接口、算法速览、性能基准、部署打包与 FAQ;"
+    "语言随侧栏切换。工程级细节见仓库 docs/ 目录。":
+        "Built-in bilingual user manual: quick start, workflow, "
+        "page-by-page guide, data interfaces, algorithms, benchmarks, "
+        "deployment & FAQ. Language follows the sidebar switch; "
+        "engineering details live in the repo's docs/ directory.",
+    "内置双语用户手册:快速入门、工作流、逐页指南、数据接口、"
+    "算法速览、性能基准、部署打包与 FAQ;语言随侧栏切换,"
+    "工程级细节见仓库 docs/ 目录。":
+        "Built-in bilingual user manual: quick start, workflow, "
+        "page-by-page guide, data interfaces, algorithms, benchmarks, "
+        "deployment & FAQ. Language follows the sidebar switch; "
+        "engineering details live in the repo's docs/ directory.",
     "深色": "Dark",
     "浅色": "Light",
     "中文": "中文",

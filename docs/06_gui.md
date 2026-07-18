@@ -16,6 +16,15 @@
 **实验注册表 `gui_runs/`**——在 Web 版跑的实验,桌面版的"结果比较"页
 能看到,反之亦然;算法零重复,行为一致。
 
+## 内置用户手册
+
+两版 GUI 各有"📖 用户手册"页:8 章双语图文手册(`manual/zh|en/*.md` +
+`manual/assets/` 截图),整合了快速入门、工作流、逐页指南、数据接口、
+算法速览、性能基准、部署打包与 FAQ,语言随全局切换。内容源为
+Markdown,Web 版用 st.markdown + st.image 分段渲染,桌面版经
+`markdown` 库转 HTML 后由 QTextBrowser 按主题化 CSS 渲染
+(`gui_core/manual.py` 为共享加载层)。
+
 ## 语言与主题切换
 
 两版侧栏底部均有 **中文/English** 与 **深色/浅色** 切换:

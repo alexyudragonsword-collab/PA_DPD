@@ -21,14 +21,15 @@ st.set_page_config(page_title=ui.tr("padpd 工作台"), page_icon="📡",
                    layout="wide", initial_sidebar_state="expanded")
 
 pages = [
-    st.Page("pages/home.py", title=ui.tr("总览"), icon="🏠", default=True),
-    st.Page("pages/waveform.py", title=ui.tr("波形工作台"), icon="🌊"),
-    st.Page("pages/data.py", title=ui.tr("数据管理"), icon="🗂️"),
-    st.Page("pages/pa_modeling.py", title=ui.tr("PA 建模"), icon="📈"),
-    st.Page("pages/dpd_lab.py", title=ui.tr("DPD 实验室"), icon="🎛️"),
-    st.Page("pages/compare.py", title=ui.tr("结果比较"), icon="⚖️"),
-    st.Page("pages/deploy.py", title=ui.tr("部署"), icon="🚀"),
-    st.Page("pages/codesign.py", title=ui.tr("联合设计"), icon="🧭"),
+    st.Page("views/home.py", title=ui.tr("总览"), icon="🏠", default=True),
+    st.Page("views/waveform.py", title=ui.tr("波形工作台"), icon="🌊"),
+    st.Page("views/data.py", title=ui.tr("数据管理"), icon="🗂️"),
+    st.Page("views/pa_modeling.py", title=ui.tr("PA 建模"), icon="📈"),
+    st.Page("views/dpd_lab.py", title=ui.tr("DPD 实验室"), icon="🎛️"),
+    st.Page("views/compare.py", title=ui.tr("结果比较"), icon="⚖️"),
+    st.Page("views/deploy.py", title=ui.tr("部署"), icon="🚀"),
+    st.Page("views/codesign.py", title=ui.tr("联合设计"), icon="🧭"),
+    st.Page("views/manual.py", title=ui.tr("用户手册"), icon="📖"),
 ]
 
 with st.sidebar:

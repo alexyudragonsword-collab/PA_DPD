@@ -29,6 +29,7 @@ PAGES = [
     ("⚖️", "结果比较", "compare", "ComparePage"),
     ("🚀", "部署", "deploy", "DeployPage"),
     ("🧭", "联合设计", "codesign", "CodesignPage"),
+    ("📖", "用户手册", "manual", "ManualPage"),
 ]
 
 LANG_ITEMS = [("zh", "中文"), ("en", "English")]

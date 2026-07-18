@@ -1,0 +1,89 @@
+# 4. Data Interfaces
+
+All external data is unified internally as an **IQDataset**: a pair of
+sample-aligned complex baseband sequences (PA input `x`, output `y`) + sample
+rate + metadata. The GUI Data Manager page and the `padpd.data` loaders accept
+the following four sources.
+
+## 4.1 General Conventions
+
+- **Complex baseband IQ**: equivalent-baseband (envelope) signals, no
+  carrier;
+- **Sample alignment**: `x[n]` and `y[n]` must correspond to the same time
+  instant (see the alignment tool in 4.6);
+- **Sample rate**: at least 4x the channel bandwidth is recommended, so that
+  spectral regrowth up to 5th order remains observable;
+- **Amplitude units**: arbitrary (volts or normalized); the gain relationship
+  is preserved in `y/x`.
+
+## 4.2 OpenDPD Dataset Directory (Recommended)
+
+Load a complete [OpenDPD](https://github.com/lab-emi/OpenDPD) dataset folder;
+the `spec.json` metadata is parsed automatically (sample rate, main/sub
+channel bandwidths, modulation, `nperseg`, etc. — these are required inputs
+for computing the OpenDPD-compatible metrics). Two directory formats are
+supported:
+
+| Format | Files | Notes |
+|---|---|---|
+| split_csv | `{train,val,test}_{input,output}.csv` (each with I,Q columns) | Pre-split, aligned sample by sample |
+| single_csv | `data.csv` (four columns: I_in,Q_in,I_out,Q_out) | Contiguous 0.6/0.2/0.2 split |
+
+GUI operation: on the Data Manager page, enter the directory → scan → select
+→ load. The datasets are pre-aligned, so no further delay alignment is
+needed.
+
+![Loading an OpenDPD dataset on the Data Manager page](assets/qt_data.png)
+
+## 4.3 Cadence Envelope CSV
+
+A single CSV with a header row; column names are case-insensitive:
+
+```csv
+time,i_in,q_in,i_out,q_out
+0.000000000000e+00,0.1234,-0.0567,0.1180,-0.0611
+1.562500000000e-09,0.1301,-0.0432,0.1245,-0.0489
+```
+
+`time` must be uniformly sampled (the sample rate is inferred from it).
+Cadence Envelope exports usually contain link delay, so **enabling automatic
+delay alignment is recommended**.
+
+## 4.4 MATLAB .mat
+
+Variable convention: `x` (complex vector, PA input), `y` (complex vector, PA
+output), `fs` (scalar, Hz). On the MATLAB side:
+`save('cap.mat','x','y','fs')` (v5/v7 format).
+
+## 4.5 IQDataset .npz (Internal Format)
+
+Stored via `numpy.savez_compressed` with `x`, `y`, `sample_rate_hz`, and
+`meta`. This is the format exported by Waveform Studio; for synthetic data,
+`meta` records the bandwidth, QAM order, seed, etc., guaranteeing
+reproducibility.
+
+## 4.6 Automatic Delay Alignment
+
+Measured/EDA data often contains an unknown integer delay, a fractional delay
+(DAC/ADC clock phase), and a complex gain. Enabling "automatic delay
+alignment" at load time performs:
+
+1. Cross-correlation to estimate the integer delay, with parabolic
+   interpolation for the fractional part;
+2. FFT phase-ramp correction when the fractional delay exceeds 0.02 samples;
+3. LS complex-gain normalization.
+
+The alignment result (total delay in samples) is shown in the page message;
+if the AM-AM preview collapses from a "cloud" into a clean curve, the
+alignment succeeded.
+
+## 4.7 Recommended Data Sizes
+
+| Purpose | Recommended sample count |
+|---|---|
+| MP/GMP/DDR least-squares fitting | ≥ 100k (about 2000x the number of coefficients) |
+| Neural model training | On the order of 10M (much less is fine for quick GUI experiments) |
+| Metric evaluation | ≥ 10 OFDM symbols, with a seed different from training |
+
+Training and validation **must use waveforms with different random seeds** to
+avoid optimistic bias from memorization.

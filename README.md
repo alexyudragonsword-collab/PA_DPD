@@ -93,9 +93,11 @@ python -m gui_qt.main
 8 个功能页:总览 / 波形工作台(PSD·CCDF·星座·CFR·导出)/ 数据管理
 (OpenDPD·Cadence CSV·.mat·.npz,自动对齐)/ PA 建模(经典 LS + 神经
 带进度)/ DPD 实验室(ILA/DLA,前后指标与图)/ 结果比较 / 部署(位宽
-扫描·ONNX·系数导出)/ PA-DPD 联合设计。两版均支持**中/英文切换**与
-**深色/浅色主题切换**(侧栏底部,偏好持久化且两版共享)。exe 打包见
-`packaging/README_packaging.md`,导览见 `docs/06_gui.md`。
+扫描·ONNX·系数导出)/ PA-DPD 联合设计 / **内置双语图文用户手册**
+(`manual/`,8 章,整合全部文档,随界面语言切换)。两版均支持
+**中/英文切换**与**深色/浅色主题切换**(侧栏底部,偏好持久化且两版
+共享)。exe 打包见 `packaging/README_packaging.md`,导览见
+`docs/06_gui.md`。
 
 ## 仓库结构
 
@@ -122,6 +124,7 @@ src/padpd/               # Python 包(代码与注释为英文)
   deploy/                #   Phase 3 部署:bit-true 量化 + 神经 PTQ +
   │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
   plotting.py            #   标准对比图(PSD/星座/AM-AM/CCDF)
+manual/                  # 内置双语用户手册(zh/en 各 8 章 + 截图资产)
 gui_core/                # GUI 共享服务层(框架无关:计算服务 + 实验注册表)
 gui/                     # Web 工作台(Streamlit + Plotly,8 页)
 gui_qt/                  # 桌面版(PySide6 + matplotlib,8 页,QSS 深色主题)

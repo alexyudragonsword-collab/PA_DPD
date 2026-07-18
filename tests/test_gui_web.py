@@ -7,18 +7,18 @@ pytest.importorskip("streamlit")
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
 PAGES = ["home", "waveform", "data", "pa_modeling", "dpd_lab", "compare",
-         "deploy", "codesign"]
+         "deploy", "codesign", "manual"]
 
 
 @pytest.mark.parametrize("page", PAGES)
 def test_page_renders_without_exception(page):
-    at = AppTest.from_file(f"gui/pages/{page}.py", default_timeout=120)
+    at = AppTest.from_file(f"gui/views/{page}.py", default_timeout=120)
     at.run()
     assert not at.exception, at.exception
 
 
 def test_pa_modeling_classical_fit_e2e():
-    at = AppTest.from_file("gui/pages/pa_modeling.py", default_timeout=300)
+    at = AppTest.from_file("gui/views/pa_modeling.py", default_timeout=300)
     at.run()
     # defaults: synthetic source, classical GMP; click the fit button
     at.sidebar.button[0].click().run()
@@ -31,7 +31,7 @@ def test_pa_modeling_classical_fit_e2e():
 
 
 def test_waveform_cfr_toggle():
-    at = AppTest.from_file("gui/pages/waveform.py", default_timeout=120)
+    at = AppTest.from_file("gui/views/waveform.py", default_timeout=120)
     at.run()
     at.sidebar.toggle[0].set_value(True).run()
     assert not at.exception
@@ -40,7 +40,7 @@ def test_waveform_cfr_toggle():
 
 
 def test_compare_lists_runs():
-    at = AppTest.from_file("gui/pages/compare.py", default_timeout=120)
+    at = AppTest.from_file("gui/views/compare.py", default_timeout=120)
     at.run()
     assert not at.exception
 
@@ -49,7 +49,7 @@ def test_home_renders_in_english_light(monkeypatch):
     from gui import ui
     monkeypatch.setattr(ui, "load_prefs",
                         lambda *a: {"lang": "en", "theme": "light"})
-    at = AppTest.from_file("gui/pages/home.py", default_timeout=120)
+    at = AppTest.from_file("gui/views/home.py", default_timeout=120)
     at.run()
     assert not at.exception
     assert any("Workbench" in str(t.value) for t in at.title)
