@@ -22,3 +22,5 @@ deploy_export/
 *.onnx
 *.onnx.data
 gui_runs/
+packaging/dist/
+packaging/build/
