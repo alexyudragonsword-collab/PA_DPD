@@ -56,17 +56,26 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
 
 实测数字与分析:`docs/04_neural.md`。
 
-## Phase 2.5:神经建模增量(下一步)
+## Phase 2.5:长帧 + TCN + DPD 复现 ✅
 
-- [ ] frame_length=200 长帧训练(OpenDPD 的 APA -43.5 dB 即此配置;
-      预计是当前 PA NMSE 差距的主因)
-- [ ] OpenDPDv2 配方(lr 5e-3、240 epochs、调度)与多 seed 统计
-- [ ] 神经 PA NMSE 超过 GMP-510;DPD 复现目标:DPA_160MHz ACLR ≤ -52,
-      APA_200MHz ACLR ≤ -53.4(TRes-DeltaGRU 水平)
-- [ ] WiFi 7 神经 DPD EVM < -47 dB(增加 epochs/hidden)
-- [ ] TCN(ASIC 友好)、DeltaGRU/TRes-DeltaGRU(OpenDPD v2 最优)
+- [x] frame_length=200 长帧训练——证实 DPA/APA 记忆跨度短、非帧长受限
+- [x] **TCN backbone:DPA_200MHz -34.9 dB 超过 GMP-510(-33.7)** ⭐
+      (首个胜出的神经 PA 模型,ASIC 友好,对接 Phase 3)
+- [x] **DLA 神经 DPD 真实数据复现**:DPA_160MHz ACLR **-53.1 dBc** 越过
+      -52 验收线,优于其发表 GRU(-51.9);DPA_200MHz -49.5 dBc
+- [x] APA 代理重评(F=200 神经代理):ACLR -38.56 与发表 -38.80 吻合
+- [x] 神经单元测试含 TCN(10 项);CI 含 torch
+
+**未达成/推迟(需 GPU 或更大算力)**:
+- [ ] 神经 PA NMSE 在 DPA/APA 上超过 GMP-510(仅 DPA_200 的 TCN 做到)
+- [ ] APA -43.5 dB 复现(四类变量排查后判定公开信息无法复现)
+- [ ] DeltaGRU/TRes-DeltaGRU(-56.8;delta 稀疏 RNN CPU 不可行)
+- [ ] OpenDPDv2 配方(lr 5e-3、240 epochs)与多 seed 统计
 - [ ] Cadence Envelope 真实数据接入(用 `align_delay` 预处理)
 - [ ] Transformer 探索(320 MHz 长记忆)
+
+**环境限制记录**:4 核 CPU、无 GPU;长时后台训练熬不过容器空闲挂起
+(训练链两次在 ~1.5-2h 处被回收),故用"单步快跑、完成即提交"策略。
 
 经验教训(已实证,勿重蹈):
 1. 线性参数模型(MP/GMP)必须 LS 闭式解,SGD 差 9 dB+ ACLR。
@@ -104,7 +113,7 @@ Phase 1 (baseline) ✅
    └─→ Phase 1.5 (OpenDPD 对标检视) ✅
           └─→ Phase 1 收尾 (CFR/持久化/CI) ✅
                  └─→ Phase 2 (neural, 真实数据) ✅
-                        └─→ Phase 2.5 (长帧/更强 backbone)
+                        └─→ Phase 2.5 (长帧/TCN/DPD 复现) ✅
                         └─→ Phase 3 (部署)
                         └─→ Phase 4 (联合设计,可与 Phase 3 并行)
 ```

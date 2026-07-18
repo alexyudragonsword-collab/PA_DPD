@@ -64,15 +64,16 @@ PA 行为建模(测试集 NMSE,~500 实参数):
 
 \* Phase 1.5 时受 GMP 评估代理限制;**Phase 2 用神经 DGRU 代理重评同一 DPD 后 ACLR 为 -38.53 dBc**,与发表值 -38.80 几乎逐位吻合(`scripts/rerun_apa_surrogate.py`)。结论:多项式代理带外外推不可信,DPD 代理评估必须用神经代理。
 
-### 神经建模(Phase 2,`pip install -e .[nn]`)
+### 神经建模(Phase 2 / 2.5,`pip install -e .[nn]`)
 
 | 结果 | 数值 |
 |------|------|
-| DLA 神经 DPD(DPA_200MHz,486 参数) | ACLR -30.6 → **-45.1 dBc** |
-| WiFi 7 合成链路 320 MHz/4096-QAM(DLA,40 ep) | EVM **-44.4 dB**,Mask PASS(ILA-GMP 对照 -64.2) |
-| 神经代理拟合 ReferencePA | NMSE **-47.3 dB** |
+| **TCN-H16 PA 模型(DPA_200MHz,464 参数)** | NMSE **-34.9 dB → 超过 GMP-510 的 -33.7**(ASIC 友好) |
+| **DLA 神经 DPD(DPA_160MHz,486 参数)** | ACLR -34.5 → **-53.1 dBc**,越过 -52 验收线(发表 GRU -51.9) |
+| DLA 神经 DPD(DPA_200MHz) | ACLR -30.6 → **-49.5 dBc** |
+| APA 代理重评(F=200 神经代理) | 同一经典 DPD:ACLR **-38.56**,与发表 -38.80 吻合 |
 
-训练命令见 `docs/04_neural.md`;实测数据上神经 PA 建模 NMSE 尚未超过 GMP-510(需 frame_length=200 长帧训练,列入 Phase 2.5)。
+三个 GRU/DGRU/TCN backbone、DLA 直接学习、真实数据训练;训练命令与完整分析见 `docs/04_neural.md`。APA_200MHz 的 -43.5 dB PA NMSE 经系统排查判定为公开信息无法复现(不影响 DPD 结论)。
 
 ## 仓库结构
 
