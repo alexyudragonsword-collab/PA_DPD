@@ -3,7 +3,14 @@ name: Build Windows EXE
 on:
   workflow_dispatch:
   push:
+    branches: ["**"]
     tags: ["v*"]
+    # branch pushes only build when packaging inputs change (path
+    # filters are not evaluated for tag pushes, so v* tags always build)
+    paths:
+      - packaging/**
+      - gui_qt/**
+      - .github/workflows/build-windows.yml
 
 jobs:
   build:
