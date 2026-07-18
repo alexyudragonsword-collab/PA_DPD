@@ -112,10 +112,12 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 
 ## 路线图
 
-- **Phase 1**:经典 baseline 全链路 ✅
+- **Phase 1**:经典 baseline 全链路(Saleh/MP/GMP/DDR、ILA、CFR、指标)✅
 - **Phase 1.5**:OpenDPD 对标检视与补齐(真实数据 baseline)✅
-- **Phase 2**:PyTorch 神经 PA 建模(GRU/DGRU)+ Neural DPD(DLA),对标 OpenDPD 发表数字
-- **Phase 3**:量化(W16A16 QAT)/剪枝/蒸馏,FPGA 定点部署验证
-- **Phase 4**:可微 PA 模型 + PA/DPD 联合优化(AI Native PA Design)
+- **Phase 2 / 2.5**:神经 PA 建模(GRU/DGRU/TCN)+ DLA Neural DPD;TCN 超 GMP ✅
+- **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅(QAT/RTL 需 GPU/硬件)
+- **Phase 4**:PA/DPD 联合设计(离散 Pareto + 可微梯度寻优)✅(Spectre 回环需 EDA)
 
-详见 `docs/03_roadmap.md`。
+全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
+本环境(4 核 CPU、无 GPU)已完成可做部分;需 GPU(QAT、多 seed)或硬件/EDA
+(FPGA RTL、SDR 台架、Spectre 回环)的项目物料与接口均已就绪,可用现有脚本推进。
