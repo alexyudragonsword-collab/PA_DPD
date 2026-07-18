@@ -39,7 +39,11 @@ GMP 行为模型验证集 NMSE:-57.8 dB(52 系数),优于 MP 的 -52.2 dB。
 | ILA-GMP(多项式族 PA 上占优) | -64.2 dB | -65.7 dBc | PASS |
 | DLA 神经 DPD(486 参数,40 ep) | -44.4 dB | -46.8 dBc | PASS |
 
-神经代理拟合 ReferencePA:NMSE -47.3 dB。
+神经代理拟合 ReferencePA:NMSE -47.3 dB。更大容量(H16、更多 epoch)
+预计可把 EVM 推过 -47 dB(H16 代理训练中已观察到 -47.5 dB NMSE),但
+该长训练在本 CPU 环境三次被容器空闲挂起回收,推迟到 GPU 环境完成。
+注:此为合成 ReferencePA(多项式族),经典 ILA-GMP 本就近乎精确
+(-64.2 dB),神经方案的价值在多项式失效的真实 GaN PA(见 §3.3)。
 
 ## 3. 真实测量数据(OpenDPD 数据集,OpenDPD 指标口径)
 
@@ -96,7 +100,7 @@ DPA_160MHz DLA DPD 越过 -52 验收线,优于发表 GRU,逼近其最优模型�
 | 神经 PA NMSE 超过 GMP-510(≥1 数据集) | TCN-H16 -34.9 vs -33.7 | ✅ |
 | DPA_160MHz DLA DPD ACLR ≤ -52 dBc | -53.1 | ✅ |
 | APA 代理重评稳定 ≈ -38.5 dBc | -38.56 | ✅ |
-| WiFi 7 神经 DPD 星座 EVM < -47 dB | H16 版本训练中(Phase 2 H8:-44.4) | ⏳ |
+| WiFi 7 神经 DPD 星座 EVM < -47 dB | H8:-44.4 dB;H16 长训练三次被容器回收,推迟到 GPU | ⚠️ 部分 |
 
 ## 6. 环境限制
 
