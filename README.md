@@ -95,7 +95,8 @@ src/padpd/               # Python 包(代码与注释为英文)
   data/                  #   IQDataset + Cadence/MATLAB/OpenDPD 加载器
   │                      #   + align.py(整数+分数延迟对齐)
   cfr.py                 #   CFR 削峰(迭代削峰滤波,DPD 前级)
-  deploy/                #   Phase 3 定点部署:bit-true 量化 + MAC 成本
+  deploy/                #   Phase 3 部署:bit-true 量化 + 神经 PTQ +
+  │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
   plotting.py            #   标准对比图(PSD/星座/AM-AM/CCDF)
 scripts/                 # 合成 demo / 数据集生成 / OpenDPD 真实数据 baseline
 tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数值等价测试)

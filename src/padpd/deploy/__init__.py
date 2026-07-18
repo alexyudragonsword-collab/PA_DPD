@@ -11,5 +11,9 @@ hardware-cost estimate.
 
 from .fixed_point import (quantize_symmetric, FixedPointPolyModel,
                           mac_cost)
+from .export import (export_linear_coeffs, export_reference_vectors,
+                     export_onnx)
 
-__all__ = ["quantize_symmetric", "FixedPointPolyModel", "mac_cost"]
+__all__ = ["quantize_symmetric", "FixedPointPolyModel", "mac_cost",
+           "export_linear_coeffs", "export_reference_vectors",
+           "export_onnx"]

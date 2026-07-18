@@ -97,8 +97,12 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
 - [ ] 神经模型 QAT(对标 OpenDPD W16A16:对称 INT、scale=2 的幂、STE、
       从浮点 checkpoint 微调)——需 GPU;PTQ 已证明 W12 几乎无损,QAT 收益
       主要在 W8 及以下
-- [ ] PyTorch → ONNX 导出链;剪枝/蒸馏
-- [ ] FPGA 原型(HLS 或 RTL),与 Python 定点模型逐样本比对
+- [x] **部署交接链**(`padpd.deploy.export` + `scripts/export_deploy.py`):
+      ①神经模型 → ONNX(onnxruntime 数值验证,max err ~1e-6);②线性模型
+      → 整数定点系数 JSON(整数码 + 2 的幂 scale,硬件 `acc+=code_w*code_x`
+      后移位);③bit-true 参考输入/输出向量 CSV,供 RTL 逐样本比对。
+- [ ] 剪枝/蒸馏(蒸馏需 GPU)
+- [ ] FPGA 原型(HLS 或 RTL),用上面的 ONNX/系数/参考向量逐样本比对
 - [ ] SDR/GNU Radio 台架闭环验证
 
 ### 定点 DPD 实测(DPA_160MHz,ACLR_AVG dBc,神经代理评估)

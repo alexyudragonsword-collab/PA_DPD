@@ -16,3 +16,8 @@ results/
 .pytest_cache/
 .ipynb_checkpoints/
 .DS_Store
+
+# Deployment export artifacts (regenerate with scripts/export_deploy.py)
+deploy_export/
+*.onnx
+*.onnx.data
