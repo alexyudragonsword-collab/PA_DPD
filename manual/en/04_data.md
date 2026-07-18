@@ -87,3 +87,41 @@ alignment succeeded.
 
 Training and validation **must use waveforms with different random seeds** to
 avoid optimistic bias from memorization.
+
+## 4.8 Lab Capture and the Loopback Observation Budget
+
+There are two routes to a real PA output for DPD evaluation:
+
+1. **Instrument route (golden reference)**: VSG -> PA -> coupler +
+   calibrated attenuation chain -> VSA / high-speed ADC. Key points:
+   the receive chain's own distortion must be >=10 dB better than the
+   target under test; observation bandwidth >= 5x the signal bandwidth;
+   shared reference clock between TX and RX; post-processing performs
+   delay alignment (Section 4.6) and frequency-response equalization.
+   Captured IQ pairs import via the formats in this chapter and reuse
+   the entire flow.
+2. **Loopback route (product form)**: TX -> coupler -> loopback RX
+   capture. Any impairment of the loopback chain gets "learned" into
+   the DPD (effectively appending the RX inverse to the TX path), so
+   every metric needs a budget. `padpd.loopback.LoopbackChannel`
+   injects nine impairment types specified in dBc/dB, and
+   `scripts/run_loopback_study.py` quantifies each one's cost on the
+   post-DPD metrics:
+
+![Loopback observation-path budget (single impairments vs the clean-observation baseline)](assets/loopback_budget.png)
+
+Budget conclusions (80 MHz / 1024-QAM, clean-observation baseline
+EVM -55.1 / ACLR -51.9): loopback **SNR >= 50 dB** for zero cost;
+**IQ imbalance is the most expensive single item** (IRR 40 dB still
+costs ~20 dB of EVM — run IQ calibration before enabling DPD); RX IM3
+needs to be ~15 dB better than the target ACLR; frequency-response
+ripple must be calibrated out; phase noise shows the value of a shared
+LO; **an unaligned delay is catastrophic** (+53 dB EVM) while the
+aligned cost is only +2.5 dB, and drift over the capture calls for
+periodic re-estimation.
+
+One pitfall every lab post-processing chain must know (reproduced in
+this study): the aligner absorbs the PA's own group delay, so the DPD
+carries a fractional-sample advance — **perform receiver-style timing
+sync before measuring EVM**, or the constellation shows a phase ramp
+and EVM saturates near -20 dB while ACLR looks fine.

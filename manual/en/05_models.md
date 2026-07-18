@@ -74,3 +74,34 @@ robustness also far exceeds the polynomials (see Chapter 6).
 Numbers from the two conventions **must never be compared directly**; the GUI
 selects the convention automatically per data source and labels it in the
 results.
+
+## 5.6 Pre-Tapeout: From Circuit Simulation to a PA+DPD Verdict
+
+Before the PA exists in silicon, circuit simulation already provides
+everything a first behavioral model needs:
+
+| Simulation | Extract | Used as |
+|---|---|---|
+| Harmonic-balance power sweep | AM-AM / AM-PM table | static nonlinearity |
+| S-parameters / PSS+PAC | input/output matching S21 | linear memory (FIR) |
+| Envelope transient | input/output IQ pairs | import directly as Cadence CSV (Chapter 4) |
+
+`padpd.pa.load_hb_pa` assembles the AM-AM/AM-PM table plus S21 tables
+into a Wiener-Hammerstein model (FIR -> LUT nonlinearity -> FIR,
+saturating beyond the table):
+
+```python
+from padpd.pa import load_hb_pa
+pa = load_hb_pa("hb_amam.csv", "s21_in.csv", "s21_out.csv",
+                fs=320e6, drive=0.14)   # a standard PAModel, plug and play
+```
+
+`scripts/import_hb_pa.py --demo` generates example CSVs and runs the
+full prediction chain — demo result: GMP fits the imported PA to
+NMSE -43.7 dB; predicted DPD takes EVM from -18.3 to **-48.1 dB** with
+the mask going FAIL -> PASS. Sweeping `--drive` (with CFR and the
+co-design tools) answers, before tapeout, **how much DPD this PA needs
+and how much back-off passes spec**. A robustness sweep (perturb the
+nonlinearity strength / memory depth by +/-20%) is recommended to
+confirm the verdict does not flip. CSV column conventions are in
+`docs/02_data_interface.md`, Section 8.

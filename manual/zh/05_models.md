@@ -59,3 +59,29 @@ GUI 的"经典 (LS)"路径即闭式解。
 | OpenDPD 兼容 | 谱域 EVM、ACLR_AVG(nperseg 分段 Welch) | 与论文横向对标 |
 
 两套口径数值**不可混比**;GUI 按数据源自动选择并在结果中标注。
+
+## 5.6 流片前:从电路仿真到 PA+DPD 预判
+
+PA 还没流片时,电路仿真已能提供初步建模所需的一切:
+
+| 仿真 | 提取 | 用途 |
+|---|---|---|
+| 谐波平衡扫功率 | AM-AM/AM-PM 表 | 静态非线性 |
+| S 参数 / PSS+PAC | 输入/输出匹配 S21 | 线性记忆(FIR) |
+| 包络瞬态 | 输入/输出 IQ 对 | 直接按第 4 章 Cadence CSV 导入 |
+
+`padpd.pa.load_hb_pa` 把 AM-AM/AM-PM 表 + S21 表装配成
+Wiener-Hammerstein 模型(FIR → 查表非线性 → FIR,超表输入饱和):
+
+```python
+from padpd.pa import load_hb_pa
+pa = load_hb_pa("hb_amam.csv", "s21_in.csv", "s21_out.csv",
+                fs=320e6, drive=0.14)   # 标准 PAModel,即插即用
+```
+
+`scripts/import_hb_pa.py --demo` 生成示例 CSV 并跑通完整预测链——
+demo 结果:GMP 拟合导入 PA 达 NMSE -43.7 dB;DPD 预测 EVM
+-18.3 → **-48.1 dB**、Mask FAIL → PASS。扫 `--drive`(配合 CFR 与
+联合设计)即可在流片前回答:**这颗 PA 配多大 DPD、退多少功率能过
+spec**。建议同时做鲁棒性扫描(非线性强度/记忆深度扰动 ±20%)确认
+结论不翻转。CSV 列约定见 `docs/02_data_interface.md` 第 8 节。
