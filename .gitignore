@@ -24,3 +24,4 @@ deploy_export/
 gui_runs/
 packaging/dist/
 packaging/build/
+gui_prefs.json

@@ -5,30 +5,30 @@ from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QGroupBox,
 
 from gui_qt import figs
 from gui_qt.common import (FigurePane, FnWorker, MetricCard, card_row,
-                           page_scaffold)
+                           page_scaffold, tr)
 
 
 class CodesignPage(QWidget):
     def __init__(self):
         super().__init__()
         page, lay = page_scaffold(
-            "PA/DPD 联合设计",
-            "AI-Native 流程:PA 工作点与 DPD 复杂度联合优化。离散 Pareto "
-            "扫描(稳健)与可微梯度寻优(内层闭式 LS-DPD + 外层梯度)。")
+            tr("PA/DPD 联合设计"),
+            tr("AI-Native 流程:PA 工作点与 DPD 复杂度联合优化。离散 Pareto "
+               "扫描(稳健)与可微梯度寻优(内层闭式 LS-DPD + 外层梯度)。"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(page)
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_sweep_tab(), "离散 Pareto 扫描")
-        self.tabs.addTab(self._build_grad_tab(), "可微梯度寻优")
+        self.tabs.addTab(self._build_sweep_tab(), tr("离散 Pareto 扫描"))
+        self.tabs.addTab(self._build_grad_tab(), tr("可微梯度寻优"))
         lay.addWidget(self.tabs, 1)
 
     # ---------------- discrete sweep ----------------
     def _build_sweep_tab(self):
         tab = QWidget()
         lay = QVBoxLayout(tab)
-        grp = QGroupBox("配置")
+        grp = QGroupBox(tr("配置"))
         gl = QHBoxLayout(grp)
         self.spec1 = QSpinBox()
         self.spec1.setRange(-50, -30)
@@ -39,11 +39,11 @@ class CodesignPage(QWidget):
         self.bw = QComboBox()
         self.bw.addItems(["20", "80", "160"])
         self.bw.setCurrentText("80")
-        self.sweep_btn = QPushButton("运行扫描(约 1 分钟)")
+        self.sweep_btn = QPushButton(tr("运行扫描(约 1 分钟)"))
         self.sweep_btn.setObjectName("primary")
         for lbl, w in [("EVM spec (dB)", self.spec1),
-                       ("DPD 系数预算", self.budget),
-                       ("带宽 (MHz)", self.bw)]:
+                       (tr("DPD 系数预算"), self.budget),
+                       (tr("带宽 (MHz)"), self.bw)]:
             gl.addWidget(QLabel(lbl))
             gl.addWidget(w)
         gl.addStretch(1)
@@ -55,15 +55,16 @@ class CodesignPage(QWidget):
         self.prog1.hide()
         lay.addWidget(self.prog1)
 
-        self.c_seq = MetricCard("顺序设计(先冲效率)")
-        self.c_co = MetricCard("联合设计(预算内最高效率)")
+        self.c_seq = MetricCard(tr("顺序设计(先冲效率)"))
+        self.c_co = MetricCard(tr("联合设计(预算内最高效率)"))
         lay.addWidget(card_row([self.c_seq, self.c_co]))
 
         self.pane1 = FigurePane(300)
         lay.addWidget(self.pane1, 1)
         self.table1 = QTableWidget(0, 6)
         self.table1.setHorizontalHeaderLabels(
-            ["drive", "PAE %", "EVM 无DPD", "DPD 系数", "EVM DPD", "可行"])
+            ["drive", "PAE %", tr("EVM 无DPD"), tr("DPD 系数"), "EVM DPD",
+             tr("可行")])
         self.table1.setMaximumHeight(210)
         lay.addWidget(self.table1)
         self.msg1 = QLabel("")
@@ -83,11 +84,11 @@ class CodesignPage(QWidget):
             from padpd.waveform import OFDMConfig, generate_ofdm
             cfg = OFDMConfig(bandwidth_hz=bw, qam_order=1024, n_symbols=6,
                              seed=0)
-            tr = generate_ofdm(cfg)
+            trn = generate_ofdm(cfg)
             va = generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=1024,
                                           n_symbols=6, seed=1))
             return codesign_sweep([0.08, 0.10, 0.12, 0.14, 0.17, 0.20, 0.24],
-                                  tr.x, va.x, va, spec,
+                                  trn.x, va.x, va, spec,
                                   cfg.sample_rate_hz, bw)
 
         self._worker1 = FnWorker(job)
@@ -105,16 +106,19 @@ class CodesignPage(QWidget):
         seq = max(rows, key=lambda r: r["pae"])
         seq_ok = seq["feasible"] and seq["dpd_cost"] <= budget
         self.c_seq.set(f"PAE {100*seq['pae']:.1f}%",
-                       "可行" if seq_ok else "撞墙:不可逆/超预算")
+                       tr("可行") if seq_ok
+                       else tr("撞墙:不可逆/超预算"))
         feasible = [r for r in rows
                     if r["feasible"] and r["dpd_cost"] <= budget]
         if feasible:
             co = max(feasible, key=lambda r: r["pae"])
-            self.c_co.set(f"PAE {100*co['pae']:.1f}%",
-                          f"drive {co['drive']:.2f} · {co['dpd_cost']} 系数"
-                          f" · EVM {co['evm_dpd']:.1f} dB")
+            self.c_co.set(
+                f"PAE {100*co['pae']:.1f}%",
+                tr("drive {drive:.2f} · {cost} 系数 · EVM {evm:.1f} dB")
+                .format(drive=co["drive"], cost=co["dpd_cost"],
+                        evm=co["evm_dpd"]))
         else:
-            self.c_co.set("—", "预算内无可行点")
+            self.c_co.set("—", tr("预算内无可行点"))
         self.table1.setRowCount(0)
         for r in rows:
             row = self.table1.rowCount()
@@ -124,13 +128,14 @@ class CodesignPage(QWidget):
                     f"{r['evm_dpd']:.1f}", "✅" if r["feasible"] else "❌"]
             for c, v in enumerate(vals):
                 self.table1.setItem(row, c, QTableWidgetItem(v))
-        self.msg1.setText(f"✅ 扫描完成({len(rows)} 个工作点)")
+        self.msg1.setText(tr("✅ 扫描完成({n} 个工作点)").format(
+            n=len(rows)))
 
     # ---------------- gradient ----------------
     def _build_grad_tab(self):
         tab = QWidget()
         lay = QVBoxLayout(tab)
-        grp = QGroupBox("配置")
+        grp = QGroupBox(tr("配置"))
         gl = QHBoxLayout(grp)
         self.spec2 = QSpinBox()
         self.spec2.setRange(-50, -30)
@@ -142,11 +147,11 @@ class CodesignPage(QWidget):
         self.steps = QSpinBox()
         self.steps.setRange(50, 300)
         self.steps.setValue(150)
-        self.grad_btn = QPushButton("运行梯度寻优")
+        self.grad_btn = QPushButton(tr("运行梯度寻优"))
         self.grad_btn.setObjectName("primary")
         for lbl, w in [("EVM spec (dB)", self.spec2),
-                       ("初始 drive", self.drive0),
-                       ("梯度步数", self.steps)]:
+                       (tr("初始 drive"), self.drive0),
+                       (tr("梯度步数"), self.steps)]:
             gl.addWidget(QLabel(lbl))
             gl.addWidget(w)
         gl.addStretch(1)
@@ -158,8 +163,8 @@ class CodesignPage(QWidget):
         self.prog2.hide()
         lay.addWidget(self.prog2)
 
-        self.c_base = MetricCard("保守设计(固定 drive)")
-        self.c_grad = MetricCard("梯度联合优化")
+        self.c_base = MetricCard(tr("保守设计(固定 drive)"))
+        self.c_grad = MetricCard(tr("梯度联合优化"))
         lay.addWidget(card_row([self.c_base, self.c_grad]))
 
         self.pane2 = FigurePane(300)
@@ -190,8 +195,9 @@ class CodesignPage(QWidget):
         self._worker2 = FnWorker(job)
         self._worker2.done.connect(lambda out: self._finish_grad(out, spec))
         self._worker2.failed.connect(
-            lambda e: (self.msg2.setText(f"❌ {e}(需要 PyTorch)"),
-                       self.prog2.hide(), self.grad_btn.setEnabled(True)))
+            lambda e: (self.msg2.setText(
+                tr("❌ {e}(需要 PyTorch)").format(e=e)),
+                self.prog2.hide(), self.grad_btn.setEnabled(True)))
         self._worker2.start()
 
     def _finish_grad(self, out, spec):
@@ -204,4 +210,4 @@ class CodesignPage(QWidget):
                         f"drive→{co['drive']:.3f} · "
                         f"EVM {co['evm_db']:.1f} dB")
         self.pane2.set_figure(figs.grad_fig(co["history"], spec))
-        self.msg2.setText("✅ 梯度寻优完成")
+        self.msg2.setText(tr("✅ 梯度寻优完成"))

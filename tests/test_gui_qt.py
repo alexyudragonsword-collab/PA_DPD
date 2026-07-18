@@ -30,10 +30,17 @@ def window(app, tmp_path_factory):
     common._STATE.runstore = RunStore(tmp_path_factory.mktemp("runs"))
     common._STATE.sources = {}
     common._STATE.models = {}
+    common.PREFS.update({"lang": "zh", "theme": "dark"})
     from gui_qt.main import MainWindow
     win = MainWindow()
     win.show()
     yield win
+
+
+@pytest.fixture()
+def no_prefs_io(monkeypatch):
+    from gui_qt import common
+    monkeypatch.setattr(common, "save_prefs", lambda *a, **k: None)
 
 
 def test_all_pages_instantiate_and_switch(app, window):
@@ -81,6 +88,25 @@ def test_deploy_refresh_sees_model(app, window):
     page = window._pages["deploy"]
     page.refresh()
     assert page.model_list.count() >= 1
+
+
+def test_language_switch_rebuilds_in_english(app, window, no_prefs_io):
+    window._on_lang(1)  # -> en
+    app.processEvents()
+    assert "Overview" in window.nav.item(0).text()
+    assert window.windowTitle() == "padpd — WiFi 7 PA + DPD Workbench"
+    window._on_lang(0)  # back to zh
+    app.processEvents()
+    assert "总览" in window.nav.item(0).text()
+
+
+def test_theme_switch_updates_mpl_and_qss(app, window, no_prefs_io):
+    import matplotlib
+    window._on_theme(1)  # -> light
+    assert matplotlib.rcParams["figure.facecolor"] == "#ffffff"
+    assert "#f4f6fb" in app.styleSheet()
+    window._on_theme(0)  # back to dark
+    assert matplotlib.rcParams["figure.facecolor"] == "#121828"
 
 
 def test_grab_screenshots(app, window, tmp_path):

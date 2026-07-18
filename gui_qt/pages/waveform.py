@@ -7,21 +7,21 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
 from gui_core import services
 from gui_qt import figs
 from gui_qt.common import (FigurePane, MetricCard, card_row, hline,
-                           page_scaffold)
+                           page_scaffold, tr)
 
 
 class WaveformPage(QWidget):
     def __init__(self):
         super().__init__()
         page, lay = page_scaffold(
-            "波形工作台",
-            "生成 802.11be 风格 OFDM 基带波形;PSD / CCDF / 星座 / 时域;"
-            "可选 CFR 削峰对比;可导出 IQDataset (.npz)。")
+            tr("波形工作台"),
+            tr("生成 802.11be 风格 OFDM 基带波形;PSD / CCDF / 星座 / 时域;"
+               "可选 CFR 削峰对比;可导出 IQDataset (.npz)。"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(page)
 
-        form = QGroupBox("波形参数")
+        form = QGroupBox(tr("波形参数"))
         fl = QHBoxLayout(form)
         self.bw = QComboBox()
         self.bw.addItems(["20", "40", "80", "160", "320"])
@@ -34,17 +34,17 @@ class WaveformPage(QWidget):
         self.sym.setValue(8)
         self.seed = QSpinBox()
         self.seed.setRange(0, 9999)
-        self.cfr_on = QCheckBox("CFR 削峰")
+        self.cfr_on = QCheckBox(tr("CFR 削峰"))
         self.cfr = QDoubleSpinBox()
         self.cfr.setRange(5.0, 10.0)
         self.cfr.setValue(8.0)
         self.cfr.setSingleStep(0.5)
-        self.gen = QPushButton("生成波形")
+        self.gen = QPushButton(tr("生成波形"))
         self.gen.setObjectName("primary")
-        self.export = QPushButton("导出 .npz")
+        self.export = QPushButton(tr("导出 .npz"))
         self.export.setEnabled(False)
-        for lbl, w in [("带宽(MHz)", self.bw), ("QAM", self.qam),
-                       ("符号数", self.sym), ("种子", self.seed)]:
+        for lbl, w in [(tr("带宽(MHz)"), self.bw), ("QAM", self.qam),
+                       (tr("符号数"), self.sym), (tr("种子"), self.seed)]:
             fl.addWidget(QLabel(lbl))
             fl.addWidget(w)
         fl.addWidget(self.cfr_on)
@@ -54,10 +54,10 @@ class WaveformPage(QWidget):
         fl.addWidget(self.export)
         lay.addWidget(form)
 
-        self.c_fs = MetricCard("采样率")
-        self.c_fft = MetricCard("FFT / 有效子载波")
+        self.c_fs = MetricCard(tr("采样率"))
+        self.c_fft = MetricCard(tr("FFT / 有效子载波"))
         self.c_papr = MetricCard("PAPR")
-        self.c_cfr = MetricCard("CFR 后 PAPR / EVM 代价")
+        self.c_cfr = MetricCard(tr("CFR 后 PAPR / EVM 代价"))
         lay.addWidget(card_row([self.c_fs, self.c_fft, self.c_papr,
                                 self.c_cfr]))
 
@@ -65,7 +65,8 @@ class WaveformPage(QWidget):
         self.p_psd, self.p_ccdf = FigurePane(), FigurePane()
         self.p_const, self.p_time = FigurePane(), FigurePane()
         for pane, name in [(self.p_psd, "PSD"), (self.p_ccdf, "CCDF"),
-                           (self.p_const, "星座"), (self.p_time, "时域")]:
+                           (self.p_const, tr("星座")),
+                           (self.p_time, tr("时域"))]:
             self.tabs.addTab(pane, name)
         lay.addWidget(self.tabs, 1)
 
@@ -81,19 +82,19 @@ class WaveformPage(QWidget):
             self.seed.value(), cfr)
         w, wf = self._w, self._w["wf"]
         self.c_fs.set(f"{w['fs']/1e6:.0f} MSPS",
-                      f"{wf.config.oversampling}× 过采样")
+                      tr("{n}× 过采样").format(n=wf.config.oversampling))
         self.c_fft.set(f"{wf.config.fft_size} / {wf.config.n_active}")
         self.c_papr.set(f"{w['papr_db']:.2f} dB")
         self.c_cfr.set(f"{w['papr_cfr_db']:.2f} dB /"
                        f" {w['cfr_evm_db']:.1f} dB"
                        if w["papr_cfr_db"] is not None else "—")
-        sig = {"原始波形": w["x"]}
+        sig = {tr("原始波形"): w["x"]}
         if w["x_cfr"] is not None:
-            sig["CFR 后"] = w["x_cfr"]
+            sig[tr("CFR 后")] = w["x_cfr"]
         self.p_psd.set_figure(figs.psd_fig(sig, w["fs"]))
         self.p_ccdf.set_figure(figs.ccdf_fig(sig))
         self.p_const.set_figure(
-            figs.constellation_fig({"发送星座": wf.tx_symbols.ravel()}))
+            figs.constellation_fig({tr("发送星座"): wf.tx_symbols.ravel()}))
         self.p_time.set_figure(figs.time_fig(sig, w["fs"]))
         self.export.setEnabled(True)
 
@@ -101,7 +102,7 @@ class WaveformPage(QWidget):
         if not self._w:
             return
         path, _ = QFileDialog.getSaveFileName(
-            self, "导出波形", "waveform.npz", "IQDataset (*.npz)")
+            self, tr("导出波形"), "waveform.npz", "IQDataset (*.npz)")
         if path:
             x = (self._w["x_cfr"] if self._w["x_cfr"] is not None
                  else self._w["x"])

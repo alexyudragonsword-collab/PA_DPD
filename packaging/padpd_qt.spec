@@ -40,7 +40,7 @@ a = Analysis(  # noqa: F821
     [os.path.join(SPECPATH, "desktop_launcher_qt.py")],  # noqa: F821
     pathex=[ROOT, os.path.join(ROOT, "src")],
     binaries=[],
-    datas=[(os.path.join(ROOT, "gui_qt", "style.qss"), "gui_qt")],
+    datas=[(os.path.join(ROOT, "gui_qt", "style_template.qss"), "gui_qt")],
     hiddenimports=hiddenimports,
     excludes=excludes,
     noarchive=False,

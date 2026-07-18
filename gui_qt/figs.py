@@ -6,11 +6,11 @@ import matplotlib
 import numpy as np
 from matplotlib.figure import Figure
 
-from .common import DARK_RC
+from .common import current_rc, tr
 
 
 def _fig(w=8.2, h=4.2) -> tuple:
-    with matplotlib.rc_context(DARK_RC):
+    with matplotlib.rc_context(current_rc()):
         fig = Figure(figsize=(w, h), constrained_layout=True)
         ax = fig.add_subplot(111)
         ax.grid(True, alpha=0.5)
@@ -26,8 +26,8 @@ def psd_fig(curves: dict, fs: float, mask=None) -> Figure:
     if mask is not None:
         f_m = np.concatenate([-mask[::-1, 0], mask[:, 0]]) / 1e6
         v_m = np.concatenate([mask[::-1, 1], mask[:, 1]])
-        ax.plot(f_m, v_m, "--", color="#9aa4bd", lw=1.1, label="发射 Mask")
-    ax.set_xlabel("频率 (MHz)")
+        ax.plot(f_m, v_m, "--", color="#9aa4bd", lw=1.1, label=tr("发射 Mask"))
+    ax.set_xlabel(tr("频率 (MHz)"))
     ax.set_ylabel("PSD (dBr)")
     ax.set_ylim(-90, 5)
     ax.legend(loc="upper right", fontsize=8)
@@ -40,7 +40,7 @@ def ccdf_fig(curves: dict) -> Figure:
     for label, x in curves.items():
         level, prob = ccdf(np.asarray(x))
         ax.semilogy(level, np.maximum(prob, 1e-7), lw=1.2, label=label)
-    ax.set_xlabel("高于平均功率 (dB)")
+    ax.set_xlabel(tr("高于平均功率 (dB)"))
     ax.set_ylabel("CCDF")
     ax.legend(fontsize=8)
     return fig
@@ -63,7 +63,7 @@ def constellation_fig(points_by_label: dict) -> Figure:
 def amam_fig(x, y) -> Figure:
     from padpd.metrics.amam import am_am_am_pm
     am = am_am_am_pm(np.asarray(x), np.asarray(y))
-    with matplotlib.rc_context(DARK_RC):
+    with matplotlib.rc_context(current_rc()):
         fig = Figure(figsize=(8.2, 3.8), constrained_layout=True)
         ax1, ax2 = fig.subplots(1, 2)
         step = max(1, len(am["r_in"]) // 15000)
@@ -72,7 +72,7 @@ def amam_fig(x, y) -> Figure:
         ax2.plot(am["r_in"][::step], am["phase_deg"][::step], ".", ms=1.4,
                  alpha=0.4, color="#e4574c")
         for ax, t, yl in ((ax1, "AM-AM", "|y|/|x|"),
-                          (ax2, "AM-PM", "相移 (°)")):
+                          (ax2, "AM-PM", tr("相移 (°)"))):
             ax.set_title(t, fontsize=10)
             ax.set_xlabel("|x|")
             ax.set_ylabel(yl)
@@ -85,7 +85,7 @@ def time_fig(sig: dict, fs: float, n: int = 2000) -> Figure:
     for label, x in sig.items():
         x = np.asarray(x)[:n]
         ax.plot(np.arange(len(x)) / fs * 1e6, np.abs(x), lw=0.9, label=label)
-    ax.set_xlabel("时间 (µs)")
+    ax.set_xlabel(tr("时间 (µs)"))
     ax.set_ylabel("|x|")
     ax.legend(fontsize=8)
     return fig
@@ -127,7 +127,7 @@ def train_fig(history: list, key: str) -> Figure:
 
 
 def codesign_fig(rows: list, budget: int | None = None) -> Figure:
-    with matplotlib.rc_context(DARK_RC):
+    with matplotlib.rc_context(current_rc()):
         fig = Figure(figsize=(8.2, 4.2), constrained_layout=True)
         ax1 = fig.add_subplot(111)
         d = [r["drive"] for r in rows]
@@ -138,10 +138,10 @@ def codesign_fig(rows: list, budget: int | None = None) -> Figure:
         ax1.grid(True, alpha=0.5)
         ax2 = ax1.twinx()
         ax2.plot(d, [r["dpd_cost"] for r in rows], "s--", color="#4f8ff7",
-                 label="DPD 系数")
+                 label=tr("DPD 系数"))
         if budget:
             ax2.axhline(budget, ls=":", color="#4f8ff7", alpha=0.6)
-        ax2.set_ylabel("DPD 系数", color="#4f8ff7")
+        ax2.set_ylabel(tr("DPD 系数"), color="#4f8ff7")
         for r in rows:
             if not r["feasible"]:
                 ax1.axvspan(r["drive"] - 0.004, r["drive"] + 0.004,
@@ -150,11 +150,11 @@ def codesign_fig(rows: list, budget: int | None = None) -> Figure:
 
 
 def grad_fig(history: dict, spec: float) -> Figure:
-    with matplotlib.rc_context(DARK_RC):
+    with matplotlib.rc_context(current_rc()):
         fig = Figure(figsize=(8.2, 4.0), constrained_layout=True)
         ax1 = fig.add_subplot(111)
         ax1.plot(history["drive"], color="#e4574c")
-        ax1.set_xlabel("梯度步")
+        ax1.set_xlabel(tr("梯度步"))
         ax1.set_ylabel("drive", color="#e4574c")
         ax1.grid(True, alpha=0.5)
         ax2 = ax1.twinx()

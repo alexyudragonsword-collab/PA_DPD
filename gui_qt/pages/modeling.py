@@ -8,26 +8,26 @@ from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog,
 from gui_core import Run, services
 from gui_qt import figs
 from gui_qt.common import (FigurePane, FnWorker, MetricCard, card_row,
-                           get_state, page_scaffold)
+                           get_state, page_scaffold, tr)
 
 
 class ModelingPage(QWidget):
     def __init__(self):
         super().__init__()
         page, lay = page_scaffold(
-            "PA 建模",
-            "经典(LS 闭式解)或神经(SGD)模型拟合 PA 行为;拟合好的模型"
-            "可作为 DPD 评估代理并进入部署页。")
+            tr("PA 建模"),
+            tr("经典(LS 闭式解)或神经(SGD)模型拟合 PA 行为;拟合好的模型"
+               "可作为 DPD 评估代理并进入部署页。"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(page)
         self.state = get_state()
 
-        grp = QGroupBox("配置")
+        grp = QGroupBox(tr("配置"))
         gl = QHBoxLayout(grp)
         self.src = QComboBox()
         self.family = QComboBox()
-        self.family.addItems(["经典 (LS)", "神经 (SGD)"])
+        self.family.addItems([tr("经典 (LS)"), tr("神经 (SGD)")])
         self.mtype = QComboBox()
         self.mtype.addItems(list(services.CLASSICAL_MODELS))
         self.order = QSpinBox()
@@ -48,11 +48,11 @@ class ModelingPage(QWidget):
         self.drive.setRange(0.06, 0.24)
         self.drive.setSingleStep(0.01)
         self.drive.setValue(0.14)
-        self.fit_btn = QPushButton("拟合模型")
+        self.fit_btn = QPushButton(tr("拟合模型"))
         self.fit_btn.setObjectName("primary")
-        for lbl, w in [("数据源", self.src), ("drive", self.drive),
-                       ("模型族", self.family), ("类型", self.mtype),
-                       ("阶数", self.order), ("记忆", self.memory),
+        for lbl, w in [(tr("数据源"), self.src), ("drive", self.drive),
+                       (tr("模型族"), self.family), (tr("类型"), self.mtype),
+                       (tr("阶数"), self.order), (tr("记忆"), self.memory),
                        ("backbone", self.backbone), ("hidden", self.hidden),
                        ("epochs", self.epochs)]:
             gl.addWidget(QLabel(lbl))
@@ -65,19 +65,19 @@ class ModelingPage(QWidget):
         self.prog.hide()
         lay.addWidget(self.prog)
 
-        self.c_nmse = MetricCard("测试 NMSE")
-        self.c_np = MetricCard("参数量")
-        self.c_src = MetricCard("数据源")
+        self.c_nmse = MetricCard(tr("测试 NMSE"))
+        self.c_np = MetricCard(tr("参数量"))
+        self.c_src = MetricCard(tr("数据源"))
         lay.addWidget(card_row([self.c_nmse, self.c_np, self.c_src]))
 
         self.tabs = QTabWidget()
         self.p_psd, self.p_amam = FigurePane(), FigurePane()
-        self.tabs.addTab(self.p_psd, "PSD:实测 vs 预测")
-        self.tabs.addTab(self.p_amam, "AM-AM / AM-PM(预测)")
+        self.tabs.addTab(self.p_psd, tr("PSD:实测 vs 预测"))
+        self.tabs.addTab(self.p_amam, tr("AM-AM / AM-PM(预测)"))
         lay.addWidget(self.tabs, 1)
 
         bottom = QHBoxLayout()
-        self.save_btn = QPushButton("保存 checkpoint…")
+        self.save_btn = QPushButton(tr("保存 checkpoint…"))
         self.save_btn.setEnabled(False)
         self.msg = QLabel("")
         bottom.addWidget(self.save_btn)
@@ -86,10 +86,10 @@ class ModelingPage(QWidget):
         w.setLayout(bottom)
         lay.addWidget(w)
 
-        self.family.currentTextChanged.connect(self._toggle)
+        self.family.currentIndexChanged.connect(self._toggle)
         self.fit_btn.clicked.connect(self.fit)
         self.save_btn.clicked.connect(self.save)
-        self._toggle(self.family.currentText())
+        self._toggle(self.family.currentIndex())
         self.refresh()
         self._last = None
 
@@ -97,13 +97,13 @@ class ModelingPage(QWidget):
         cur = self.src.currentText()
         self.src.blockSignals(True)
         self.src.clear()
-        self.src.addItems(["合成 ReferencePA"] + list(self.state.sources))
+        self.src.addItems([tr("合成 ReferencePA")] + list(self.state.sources))
         if cur:
             self.src.setCurrentText(cur)
         self.src.blockSignals(False)
 
-    def _toggle(self, fam):
-        classical = fam.startswith("经典")
+    def _toggle(self, idx):
+        classical = idx == 0  # index 0 = classical (LS)
         for w in (self.mtype, self.order, self.memory):
             w.setEnabled(classical)
         for w in (self.backbone, self.hidden, self.epochs):
@@ -111,7 +111,7 @@ class ModelingPage(QWidget):
 
     def _get_source(self):
         name = self.src.currentText()
-        if name == "合成 ReferencePA":
+        if name == tr("合成 ReferencePA"):
             key = f"_synth_{self.drive.value():.2f}"
             if not hasattr(self.state, key):
                 setattr(self.state, key, services.make_synthetic_source(
@@ -121,7 +121,7 @@ class ModelingPage(QWidget):
 
     def fit(self):
         src = self._get_source()
-        if self.family.currentText().startswith("经典"):
+        if self.family.currentIndex() == 0:  # classical (LS)
             res = services.fit_classical(
                 src, self.mtype.currentText(),
                 {"order": self.order.value(), "memory": self.memory.value()})
@@ -176,13 +176,14 @@ class ModelingPage(QWidget):
         self.c_src.set(src["name"][:28])
         n = min(len(res["x_eval"]), 40000)
         self.p_psd.set_figure(figs.psd_fig(
-            {"实测输出": res["y_eval"][:n], "模型预测": res["pred"][:n]},
+            {tr("实测输出"): res["y_eval"][:n],
+             tr("模型预测"): res["pred"][:n]},
             src["fs"]))
         self.p_amam.set_figure(figs.amam_fig(res["x_eval"][:n],
                                              res["pred"][:n]))
         self._last = (res, cfg, name)
         self.save_btn.setEnabled(True)
-        self.msg.setText(f"✅ {name} 已注册")
+        self.msg.setText(tr("✅ {name} 已注册").format(name=name))
 
     def save(self):
         if not self._last:
@@ -190,9 +191,9 @@ class ModelingPage(QWidget):
         res, cfg, name = self._last
         ext = ".pt" if cfg["family"] == "neural" else ".npz"
         path, _ = QFileDialog.getSaveFileName(
-            self, "保存模型", f"models/qt_{name.split(' @')[0]}{ext}",
+            self, tr("保存模型"), f"models/qt_{name.split(' @')[0]}{ext}",
             f"checkpoint (*{ext})")
         if path:
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             res["model"].save(path)
-            self.msg.setText(f"💾 已保存 {path}")
+            self.msg.setText(tr("💾 已保存 {path}").format(path=path))

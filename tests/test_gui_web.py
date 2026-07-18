@@ -43,3 +43,13 @@ def test_compare_lists_runs():
     at = AppTest.from_file("gui/pages/compare.py", default_timeout=120)
     at.run()
     assert not at.exception
+
+
+def test_home_renders_in_english_light(monkeypatch):
+    from gui import ui
+    monkeypatch.setattr(ui, "load_prefs",
+                        lambda *a: {"lang": "en", "theme": "light"})
+    at = AppTest.from_file("gui/pages/home.py", default_timeout=120)
+    at.run()
+    assert not at.exception
+    assert any("Workbench" in str(t.value) for t in at.title)

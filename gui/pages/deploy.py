@@ -8,26 +8,29 @@ import streamlit as st  # noqa: E402
 from gui import charts, ui  # noqa: E402
 from gui_core import Run, services  # noqa: E402
 
-ui.page_setup("部署", "🚀")
+ui.page_setup(ui.tr("部署"), "🚀")
 state = ui.get_state()
-ui.note("对拟合好的模型做定点位宽扫描(bit-true)与硬件成本估计,"
-        "导出 FPGA/ASIC 交接产物:整数系数 JSON、参考向量 CSV、"
-        "神经模型 ONNX。经典模型免训练直接量化(PTQ);神经模型权重+激活 PTQ。")
+ui.note(ui.tr("对拟合好的模型做定点位宽扫描(bit-true)与硬件成本估计,"
+              "导出 FPGA/ASIC 交接产物:整数系数 JSON、参考向量 CSV、"
+              "神经模型 ONNX。经典模型免训练直接量化(PTQ);"
+              "神经模型权重+激活 PTQ。"))
 
 models = ui.model_options()
 if not models:
-    st.info("先在 📈 PA 建模页拟合至少一个模型。")
+    st.info(ui.tr("先在 📈 PA 建模页拟合至少一个模型。"))
     st.stop()
 
 with st.sidebar:
-    st.subheader("对象")
-    picked = st.multiselect("模型(可多选对比)", list(models),
+    st.subheader(ui.tr("对象"))
+    picked = st.multiselect(ui.tr("模型(可多选对比)"), list(models),
                             default=list(models)[:1])
-    bits = st.multiselect("位宽", [16, 14, 12, 10, 8], default=[16, 12, 8])
+    bits = st.multiselect(ui.tr("位宽"), [16, 14, 12, 10, 8],
+                          default=[16, 12, 8])
     src_name = st.selectbox(
-        "评估数据源", ["<拟合时的源>"] + list(state.sources))
+        ui.tr("评估数据源"),
+        [ui.tr("<拟合时的源>")] + list(state.sources))
 
-run = st.sidebar.button("🚀 位宽扫描", type="primary",
+run = st.sidebar.button(ui.tr("🚀 位宽扫描"), type="primary",
                         use_container_width=True)
 
 if run and picked and bits:
@@ -36,7 +39,7 @@ if run and picked and bits:
     for i, name in enumerate(picked):
         entry = models[name]
         src = (services.eval_source_for(entry["meta"], state.sources)
-               if src_name == "<拟合时的源>"
+               if src_name == ui.tr("<拟合时的源>")
                else state.sources[src_name])
         sweeps[name.split(" @")[0]] = services.bitwidth_sweep(
             entry["model"], src, bits=tuple(sorted(bits, reverse=True)))
@@ -52,31 +55,31 @@ if run and picked and bits:
 
 sweeps = st.session_state.get("deploy_sweeps")
 if sweeps:
-    st.subheader("位宽 vs 精度")
+    st.subheader(ui.tr("位宽 vs 精度"))
     st.plotly_chart(charts.fig_bitwidth(sweeps), use_container_width=True)
     rows = []
     for label, s in sweeps.items():
-        row = {"模型": label, "float": f"{s['float']:.2f}"}
+        row = {ui.tr("模型"): label, "float": f"{s['float']:.2f}"}
         row.update({f"W{b}": f"{v:.2f}" for b, v in s["bits"].items()})
         if s.get("macs"):
-            row["MAC/样本"] = s["macs"]["real_macs_per_sample"]
+            row[ui.tr("MAC/样本")] = s["macs"]["real_macs_per_sample"]
             row["GMAC/s"] = f"{s['macs']['real_gmac_per_s']:.0f}"
         rows.append(row)
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
 st.divider()
-st.subheader("导出交接产物")
+st.subheader(ui.tr("导出交接产物"))
 col1, col2 = st.columns(2)
 with col1:
-    exp_model = st.selectbox("模型", list(models), key="exp_model")
-    w_bits = st.select_slider("系数位宽", [16, 14, 12, 10, 8], 16)
+    exp_model = st.selectbox(ui.tr("模型"), list(models), key="exp_model")
+    w_bits = st.select_slider(ui.tr("系数位宽"), [16, 14, 12, 10, 8], 16)
 with col2:
     st.write("")
-    if st.button("📦 生成产物", use_container_width=True):
+    if st.button(ui.tr("📦 生成产物"), use_container_width=True):
         entry = models[exp_model]
         src = services.eval_source_for(entry["meta"], state.sources)
         out_dir = f"deploy_export/gui_{exp_model.split(' @')[0].replace(' ', '_')}"
-        with st.spinner("导出中…"):
+        with st.spinner(ui.tr("导出中…")):
             paths = services.export_artifacts(entry["model"], src, out_dir,
                                               w_bits=w_bits)
         st.session_state["deploy_paths"] = paths
@@ -95,6 +98,7 @@ if paths:
         i += 1
     if "onnx_verified" in paths:
         st.markdown(ui.badge(
-            "ONNX 数值验证 " + ("通过" if paths["onnx_verified"] else "跳过"),
+            ui.tr("ONNX 数值验证 通过") if paths["onnx_verified"]
+            else ui.tr("ONNX 数值验证 跳过"),
             "ok" if paths["onnx_verified"] else "info"),
             unsafe_allow_html=True)

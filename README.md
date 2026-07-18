@@ -93,7 +93,8 @@ python -m gui_qt.main
 8 个功能页:总览 / 波形工作台(PSD·CCDF·星座·CFR·导出)/ 数据管理
 (OpenDPD·Cadence CSV·.mat·.npz,自动对齐)/ PA 建模(经典 LS + 神经
 带进度)/ DPD 实验室(ILA/DLA,前后指标与图)/ 结果比较 / 部署(位宽
-扫描·ONNX·系数导出)/ PA-DPD 联合设计。exe 打包见
+扫描·ONNX·系数导出)/ PA-DPD 联合设计。两版均支持**中/英文切换**与
+**深色/浅色主题切换**(侧栏底部,偏好持久化且两版共享)。exe 打包见
 `packaging/README_packaging.md`,导览见 `docs/06_gui.md`。
 
 ## 仓库结构

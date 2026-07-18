@@ -20,6 +20,23 @@ from PySide6.QtCore import Qt, QThread, Signal  # noqa: E402
 from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QScrollArea,  # noqa: E402
                                QVBoxLayout, QWidget)
 
+from gui_core import i18n  # noqa: E402
+from gui_core.prefs import load_prefs, save_prefs  # noqa: E402
+from gui_qt.themes import MPL_CYCLE, MPL_RC  # noqa: E402
+
+PREFS = load_prefs()
+
+
+def tr(s: str) -> str:
+    """Translate a UI string to the current language."""
+    return i18n.tr(s, PREFS["lang"])
+
+
+def set_pref(key: str, value: str) -> None:
+    PREFS[key] = value
+    save_prefs(PREFS)
+
+
 def _cjk_fonts() -> list[str]:
     """CJK-capable fonts installed on this machine, preferred order.
 
@@ -33,23 +50,35 @@ def _cjk_fonts() -> list[str]:
     return [n for n in prefer if n in installed]
 
 
-DARK_RC = {
+_FONT_RC = {
     "font.family": "sans-serif",
     "font.sans-serif": _cjk_fonts() + ["DejaVu Sans"],
     "axes.unicode_minus": False,
-    "figure.facecolor": "#121828", "axes.facecolor": "#121828",
-    "savefig.facecolor": "#121828", "axes.edgecolor": "#232c42",
-    "grid.color": "#232c42", "text.color": "#dfe4ef",
-    "axes.labelcolor": "#dfe4ef", "xtick.color": "#9aa4bd",
-    "ytick.color": "#9aa4bd", "legend.facecolor": "#171e2e",
-    "legend.edgecolor": "#26304a",
-    "axes.prop_cycle": matplotlib.cycler(
-        color=["#4f8ff7", "#e4574c", "#37c978", "#e5b567", "#b07cf7"]),
 }
 
-# Text font resolution happens at canvas draw time (outside any rc_context),
-# so the theme must also be installed globally for the Qt app.
-matplotlib.rcParams.update(DARK_RC)
+
+def theme_rc(theme: str) -> dict:
+    return {**_FONT_RC, **MPL_RC[theme],
+            "axes.prop_cycle": matplotlib.cycler(color=MPL_CYCLE[theme])}
+
+
+def current_rc() -> dict:
+    return theme_rc(PREFS["theme"])
+
+
+def apply_theme() -> None:
+    """Install the current theme's rc globally.
+
+    Text font resolution happens at canvas draw time (outside any
+    rc_context), so the theme must live in the global rcParams.
+    """
+    matplotlib.rcParams.update(current_rc())
+
+
+# backward-compatible alias (tests and older callers)
+DARK_RC = theme_rc("dark")
+
+apply_theme()
 
 
 def get_state():

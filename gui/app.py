@@ -13,26 +13,49 @@ for p in (str(ROOT), str(ROOT / "src")):
 
 import streamlit as st  # noqa: E402
 
-st.set_page_config(page_title="padpd 工作台", page_icon="📡",
+from gui import ui  # noqa: E402
+
+ui.apply_theme()
+
+st.set_page_config(page_title=ui.tr("padpd 工作台"), page_icon="📡",
                    layout="wide", initial_sidebar_state="expanded")
 
 pages = [
-    st.Page("pages/home.py", title="总览", icon="🏠", default=True),
-    st.Page("pages/waveform.py", title="波形工作台", icon="🌊"),
-    st.Page("pages/data.py", title="数据管理", icon="🗂️"),
-    st.Page("pages/pa_modeling.py", title="PA 建模", icon="📈"),
-    st.Page("pages/dpd_lab.py", title="DPD 实验室", icon="🎛️"),
-    st.Page("pages/compare.py", title="结果比较", icon="⚖️"),
-    st.Page("pages/deploy.py", title="部署", icon="🚀"),
-    st.Page("pages/codesign.py", title="联合设计", icon="🧭"),
+    st.Page("pages/home.py", title=ui.tr("总览"), icon="🏠", default=True),
+    st.Page("pages/waveform.py", title=ui.tr("波形工作台"), icon="🌊"),
+    st.Page("pages/data.py", title=ui.tr("数据管理"), icon="🗂️"),
+    st.Page("pages/pa_modeling.py", title=ui.tr("PA 建模"), icon="📈"),
+    st.Page("pages/dpd_lab.py", title=ui.tr("DPD 实验室"), icon="🎛️"),
+    st.Page("pages/compare.py", title=ui.tr("结果比较"), icon="⚖️"),
+    st.Page("pages/deploy.py", title=ui.tr("部署"), icon="🚀"),
+    st.Page("pages/codesign.py", title=ui.tr("联合设计"), icon="🧭"),
 ]
 
 with st.sidebar:
     st.markdown(
         '<p class="brand-title">📡 padpd</p>'
-        '<p class="brand-sub">WiFi 7 PA + DPD AI 辅助研发工作台</p>',
+        f'<p class="brand-sub">{ui.tr("WiFi 7 PA + DPD AI 辅助研发工作台")}'
+        "</p>",
         unsafe_allow_html=True)
     st.divider()
 
 nav = st.navigation(pages)
 nav.run()
+
+# language / theme switchers at the bottom of the sidebar
+with st.sidebar:
+    st.divider()
+    c1, c2 = st.columns(2)
+    lang_labels = {"zh": "中文", "en": "English"}
+    theme_labels = {"dark": ui.tr("深色"), "light": ui.tr("浅色")}
+    lang = c1.selectbox("Language", list(lang_labels),
+                        index=list(lang_labels).index(ui.cur_lang()),
+                        format_func=lang_labels.get, key="ui_lang")
+    theme = c2.selectbox(ui.tr("主题"), list(theme_labels),
+                         index=list(theme_labels).index(ui.cur_theme()),
+                         format_func=theme_labels.get, key="ui_theme")
+    if lang != ui.cur_lang() or theme != ui.cur_theme():
+        ui.set_pref("lang", lang)
+        ui.set_pref("theme", theme)
+        ui.apply_theme()
+        st.rerun()

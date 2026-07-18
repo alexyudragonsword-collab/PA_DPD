@@ -1,0 +1,84 @@
+/* padpd desktop engineering theme — tokens substituted by themes.render_qss */
+* { font-family: "Segoe UI", "Noto Sans CJK SC", sans-serif; font-size: 13px; }
+
+QMainWindow, QWidget { background: $bg; color: $fg; }
+
+/* navigation sidebar */
+QListWidget#nav {
+  background: $nav_bg; border: none; padding-top: 8px;
+  min-width: 188px; max-width: 188px; font-size: 13.5px;
+}
+QListWidget#nav::item { padding: 10px 16px; border-radius: 8px; margin: 2px 8px; }
+QListWidget#nav::item:selected { background: $nav_sel; color: $sel_fg; }
+QListWidget#nav::item:hover:!selected { background: $nav_hover; }
+
+QLabel#brand { font-size: 15px; font-weight: 700; padding: 14px 16px 0 16px; }
+QLabel#brandSub { color: $muted2; font-size: 11px; padding: 0 16px 10px 16px; }
+
+QWidget#sidePanel { background: $nav_bg; }
+QWidget#sidePanel QLabel { background: $nav_bg; color: $muted; font-size: 11px; padding-left: 16px; }
+QWidget#sidePanel QComboBox { margin: 2px 12px 6px 12px; }
+
+QLabel#pageTitle { font-size: 19px; font-weight: 700; padding: 4px 0; }
+QLabel#note {
+  background: $note_bg; border-left: 3px solid $blue; border-radius: 5px;
+  color: $note_fg; padding: 8px 12px; font-size: 12px;
+}
+
+/* metric cards */
+QFrame.card {
+  background: $card; border: 1px solid $border; border-radius: 10px;
+}
+QLabel.cardLabel { color: $muted; font-size: 11.5px; }
+QLabel.cardValue { font-size: 21px; font-weight: 700; }
+QLabel.cardDelta { color: $green; font-size: 11px; }
+
+/* controls */
+QPushButton {
+  background: $btn_bg; border: 1px solid $btn_border; border-radius: 7px;
+  padding: 7px 16px;
+}
+QPushButton:hover { background: $btn_hover; }
+QPushButton#primary { background: $accent; border-color: $accent; color: white; font-weight: 600; }
+QPushButton#primary:hover { background: $accent_hover; }
+QPushButton:disabled { background: $disabled_bg; color: $disabled_fg; border-color: $border; }
+
+QComboBox, QSpinBox, QDoubleSpinBox, QLineEdit {
+  background: $card; border: 1px solid $border; border-radius: 6px;
+  padding: 5px 8px; selection-background-color: $nav_sel;
+}
+QComboBox QAbstractItemView { background: $card; border: 1px solid $border; }
+
+QGroupBox {
+  border: 1px solid $border; border-radius: 9px; margin-top: 12px;
+  padding-top: 6px; font-weight: 600;
+}
+QGroupBox::title { subcontrol-origin: margin; left: 12px; padding: 0 4px; color: $muted; }
+
+QTabWidget::pane { border: 1px solid $border; border-radius: 8px; top: -1px; }
+QTabBar::tab {
+  background: transparent; padding: 7px 16px; color: $muted;
+  border-bottom: 2px solid transparent;
+}
+QTabBar::tab:selected { color: $fg; border-bottom: 2px solid $accent; }
+
+QTableWidget {
+  background: $panel; border: 1px solid $border; border-radius: 8px;
+  gridline-color: $grid; alternate-background-color: $alt_row;
+}
+QHeaderView::section {
+  background: $card; border: none; padding: 6px; color: $muted;
+  border-bottom: 1px solid $border;
+}
+
+QProgressBar {
+  background: $card; border: 1px solid $border; border-radius: 7px;
+  text-align: center; height: 16px;
+}
+QProgressBar::chunk { background: $accent; border-radius: 6px; }
+
+QScrollArea { border: none; }
+QSlider::groove:horizontal { height: 4px; background: $border; border-radius: 2px; }
+QSlider::handle:horizontal {
+  width: 14px; height: 14px; margin: -6px 0; border-radius: 7px; background: $accent;
+}

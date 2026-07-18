@@ -6,23 +6,23 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
 from gui_core import Run, services
 from gui_qt import figs
 from gui_qt.common import (FigurePane, FnWorker, MetricCard, card_row,
-                           get_state, page_scaffold)
+                           get_state, page_scaffold, tr)
 
 
 class DpdPage(QWidget):
     def __init__(self):
         super().__init__()
         page, lay = page_scaffold(
-            "DPD 实验室",
-            "ILA(经典 LS,基函数 GMP/DDR/MP)或 DLA(神经直接学习,需神经"
-            "代理);合成源用星座 EVM+Mask,OpenDPD 源自动用其口径;"
-            "实测源评估需选 PA 代理。")
+            tr("DPD 实验室"),
+            tr("ILA(经典 LS,基函数 GMP/DDR/MP)或 DLA(神经直接学习,需神经"
+               "代理);合成源用星座 EVM+Mask,OpenDPD 源自动用其口径;"
+               "实测源评估需选 PA 代理。"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(page)
         self.state = get_state()
 
-        grp = QGroupBox("配置")
+        grp = QGroupBox(tr("配置"))
         gl = QHBoxLayout(grp)
         self.src = QComboBox()
         self.drive = QDoubleSpinBox()
@@ -34,7 +34,7 @@ class DpdPage(QWidget):
         self.cfr.setRange(5.0, 10.0)
         self.cfr.setValue(8.0)
         self.algo = QComboBox()
-        self.algo.addItems(["ILA(经典)", "DLA(神经)"])
+        self.algo.addItems([tr("ILA(经典)"), tr("DLA(神经)")])
         self.basis = QComboBox()
         self.basis.addItems(["GMP-510 (OpenDPD)", "DDR-140 (preset)",
                              "MP-500 (OpenDPD)", "GMP", "DDR", "MP"])
@@ -42,15 +42,16 @@ class DpdPage(QWidget):
         self.epochs = QSpinBox()
         self.epochs.setRange(5, 100)
         self.epochs.setValue(20)
-        self.run_btn = QPushButton("运行 DPD")
+        self.run_btn = QPushButton(tr("运行 DPD"))
         self.run_btn.setObjectName("primary")
-        for lbl, w in [("数据源", self.src), ("drive", self.drive)]:
+        for lbl, w in [(tr("数据源"), self.src), ("drive", self.drive)]:
             gl.addWidget(QLabel(lbl))
             gl.addWidget(w)
         gl.addWidget(self.cfr_on)
         gl.addWidget(self.cfr)
-        for lbl, w in [("算法", self.algo), ("基函数", self.basis),
-                       ("代理", self.surrogate), ("epochs", self.epochs)]:
+        for lbl, w in [(tr("算法"), self.algo), (tr("基函数"), self.basis),
+                       (tr("代理"), self.surrogate),
+                       ("epochs", self.epochs)]:
             gl.addWidget(QLabel(lbl))
             gl.addWidget(w)
         gl.addStretch(1)
@@ -61,44 +62,44 @@ class DpdPage(QWidget):
         self.prog.hide()
         lay.addWidget(self.prog)
 
-        self.c_e0 = MetricCard("EVM(无 DPD)")
-        self.c_e1 = MetricCard("EVM(DPD 后)")
-        self.c_a0 = MetricCard("ACLR(无 DPD)")
-        self.c_a1 = MetricCard("ACLR(DPD 后)")
+        self.c_e0 = MetricCard(tr("EVM(无 DPD)"))
+        self.c_e1 = MetricCard(tr("EVM(DPD 后)"))
+        self.c_a0 = MetricCard(tr("ACLR(无 DPD)"))
+        self.c_a1 = MetricCard(tr("ACLR(DPD 后)"))
         lay.addWidget(card_row([self.c_e0, self.c_e1, self.c_a0, self.c_a1]))
 
         self.tabs = QTabWidget()
         self.p_psd, self.p_const = FigurePane(), FigurePane()
-        self.tabs.addTab(self.p_psd, "PSD 前后对比")
-        self.tabs.addTab(self.p_const, "星座前后对比")
+        self.tabs.addTab(self.p_psd, tr("PSD 前后对比"))
+        self.tabs.addTab(self.p_const, tr("星座前后对比"))
         lay.addWidget(self.tabs, 1)
         self.msg = QLabel("")
         lay.addWidget(self.msg)
 
-        self.algo.currentTextChanged.connect(self._toggle)
+        self.algo.currentIndexChanged.connect(self._toggle)
         self.run_btn.clicked.connect(self.run)
         self.refresh()
-        self._toggle(self.algo.currentText())
+        self._toggle(self.algo.currentIndex())
 
     def refresh(self):
         self.src.blockSignals(True)
         cur = self.src.currentText()
         self.src.clear()
-        self.src.addItems(["合成 ReferencePA"] + list(self.state.sources))
+        self.src.addItems([tr("合成 ReferencePA")] + list(self.state.sources))
         if cur:
             self.src.setCurrentText(cur)
         self.src.blockSignals(False)
         self.surrogate.clear()
-        self.surrogate.addItems(list(self.state.models) or ["<无模型>"])
+        self.surrogate.addItems(list(self.state.models) or [tr("<无模型>")])
 
-    def _toggle(self, algo):
-        ila = algo.startswith("ILA")
+    def _toggle(self, idx):
+        ila = idx == 0  # index 0 = ILA (classical)
         self.basis.setEnabled(ila)
         self.epochs.setEnabled(not ila)
 
     def _get_source(self):
         name = self.src.currentText()
-        if name == "合成 ReferencePA":
+        if name == tr("合成 ReferencePA"):
             cfr = self.cfr.value() if self.cfr_on.isChecked() else None
             key = f"_dpdsynth_{self.drive.value():.2f}_{cfr}"
             if not hasattr(self.state, key):
@@ -113,7 +114,7 @@ class DpdPage(QWidget):
         models = self.state.models
         sname = self.surrogate.currentText()
         try:
-            if self.algo.currentText().startswith("ILA"):
+            if self.algo.currentIndex() == 0:  # ILA (classical)
                 surrogate = (models[sname]["model"] if sname in models
                              else None)
                 out = services.run_dpd_ila(src,
@@ -124,7 +125,7 @@ class DpdPage(QWidget):
                 self._finish(out, label, cfg, src)
             else:
                 if sname not in models:
-                    self.msg.setText("❌ DLA 需要先在建模页训练神经代理")
+                    self.msg.setText(tr("❌ DLA 需要先在建模页训练神经代理"))
                     return
                 self.run_btn.setEnabled(False)
                 self.prog.setRange(0, self.epochs.value())
@@ -166,13 +167,13 @@ class DpdPage(QWidget):
             self.c_a0.set("—")
             self.c_a1.set("—")
         self.p_psd.set_figure(figs.psd_fig(
-            {"无 DPD": out["y_before"], "DPD 后": out["y_after"]},
+            {tr("无 DPD"): out["y_before"], tr("DPD 后"): out["y_after"]},
             out["fs"], mask=out.get("mask")))
         if out.get("wf") is not None:
             self.p_const.set_figure(figs.constellation_fig({
-                "无 DPD": services.constellation_points(
+                tr("无 DPD"): services.constellation_points(
                     out["y_before"], out["wf"], out["gain"]),
-                "DPD 后": services.constellation_points(
+                tr("DPD 后"): services.constellation_points(
                     out["y_after"], out["wf"], out["gain"])}))
         cfg["source"] = src["name"]
         self.state.runstore.add(Run(
@@ -181,5 +182,5 @@ class DpdPage(QWidget):
                      "evm_before_db": m["no DPD"]["evm_db"],
                      "aclr_high_dbc": m["DPD"]["aclr_high"],
                      "convention": out["convention"]}))
-        self.msg.setText(f"✅ {label} 完成({out['convention']} 口径),"
-                         "已注册 run")
+        self.msg.setText(tr("✅ {label} 完成({conv} 口径),已注册 run")
+                         .format(label=label, conv=out["convention"]))

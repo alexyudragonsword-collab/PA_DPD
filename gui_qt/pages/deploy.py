@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (QComboBox, QFileDialog, QGroupBox, QHBoxLayout,
 from gui_core import Run, services
 from gui_qt import figs
 from gui_qt.common import (FigurePane, FnWorker, get_state, hline,
-                           page_scaffold)
+                           page_scaffold, tr)
 
 ALL_BITS = [16, 14, 12, 10, 8]
 
@@ -18,15 +18,15 @@ class DeployPage(QWidget):
     def __init__(self):
         super().__init__()
         page, lay = page_scaffold(
-            "部署",
-            "定点位宽扫描(bit-true)+ 硬件成本估计;导出 FPGA/ASIC 交接"
-            "产物:整数系数 JSON、参考向量 CSV、神经模型 ONNX。")
+            tr("部署"),
+            tr("定点位宽扫描(bit-true)+ 硬件成本估计;导出 FPGA/ASIC 交接"
+               "产物:整数系数 JSON、参考向量 CSV、神经模型 ONNX。"))
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(page)
         self.state = get_state()
 
-        grp = QGroupBox("位宽扫描")
+        grp = QGroupBox(tr("位宽扫描"))
         gl = QHBoxLayout(grp)
         self.model_list = QListWidget()
         self.model_list.setMaximumHeight(96)
@@ -40,11 +40,11 @@ class DeployPage(QWidget):
             it.setCheckState(Qt.CheckState.Checked if b in (16, 12, 8)
                              else Qt.CheckState.Unchecked)
             self.bits_list.addItem(it)
-        self.sweep_btn = QPushButton("位宽扫描")
+        self.sweep_btn = QPushButton(tr("位宽扫描"))
         self.sweep_btn.setObjectName("primary")
-        gl.addWidget(QLabel("模型(勾选)"))
+        gl.addWidget(QLabel(tr("模型(勾选)")))
         gl.addWidget(self.model_list, 2)
-        gl.addWidget(QLabel("位宽"))
+        gl.addWidget(QLabel(tr("位宽")))
         gl.addWidget(self.bits_list)
         gl.addStretch(1)
         gl.addWidget(self.sweep_btn)
@@ -60,15 +60,15 @@ class DeployPage(QWidget):
         self.table.setMaximumHeight(150)
         lay.addWidget(self.table)
 
-        exp = QGroupBox("导出交接产物")
+        exp = QGroupBox(tr("导出交接产物"))
         el = QHBoxLayout(exp)
         self.exp_model = QComboBox()
         self.exp_bits = QComboBox()
         self.exp_bits.addItems([f"W{b}" for b in ALL_BITS])
-        self.exp_btn = QPushButton("生成产物到目录…")
-        el.addWidget(QLabel("模型"))
+        self.exp_btn = QPushButton(tr("生成产物到目录…"))
+        el.addWidget(QLabel(tr("模型")))
         el.addWidget(self.exp_model, 2)
-        el.addWidget(QLabel("系数位宽"))
+        el.addWidget(QLabel(tr("系数位宽")))
         el.addWidget(self.exp_bits)
         el.addStretch(1)
         el.addWidget(self.exp_btn)
@@ -93,7 +93,7 @@ class DeployPage(QWidget):
         if self.model_list.count():
             self.model_list.item(0).setCheckState(Qt.CheckState.Checked)
         self.exp_model.clear()
-        self.exp_model.addItems(names or ["<先在建模页拟合模型>"])
+        self.exp_model.addItems(names or [tr("<先在建模页拟合模型>")])
 
     def _picked_models(self):
         return [self.model_list.item(i).text()
@@ -113,7 +113,7 @@ class DeployPage(QWidget):
     def sweep(self):
         picked, bits = self._picked_models(), self._picked_bits()
         if not picked or not bits:
-            self.msg.setText("请先勾选至少一个模型和位宽")
+            self.msg.setText(tr("请先勾选至少一个模型和位宽"))
             return
         entries = {n: self.state.models[n] for n in picked}
         self.sweep_btn.setEnabled(False)
@@ -142,8 +142,8 @@ class DeployPage(QWidget):
         self.prog.hide()
         self.sweep_btn.setEnabled(True)
         self.pane.set_figure(figs.bitwidth_fig(sweeps))
-        cols = ["模型", "float"] + [f"W{b}" for b in bits] + \
-            ["MAC/样本", "GMAC/s"]
+        cols = [tr("模型"), "float"] + [f"W{b}" for b in bits] + \
+            [tr("MAC/样本"), "GMAC/s"]
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels(cols)
         self.table.setRowCount(0)
@@ -164,15 +164,16 @@ class DeployPage(QWidget):
                 metrics={"float_nmse_db": s["float"],
                          **{f"w{b}_nmse_db": v
                             for b, v in s["bits"].items()}}))
-        self.msg.setText(f"✅ 扫描完成({len(sweeps)} 模型),已注册 run")
+        self.msg.setText(tr("✅ 扫描完成({n} 模型),已注册 run").format(
+            n=len(sweeps)))
 
     def export(self):
         name = self.exp_model.currentText()
         if name not in self.state.models:
-            self.msg.setText("先在建模页拟合模型")
+            self.msg.setText(tr("先在建模页拟合模型"))
             return
         out_dir = QFileDialog.getExistingDirectory(
-            self, "选择导出目录", "deploy_export")
+            self, tr("选择导出目录"), "deploy_export")
         if not out_dir:
             return
         entry = self.state.models[name]
@@ -185,9 +186,9 @@ class DeployPage(QWidget):
             lines = [f"{k}: {v}" for k, v in paths.items()
                      if not k.endswith("verified")]
             if "onnx_verified" in paths:
-                lines.append("ONNX 数值验证 "
-                             + ("✅ 通过" if paths["onnx_verified"]
-                                else "跳过"))
+                lines.append(tr("ONNX 数值验证") + " "
+                             + (tr("✅ 通过") if paths["onnx_verified"]
+                                else tr("跳过")))
             self.msg.setText("📦 " + "\n".join(lines))
         except Exception as e:
-            self.msg.setText(f"❌ 导出失败:{e}")
+            self.msg.setText(tr("❌ 导出失败:{e}").format(e=e))

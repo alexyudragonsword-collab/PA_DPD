@@ -16,6 +16,20 @@
 **实验注册表 `gui_runs/`**——在 Web 版跑的实验,桌面版的"结果比较"页
 能看到,反之亦然;算法零重复,行为一致。
 
+## 语言与主题切换
+
+两版侧栏底部均有 **中文/English** 与 **深色/浅色** 切换:
+
+- 词典与偏好在共享层:`gui_core/i18n.py`(中文原文为 key 的英文词典,
+  未收录的字符串回退中文)与 `gui_core/prefs.py`(`gui_prefs.json`,
+  两版共享——Web 里切换的语言/主题,桌面版下次启动同款)。
+- Web 版切换后 `st.rerun()` 即刻生效(基础主题走 Streamlit config 通道,
+  为服务进程级设置,多浏览器会话共享,单人工作台可接受)。
+- 桌面版切换会重建页面(QSS 由 `gui_qt/style_template.qss` +
+  `gui_qt/themes.py` token 渲染,matplotlib rc 同步切换);数据源/模型/
+  run 注册表都在会话单例中不受影响,但页面上已画的图会清空,重新点
+  运行即可。
+
 ```
 gui_core/
   services.py   # 计算服务:make_waveform / load_source(OpenDPD 目录、
