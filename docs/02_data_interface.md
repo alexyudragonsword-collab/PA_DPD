@@ -114,3 +114,51 @@ x_a, y_a, info = align_delay(x, y, max_lag=4096)
 **训练/验证必须用不同随机种子的波形**(参考
 `scripts/run_baseline_demo.py` 的 train/val 划分),避免记忆效应造成的
 乐观偏差。
+
+## 7. 环回观测通路损伤模型(`padpd.loopback`)
+
+产品形态的 DPD 从 TX→耦合→RX 环回采样自适应,**环回链的损伤会被辨识
+"学"进 DPD**(等效把 RX 的逆错误地搬到 TX)。`LoopbackChannel` 可按
+dBc/dB 预算注入各项损伤(IQ 失衡/LO 泄漏/CFO/相噪/幅相纹波/RX IM3/
+整数+分数延迟与漂移/噪底),`scripts/run_loopback_study.py` 逐项量化
+其对 DPD 后指标的代价(80 MHz/1024-QAM,ReferencePA,ILA-GMP,
+干净观测基线 EVM -55.1 / ACLR -51.9):
+
+| 环回损伤(单项) | ΔEVM | ΔACLR | 预算启示 |
+|---|---|---|---|
+| SNR 50 dB | +0.1 | +0.8 | 环回 SNR 目标 ≥50 dB |
+| SNR 40 / 30 dB | +4.0 / +13.4 | +4.5 / +9.6 | 40 dB 是底线 |
+| IRR 40 / 30 dB | +19.8 / +27.2 | +7.7 / +14.1 | **先做 IQ 校准再开 DPD** |
+| RX IM3 -50 / -40 dBc | +3.7 / +10.4 | +0.6 / +3.3 | 比目标 ACLR 好 ~15 dB |
+| 纹波 0.5 dB / 2 dB(含群时延) | +11.2 / +23.4 | +5.9 / +16.1 | 需标定均衡 |
+| 相噪 1° / 3° rms | +20.5 / +27.1 | +2.6 / +11.0 | 共 LO 设计的价值 |
+| 延迟 7.3 采样(对齐后 / 未对齐) | +2.5 / **+52.8** | +3.1 / **+26.1** | 对齐是硬前提 |
+| 采集期漂移 0.5 采样 | +21.1 | +12.4 | 周期性重估延迟 |
+
+工程要点(本研究实测踩坑):对齐器会把 PA 自身群时延一并吸收,DPD
+随之携带分数超前——**EVM 评估必须做接收机式定时同步**,否则星座上
+出现相位斜坡、EVM 卡在 -20 dB 而 ACLR 正常。`align_delay` 现含互谱
+相位斜率精化;评估侧参照 `run_loopback_study.evaluate`。
+
+## 8. HB/S 参数导入:流片前 PA+DPD 预判(`padpd.pa.hb_import`)
+
+把谐波平衡与 S 参数仿真结果装配成 Wiener-Hammerstein 行为模型
+(FIR → AM-AM/AM-PM 查表 → FIR),流片前即可跑通"建模→DPD→指标"
+预测链。CSV 约定:
+
+| 表 | 列 | 来源 |
+|---|---|---|
+| AM-AM/AM-PM | `r_in,r_out,phase_deg` 或 `pin_dbm,pout_dbm,phase_deg`(50Ω 换算) | HB 扫功率 |
+| S21(输入/输出匹配) | `freq_hz,mag_db,phase_deg`(相对载波的基带频率) | S 参数 / PSS+PAC |
+
+```python
+from padpd.pa import load_hb_pa
+pa = load_hb_pa("hb_amam.csv", "s21_in.csv", "s21_out.csv",
+                fs=320e6, drive=0.14)   # 即插即用的 PAModel
+```
+
+`scripts/import_hb_pa.py --demo` 生成示例 CSV 并跑完整预测链
+(demo 结果:GMP 拟合 NMSE -43.7 dB;DPD 后 EVM -18.3 → -48.1 dB,
+Mask FAIL → PASS)。扫 `--drive`(配合 CFR / 联合设计脚本)即可在
+流片前回答"这颗 PA 配 DPD 能不能过 spec、退多少功率"。注意:S21
+FIR 的整体群时延不计入模型(实测中由对齐消除),仅保留色散。

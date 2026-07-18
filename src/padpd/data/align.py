@@ -65,5 +65,44 @@ def align_delay(x: np.ndarray, y: np.ndarray, max_lag: int = 4096):
     if abs(frac) > 0.02:
         y_a = _fractional_advance(y_a, frac)
 
+    # Refine with the cross-spectrum phase slope: parabolic peak
+    # interpolation is biased for wide-band or nonlinearly distorted
+    # signals (0.1-0.3 sample residual on PA outputs), and a residual
+    # fractional delay turns into a phase ramp across subcarriers that
+    # caps constellation EVM around -20 dB. The phase-vs-frequency slope
+    # of X* Y over the occupied band is a far more accurate estimator.
+    resid = _phase_slope_delay(x_a, y_a)
+    if abs(resid) > 0.002:
+        y_a = _fractional_advance(y_a, resid)
+        frac += resid
+
     gain = complex(np.vdot(x_a, y_a) / np.vdot(x_a, x_a))
     return x_a, y_a, {"lag": lag, "lag_total": lag + frac, "gain": gain}
+
+
+def _phase_slope_delay(x: np.ndarray, y: np.ndarray) -> float:
+    """Residual delay of y vs x from the cross-spectrum phase slope.
+
+    Weighted LS fit of unwrapped angle(X* Y) against frequency over the
+    occupied band (bins with meaningful power); returns the delay in
+    samples (positive = y still lags x).
+    """
+    n = len(x)
+    xf = np.fft.fft(x)
+    yf = np.fft.fft(y)
+    cross = np.conj(xf) * yf
+    w = np.abs(cross)
+    band = w > 0.05 * w.max()
+    if band.sum() < 8:
+        return 0.0
+    f = np.fft.fftfreq(n)
+    order = np.argsort(f[band])
+    fb = f[band][order]
+    ph = np.unwrap(np.angle(cross[band][order]))
+    wb = w[band][order]
+    fc = fb - np.average(fb, weights=wb)
+    denom = np.sum(wb * fc ** 2)
+    if denom == 0:
+        return 0.0
+    slope = np.sum(wb * fc * (ph - np.average(ph, weights=wb))) / denom
+    return float(np.clip(-slope / (2 * np.pi), -1.0, 1.0))

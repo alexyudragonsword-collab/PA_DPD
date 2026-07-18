@@ -8,11 +8,13 @@ from .memory_polynomial import MemoryPolynomialModel
 from .gmp import GMPModel
 from .ddr import DDRVolterraModel
 from .reference_pa import ReferencePA
+from .hb_import import (WienerHammersteinPA, load_amam_table, load_hb_pa,
+                        s21_to_fir)
 from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
 
 _MODEL_CLASSES = {cls.__name__: cls
                   for cls in (SalehPA, MemoryPolynomialModel, GMPModel,
-                              DDRVolterraModel)}
+                              DDRVolterraModel, WienerHammersteinPA)}
 
 
 def load_model(path: str) -> PAModel:
@@ -39,4 +41,8 @@ __all__ = [
     "GMPModel",
     "DDRVolterraModel",
     "ReferencePA",
+    "WienerHammersteinPA",
+    "load_amam_table",
+    "load_hb_pa",
+    "s21_to_fir",
 ]
