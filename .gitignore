@@ -21,3 +21,4 @@ results/
 deploy_export/
 *.onnx
 *.onnx.data
+gui_runs/
