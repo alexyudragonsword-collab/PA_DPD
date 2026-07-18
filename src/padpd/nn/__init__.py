@@ -18,8 +18,10 @@ from .backbones import (GRUBackbone, DGRUBackbone, TCNBackbone,
 from .frame_data import FrameDataset
 from .torch_model import NeuralPAModel
 from .dla import DLAPredistorter
+from ..deploy.neural_ptq import quantize_neural_ptq
 
 __all__ = [
+    "quantize_neural_ptq",
     "iq_features",
     "complex_to_iq",
     "iq_to_complex",
