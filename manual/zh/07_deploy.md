@@ -26,7 +26,13 @@
 
 ## 7.3 桌面版打包为 Windows exe
 
-桌面版可用 PyInstaller 打成免安装目录(onedir):
+**推荐方式:GitHub Actions 云端构建(无需本地 Windows)**——仓库
+Actions 页运行 **Build Windows EXE** 工作流,完成后从 Artifacts 下载
+`padpd-desktop-windows-slim.zip`(精简)或 `-full.zip`(含 CPU torch);
+推送 `v*` tag 则自动构建并附到 GitHub Release。云端构建包含 20 秒
+启动冒烟,失败会直接标红。
+
+也可在本地 Windows 用 PyInstaller 打成免安装目录(onedir):
 
 ```bat
 cd packaging

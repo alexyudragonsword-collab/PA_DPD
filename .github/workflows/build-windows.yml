@@ -1,0 +1,70 @@
+name: Build Windows EXE
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [slim, full]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build dependencies
+        run: pip install -e .[gui-qt] pyinstaller
+
+      - name: Install CPU torch (full variant)
+        if: matrix.variant == 'full'
+        run: pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+      - name: Build with PyInstaller
+        working-directory: packaging
+        env:
+          PADPD_NO_TORCH: ${{ matrix.variant == 'slim' && '1' || '0' }}
+        run: pyinstaller --clean --noconfirm padpd_qt.spec
+
+      - name: Launch smoke test
+        shell: pwsh
+        working-directory: packaging
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $p = Start-Process -PassThru .\dist\padpd-desktop\padpd-desktop.exe
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) {
+            Write-Error "app exited early with code $($p.ExitCode)"
+            exit 1
+          }
+          Stop-Process -Id $p.Id -Force
+          Write-Output "smoke OK: app stayed alive for 20 s"
+
+      - name: Package zip
+        shell: pwsh
+        working-directory: packaging
+        run: |
+          Compress-Archive -Path dist\padpd-desktop `
+            -DestinationPath padpd-desktop-windows-${{ matrix.variant }}.zip
+          Get-Item padpd-desktop-windows-${{ matrix.variant }}.zip |
+            Select-Object Name, @{n='MB';e={[math]::Round($_.Length/1MB)}}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: padpd-desktop-windows-${{ matrix.variant }}
+          path: packaging/padpd-desktop-windows-${{ matrix.variant }}.zip
+          retention-days: 14
+
+      - name: Attach to release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/padpd-desktop-windows-${{ matrix.variant }}.zip

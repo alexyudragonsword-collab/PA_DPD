@@ -30,8 +30,15 @@ Command-line equivalents: `python scripts/export_deploy.py`,
 
 ## 7.3 Packaging the Desktop App as a Windows exe
 
-The desktop app can be packaged with PyInstaller as an installation-free
-directory (onedir):
+**Recommended: build in the cloud with GitHub Actions (no local Windows
+needed)** — run the **Build Windows EXE** workflow from the repo's
+Actions page, then download `padpd-desktop-windows-slim.zip` (slim) or
+`-full.zip` (with CPU torch) from the run's Artifacts; pushing a `v*`
+tag builds both variants automatically and attaches them to a GitHub
+Release. The cloud build includes a 20-second launch smoke test.
+
+Alternatively, package locally on Windows with PyInstaller as an
+installation-free directory (onedir):
 
 ```bat
 cd packaging

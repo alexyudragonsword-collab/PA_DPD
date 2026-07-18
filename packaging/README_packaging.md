@@ -2,6 +2,23 @@
 
 把 PySide6 桌面 GUI(`gui_qt/`)打成免安装的可执行程序。
 
+## 方式零(推荐):GitHub Actions 云端构建,无需本地 Windows
+
+仓库自带 `.github/workflows/build-windows.yml`,在 GitHub 的
+`windows-latest` runner 上构建并做启动冒烟:
+
+1. GitHub 仓库页 → **Actions** → **Build Windows EXE** →
+   **Run workflow**(可选任意分支)→ 等待完成(slim 约 8 分钟,
+   full 约 20 分钟);
+2. 在该 run 的 **Artifacts** 下载
+   `padpd-desktop-windows-slim.zip`(精简版,~200 MB,经典功能全可用)
+   或 `padpd-desktop-windows-full.zip`(含 CPU 版 torch,神经功能
+   可用);解压后运行 `padpd-desktop\padpd-desktop.exe`。
+3. 推送 `v*` tag(如 `v1.0.0`)会自动构建两个变体并附到 GitHub
+   Release。
+
+以下本地构建方式作为无法使用 Actions 时的备选。
+
 ## 重要限制:PyInstaller 不能跨平台
 
 PyInstaller 只能在**目标平台上**构建目标平台的产物:

@@ -106,10 +106,12 @@ python -m gui_qt.main
 
 ## 打包成 Windows exe
 
-见 `packaging/README_packaging.md`。要点:PyInstaller 不能跨平台,
-Windows exe 必须在 Windows 上跑 `packaging/build_windows.bat`
-(`--no-torch` 得 ~400 MB 精简版,经典功能全可用;完整版含 torch)。
-本仓库已在 Linux 用同一份 spec 完成 onedir 构建与启动冒烟。
+见 `packaging/README_packaging.md`。**推荐走 GitHub Actions 云端构建**
+(Actions → Build Windows EXE,slim/full 双变体产物,推 `v*` tag 自动
+出 Release),无需本地 Windows。备选:在 Windows 上跑
+`packaging/build_windows.bat`(`--no-torch` 得精简版;完整版含 torch)。
+PyInstaller 不能跨平台;本仓库已在 Linux 用同一份 spec 完成 onedir
+构建与启动冒烟。
 
 ## 已知边界
 
