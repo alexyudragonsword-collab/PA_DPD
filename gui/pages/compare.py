@@ -1,0 +1,72 @@
+import json
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+import streamlit as st  # noqa: E402
+
+from gui import charts, ui  # noqa: E402
+
+ui.page_setup("结果比较", "⚖️")
+state = ui.get_state()
+ui.note("跨实验对比注册表中的 run(建模 / DPD / 部署)。注册表持久化在 "
+        "gui_runs/,Web 版与桌面版共享。")
+
+runs = state.runstore.list()
+if not runs:
+    st.info("注册表为空——先在 PA 建模或 DPD 实验室页运行实验。")
+    st.stop()
+
+kind = st.radio("类型筛选", ["全部", "pa_model", "dpd", "deploy"],
+                horizontal=True)
+if kind != "全部":
+    runs = [r for r in runs if r.kind == kind]
+
+rows = []
+for r in runs:
+    row = {"选择": False, "时间": r.when, "名称": r.name, "类型": r.kind}
+    for k, v in r.metrics.items():
+        row[k] = round(v, 2) if isinstance(v, float) else v
+    row["_id"] = r.run_id
+    rows.append(row)
+
+edited = st.data_editor(rows, use_container_width=True, hide_index=True,
+                        disabled=[c for c in rows[0] if c != "选择"],
+                        column_config={"_id": None})
+picked = [r for r, e in zip(runs, edited) if e["选择"]]
+
+col1, col2, col3 = st.columns([1, 1, 2])
+with col1:
+    if picked and st.button(f"🗑️ 删除选中 ({len(picked)})"):
+        for r in picked:
+            state.runstore.delete(r.run_id)
+        st.rerun()
+with col2:
+    st.download_button(
+        "⬇️ 导出全部为 JSON",
+        json.dumps([{"name": r.name, "kind": r.kind, "config": r.config,
+                     "metrics": r.metrics, "time": r.when}
+                    for r in runs], indent=1, ensure_ascii=False,
+                   default=str),
+        file_name="padpd_runs.json")
+
+if len(picked) >= 2:
+    st.divider()
+    st.subheader(f"对比({len(picked)} 项)")
+    names = [r.name if len(r.name) < 36 else r.name[:33] + "…"
+             for r in picked]
+    metric_keys = sorted({k for r in picked for k, v in r.metrics.items()
+                          if isinstance(v, (int, float))})
+    chosen = st.multiselect("对比指标", metric_keys,
+                            default=[k for k in ("nmse_db", "evm_db",
+                                                 "aclr_high_dbc")
+                                     if k in metric_keys])
+    if chosen:
+        series = {k: [r.metrics.get(k) for r in picked] for k in chosen}
+        st.plotly_chart(charts.fig_metric_bars(names, series),
+                        use_container_width=True)
+    with st.expander("配置明细"):
+        st.json({r.name: r.config for r in picked})
+elif picked:
+    st.caption("再选一项即可出对比图。")
