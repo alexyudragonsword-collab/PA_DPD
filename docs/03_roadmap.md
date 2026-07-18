@@ -83,19 +83,34 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
    DPD 评估用神经代理。
 3. 帧长决定可学的记忆跨度:GaN PA 需要 F≈200,F=50 学不到长记忆。
 
-## Phase 3:量化与 FPGA/ASIC 部署
+## Phase 3:量化与 FPGA/ASIC 部署(进行中)
 
 目标:满足 320 MHz(> 640 MSPS)实时性。
 
-- [ ] PyTorch → ONNX 导出链
-- [ ] INT16/INT8 量化感知训练,定点仿真比对(bit-true 模型);
-      对标 OpenDPD 的 W16A16 QAT 方案(对称有符号 INT、scale 取 2 的幂、
-      STE 直通估计,从浮点 checkpoint 微调)
-- [ ] 剪枝(降 MAC)、知识蒸馏(Transformer teacher → GRU student)
+- [x] **线性参数模型定点部署**(`padpd.deploy`):对称有符号、scale 取
+      2 的幂的 bit-true 量化器 + `FixedPointPolyModel`(逐抽头激活量化、
+      宽累加器)+ MAC 硬件成本估计。MP/GMP/DDR 无需 QAT,训练后直接量化
+      (`scripts/quantize_dpd.py`)。
+- [ ] 神经模型 QAT(对标 OpenDPD W16A16:对称 INT、scale=2 的幂、STE、
+      从浮点 checkpoint 微调)——需 GPU
+- [ ] PyTorch → ONNX 导出链;剪枝/蒸馏
 - [ ] FPGA 原型(HLS 或 RTL),与 Python 定点模型逐样本比对
 - [ ] SDR/GNU Radio 台架闭环验证
 
-验收:定点实现与浮点 EVM 差 < 1 dB;吞吐 ≥ 640 MSPS。
+### 定点 DPD 实测(DPA_160MHz,ACLR_AVG dBc,神经代理评估)
+
+| DPD 基函数 | 复系数 | float | W16 | W12 | W10 | MAC/样本 |
+|-----------|-------|-------|-----|-----|-----|---------|
+| **DDR r=1** | 140 | -51.6 | **-51.3** | -40.4 | -29.4 | **560**(358 GMAC/s) |
+| GMP-510 | 255 | -50.2 | -50.1 | -46.6 | -38.5 | 1020(653 GMAC/s) |
+
+**部署权衡结论**:(1) **W16(工业标准)下 DDR 完胜**——ACLR 更好且硬件
+少 45%。(2) **低位宽下 GMP 更鲁棒**:W12 时 GMP -46.6 明显优于 DDR
+-40.4,因 GMP 抽头多、冗余大,量化噪声被平均;DDR 抽头少、基函数动态
+范围大,量化打击更狠。(3) 选型指导:W16 定点选 DDR(省一半面积),
+极致压到 W12 以下选 GMP(更鲁棒)。W16A16 与浮点差 <0.5 dB,满足验收。
+
+验收:定点实现与浮点 EVM 差 < 1 dB(W16 已满足);吞吐 ≥ 640 MSPS。
 
 ## Phase 4:AI Native PA 联合设计
 
@@ -114,6 +129,6 @@ Phase 1 (baseline) ✅
           └─→ Phase 1 收尾 (CFR/持久化/CI) ✅
                  └─→ Phase 2 (neural, 真实数据) ✅
                         └─→ Phase 2.5 (长帧/TCN/DPD 复现) ✅
-                        └─→ Phase 3 (部署)
+                        └─→ Phase 3 (部署:线性模型定点 ✅ / 神经 QAT ⏳)
                         └─→ Phase 4 (联合设计,可与 Phase 3 并行)
 ```

@@ -1,0 +1,15 @@
+"""Phase 3: fixed-point deployment of behavioral models / predistorters.
+
+Linear-in-parameters models (MP, GMP, DDR-Volterra) map to hardware as a
+bank of fixed basis functions followed by a coefficient dot product —
+i.e. multiply-accumulate over LS-fitted taps. Deploying them needs no
+retraining (unlike neural models, which need QAT): the float coefficients
+are simply quantized (post-training quantization), and the whole datapath
+is evaluated bit-true. This module provides that quantization and a
+hardware-cost estimate.
+"""
+
+from .fixed_point import (quantize_symmetric, FixedPointPolyModel,
+                          mac_cost)
+
+__all__ = ["quantize_symmetric", "FixedPointPolyModel", "mac_cost"]
