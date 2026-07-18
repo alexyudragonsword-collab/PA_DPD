@@ -108,9 +108,7 @@ class DeployPage(QWidget):
              == Qt.CheckState.Checked), reverse=True))
 
     def _src_for(self, entry):
-        return (self.state.sources.get(entry["meta"]["source"])
-                or next(iter(self.state.sources.values()), None)
-                or services.make_synthetic_source())
+        return services.eval_source_for(entry["meta"], self.state.sources)
 
     def sweep(self):
         picked, bits = self._picked_models(), self._picked_bits()

@@ -35,13 +35,9 @@ if run and picked and bits:
     prog = st.progress(0.0)
     for i, name in enumerate(picked):
         entry = models[name]
-        src = (state.sources.get(entry["meta"]["source"])
-               or next(iter(state.sources.values()), None)
+        src = (services.eval_source_for(entry["meta"], state.sources)
                if src_name == "<拟合时的源>"
                else state.sources[src_name])
-        if src is None:
-            # synthetic fallback matching the model's fitting source
-            src = services.make_synthetic_source()
         sweeps[name.split(" @")[0]] = services.bitwidth_sweep(
             entry["model"], src, bits=tuple(sorted(bits, reverse=True)))
         prog.progress((i + 1) / len(picked))
@@ -78,8 +74,7 @@ with col2:
     st.write("")
     if st.button("📦 生成产物", use_container_width=True):
         entry = models[exp_model]
-        src = (state.sources.get(entry["meta"]["source"])
-               or services.make_synthetic_source())
+        src = services.eval_source_for(entry["meta"], state.sources)
         out_dir = f"deploy_export/gui_{exp_model.split(' @')[0].replace(' ', '_')}"
         with st.spinner("导出中…"):
             paths = services.export_artifacts(entry["model"], src, out_dir,

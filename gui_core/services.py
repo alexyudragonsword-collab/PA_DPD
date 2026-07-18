@@ -88,6 +88,23 @@ def make_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
             "x_val": xv, "y_val": pa(xv), "wf_val": va["wf"]}
 
 
+def eval_source_for(meta: dict, sources: dict) -> dict:
+    """Pick the evaluation source matching a fitted model.
+
+    Prefer the exact source the model was fitted on; if that was a
+    synthetic ReferencePA source (never registered), rebuild it at the
+    same drive rather than silently evaluating on an unrelated dataset.
+    """
+    import re
+    name = (meta or {}).get("source", "")
+    if name in sources:
+        return sources[name]
+    m = re.search(r"ReferencePA d=([0-9.]+)", name)
+    if m:
+        return make_synthetic_source(drive=float(m.group(1)))
+    return next(iter(sources.values()), None) or make_synthetic_source()
+
+
 def _from_dataset_splits(name, kind, fs, spec, tr, va, te) -> dict:
     return {"kind": kind, "name": name, "fs": fs, "spec": spec,
             "bw": (spec or {}).get("bw_main_ch"),
