@@ -75,6 +75,27 @@ PA 行为建模(测试集 NMSE,~500 实参数):
 
 三个 GRU/DGRU/TCN backbone、DLA 直接学习、真实数据训练;训练命令与完整分析见 `docs/04_neural.md`。APA_200MHz 的 -43.5 dB PA NMSE 经系统排查判定为公开信息无法复现(不影响 DPD 结论)。
 
+## 图形界面(GUI)
+
+完整功能均可通过 GUI 使用(分析、结果比较、图形化仿真结果、输入/输出
+文件)。两个版本功能同构,共享同一服务层与实验注册表:
+
+```bash
+# 方案 A:Web 工作台(Streamlit + Plotly,团队共享/远程)
+pip install -e .[gui]
+streamlit run gui/app.py
+
+# 方案 B:桌面版(PySide6,可打包 Windows exe)
+pip install -e .[gui-qt]
+python -m gui_qt.main
+```
+
+8 个功能页:总览 / 波形工作台(PSD·CCDF·星座·CFR·导出)/ 数据管理
+(OpenDPD·Cadence CSV·.mat·.npz,自动对齐)/ PA 建模(经典 LS + 神经
+带进度)/ DPD 实验室(ILA/DLA,前后指标与图)/ 结果比较 / 部署(位宽
+扫描·ONNX·系数导出)/ PA-DPD 联合设计。exe 打包见
+`packaging/README_packaging.md`,导览见 `docs/06_gui.md`。
+
 ## 仓库结构
 
 ```
@@ -85,6 +106,7 @@ docs/                    # 中文文档
   03_roadmap.md          #   分阶段路线图(Phase 1~4)
   04_neural.md           #   神经建模(架构/训练/DLA/实测数字)
   05_performance_summary.md #  性能总览(Phase 1→2.5 全部指标一页汇总)
+  06_gui.md              #   GUI 导览(Web 版 + 桌面版 + exe 打包)
 src/padpd/               # Python 包(代码与注释为英文)
   waveform/              #   802.11be 风格 OFDM + 16~4096-QAM
   pa/                    #   PA 行为模型:Saleh / MP / GMP / ReferencePA
@@ -99,6 +121,10 @@ src/padpd/               # Python 包(代码与注释为英文)
   deploy/                #   Phase 3 部署:bit-true 量化 + 神经 PTQ +
   │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
   plotting.py            #   标准对比图(PSD/星座/AM-AM/CCDF)
+gui_core/                # GUI 共享服务层(框架无关:计算服务 + 实验注册表)
+gui/                     # Web 工作台(Streamlit + Plotly,8 页)
+gui_qt/                  # 桌面版(PySide6 + matplotlib,8 页,QSS 深色主题)
+packaging/               # PyInstaller 打包(spec / Windows bat / 说明)
 scripts/                 # 合成 demo / 数据集生成 / OpenDPD 真实数据 baseline
 tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数值等价测试)
 ```
@@ -117,6 +143,7 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 - **Phase 2 / 2.5**:神经 PA 建模(GRU/DGRU/TCN)+ DLA Neural DPD;TCN 超 GMP ✅
 - **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅(QAT/RTL 需 GPU/硬件)
 - **Phase 4**:PA/DPD 联合设计(离散 Pareto + 可微梯度寻优)✅(Spectre 回环需 EDA)
+- **GUI**:双版本图形界面(Streamlit Web 工作台 + PySide6 桌面版/exe 打包)✅
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 本环境(4 核 CPU、无 GPU)已完成可做部分;需 GPU(QAT、多 seed)或硬件/EDA
