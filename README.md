@@ -83,6 +83,8 @@ docs/                    # 中文文档
   01_environment_setup.md#   研发环境搭建清单(软件/开源工具链/数据集/GPU/EDA 接口)
   02_data_interface.md   #   数据接口规范(Cadence CSV / MATLAB .mat / OpenDPD)
   03_roadmap.md          #   分阶段路线图(Phase 1~4)
+  04_neural.md           #   神经建模(架构/训练/DLA/实测数字)
+  05_performance_summary.md #  性能总览(Phase 1→2.5 全部指标一页汇总)
 src/padpd/               # Python 包(代码与注释为英文)
   waveform/              #   802.11be 风格 OFDM + 16~4096-QAM
   pa/                    #   PA 行为模型:Saleh / MP / GMP / ReferencePA
