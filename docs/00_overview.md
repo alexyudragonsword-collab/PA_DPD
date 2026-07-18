@@ -109,6 +109,11 @@ IQ input/output dataset (IQDataset)
 | Saleh | `padpd.pa.SalehPA` | AM-AM/AM-PM 无记忆模型,早期验证 |
 | Memory Polynomial | `padpd.pa.MemoryPolynomialModel` | 工业基础,阶数 5~9、记忆 3~10 |
 | **GMP** | `padpd.pa.GMPModel` | **工业 DPD 黄金 baseline**,增加 lag/lead 交叉项,精度高、FPGA 友好 |
+| DDR-Volterra | `padpd.pa.DDRVolterraModel` | 动态偏差缩减 Volterra(Zhu 2006),按动态阶数 r 系统截断,r=1 参数效率高于 GMP |
+
+四者都是 Volterra 级数的剪枝特例:MP 保留对角项,GMP 加手选 lag/lead 交叉项,
+DDR 按"动态阶数 r=非零延迟因子数"系统截断(r=1 为工作马,r=2 更精细),
+完整 Volterra 因参数指数爆炸不可用。全部为线性参数模型,用最小二乘闭式解。
 
 **原则:所有 AI 模型必须和 GMP 在同一数据、同一指标下对比。**
 
@@ -117,11 +122,16 @@ MP(阶 7、记忆 4)-52.2 dB;GMP(52 系数)**-57.8 dB**。
 
 Phase 1.5 真实测量数据实测(OpenDPD 数据集,~500 实参数预算,测试集 NMSE):
 
-| 数据集 | MP-500 | GMP-510 | OpenDPD GRU 代理(参考) |
-|--------|--------|---------|------------------------|
-| DPA_200MHz(Doherty) | -35.0 dB | -33.7 dB | — |
-| DPA_160MHz(Doherty) | -38.3 dB | **-39.2 dB** | -38.4 dB(2066 参数) |
-| APA_200MHz(GaN) | -37.1 dB | -35.5 dB | -43.5 dB(1911 参数) |
+| 数据集 | MP-500 | GMP-510 | DDR r=1(140系数) | OpenDPD GRU 代理 |
+|--------|--------|---------|-------------------|------------------|
+| DPA_200MHz(Doherty) | -35.0 dB | -33.7 dB | **-34.0 dB** | — |
+| DPA_160MHz(Doherty) | -38.3 dB | **-39.2 dB** | -39.2 dB | -38.4 dB(2066 参数) |
+| APA_200MHz(GaN) | -37.1 dB | -35.5 dB | **-37.0 dB** | -43.5 dB(1911 参数) |
+
+DDR 观察:**r=1 用 140 复系数(GMP 的 55%)追平或略超 GMP-510**——参数
+效率更高;但 **r=2(441 系数)在这些数据量下过拟合**(DPA_200 降到 -30.6),
+恰好印证 DDR"记忆是弱动态、高阶动态项冗余"的核心论点。这几个数据集记忆
+跨度短(F=50 与 F=200 神经训练无差异亦证明),DDR 相对 GMP 净收益有限。
 
 工程要点(踩坑记录):高阶多项式基条件数可达 1e7+,系数向量靠列间精细
 抵消工作——评估时若记忆抽头零填充(直接喂 test 段)会产生巨幅边界瞬态,

@@ -6,11 +6,13 @@ from .base import PAModel, nmse_db
 from .saleh import SalehPA
 from .memory_polynomial import MemoryPolynomialModel
 from .gmp import GMPModel
+from .ddr import DDRVolterraModel
 from .reference_pa import ReferencePA
-from .presets import mp_opendpd_500, gmp_opendpd_510
+from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
 
 _MODEL_CLASSES = {cls.__name__: cls
-                  for cls in (SalehPA, MemoryPolynomialModel, GMPModel)}
+                  for cls in (SalehPA, MemoryPolynomialModel, GMPModel,
+                              DDRVolterraModel)}
 
 
 def load_model(path: str) -> PAModel:
@@ -28,11 +30,13 @@ def load_model(path: str) -> PAModel:
 __all__ = [
     "mp_opendpd_500",
     "gmp_opendpd_510",
+    "ddr_volterra_default",
     "PAModel",
     "load_model",
     "nmse_db",
     "SalehPA",
     "MemoryPolynomialModel",
     "GMPModel",
+    "DDRVolterraModel",
     "ReferencePA",
 ]

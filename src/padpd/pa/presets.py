@@ -10,6 +10,7 @@ as 2 real parameters.)
 
 from __future__ import annotations
 
+from .ddr import DDRVolterraModel
 from .gmp import GMPModel
 from .memory_polynomial import MemoryPolynomialModel
 
@@ -25,3 +26,10 @@ def gmp_opendpd_510() -> GMPModel:
     return GMPModel(order=5, memory_depth=15,
                     lag_order=4, lag_memory=15, lag_span=2,
                     lead_order=4, lead_memory=15, lead_span=1)
+
+
+def ddr_volterra_default() -> DDRVolterraModel:
+    """DDR-Volterra, dynamic order 1 (Zho/Pedro/Brazil 2006 style),
+    K=5, M=15 -> ~155 complex coefficients; comparable memory span to the
+    GMP baseline while systematically covering the r<=1 cross terms."""
+    return DDRVolterraModel(order=5, memory_depth=15, dynamic_order=1)
