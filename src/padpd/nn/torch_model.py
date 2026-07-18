@@ -58,7 +58,11 @@ class NeuralPAModel(PAModel):
     # -- training -----------------------------------------------------------
     def fit(self, x: np.ndarray, y: np.ndarray,
             x_val: np.ndarray | None = None,
-            y_val: np.ndarray | None = None) -> "NeuralPAModel":
+            y_val: np.ndarray | None = None,
+            on_epoch=None) -> "NeuralPAModel":
+        """``on_epoch``: optional callback receiving the per-epoch history
+        dict (epoch/train_loss/val_nmse_db/lr) - used by GUIs for live
+        progress."""
         cfg = self.config
         if x_val is None:
             n = int(len(x) * (1 - cfg["val_fraction"]))
@@ -95,6 +99,8 @@ class NeuralPAModel(PAModel):
                                  "train_loss": float(np.mean(losses)),
                                  "val_nmse_db": val_nmse,
                                  "lr": optimizer.param_groups[0]["lr"]})
+            if on_epoch is not None:
+                on_epoch(self.history[-1])
             if val_nmse < best_metric:
                 best_metric = val_nmse
                 best_state = {k: v.detach().clone()

@@ -72,8 +72,12 @@ class DLAPredistorter:
         return nmse_db(self.target_gain * x_val, y)
 
     def fit(self, pa: NeuralPAModel, x: np.ndarray,
-            x_val: np.ndarray | None = None) -> "DLAPredistorter":
-        """Train the DPD against a frozen differentiable PA model."""
+            x_val: np.ndarray | None = None,
+            on_epoch=None) -> "DLAPredistorter":
+        """Train the DPD against a frozen differentiable PA model.
+
+        ``on_epoch``: optional callback receiving the per-epoch history
+        dict - used by GUIs for live progress."""
         cfg = self.config
         if x_val is None:
             n = int(len(x) * (1 - cfg["val_fraction"]))
@@ -121,6 +125,8 @@ class DLAPredistorter:
                                  "train_loss": float(np.mean(losses)),
                                  "val_metric": metric,
                                  "lr": optimizer.param_groups[0]["lr"]})
+            if on_epoch is not None:
+                on_epoch(self.history[-1])
             if metric < best_metric:
                 best_metric = metric
                 best_state = {k: v.detach().clone()
