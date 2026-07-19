@@ -105,3 +105,40 @@ dpd.update(pa, x)                  # 每块从环回观测更新
 `scripts/run_drift_study.py` 量化现场价值:PA 冷→热漂移中,冻结批处理
 DPD 退化到 **-28.4 dB EVM**,自适应保持 **-38.8 dB**(满漂移领先
 10.4 dB)。这回答了"DPD 在现场能不能扛住"。
+
+## 5.8 双音记忆诊断:用两音扫间距预判 DPD 该留多少资源
+
+单音 AM-AM/AM-PM 只给**静态**非线性,看不见记忆:同一条静态曲线既能
+拟合无记忆 PA,也能拟合强动态 PA。而**双音扫音间距(delta-f)**恰好是
+流片前电路仿真最容易给的大信号表征(谐波平衡跑几个音间距的 IM3),
+所以它是从 Spectre 到"DPD 该多复杂"的天然桥梁。
+
+思路不是逼双音交出完整记忆核,而是**用多个 delta-f 的 IM3 粗判记忆
+强度**,据此决定 DPD 要预留多少记忆,再把系数训练交给实测数据。
+`padpd.two_tone` 从 IM3 读两种正交的记忆信号:
+
+- **随间距变化**(spacing spread):扫音间距即扫包络频率;IM3 随间距
+  变化就说明有记忆(MHz 级间距 = 偏置/匹配电记忆,kHz 级 = 热记忆)。
+  无记忆非线性的 IM3 与间距无关。
+- **上下不对称**(asymmetry):无记忆非线性上下 IM3 严格相等;任何
+  不对称都是记忆(复数/交叉项)信号,且向小间距增大指向热记忆。
+
+两者取较大者浓缩为标量**记忆强度(dB)**——大致等于"静态模型无法
+复现的那部分 IM3 有多少 dB"。`recommend_dpd_budget` 把它映射到粗略
+DPD 规模:留多深的对角记忆、要不要 GMP 交叉项。
+
+```python
+from padpd.two_tone import sweep_two_tone, recommend_dpd_budget
+r = sweep_two_tone(pa, [0.5e6,1e6,2e6,5e6,10e6,20e6,40e6], fs=320e6)
+b = recommend_dpd_budget(r)          # {'memory_depth':3,'use_cross_terms':True,...}
+# 电路双音仿真结果也能直接喂:
+from padpd.two_tone import memory_strength_from_table
+r = memory_strength_from_table(spacings, im3_lower_dbc, im3_upper_dbc)
+```
+
+`scripts/run_two_tone_study.py` 做了闭环验证:无记忆 Saleh 读出记忆
+强度 **0.0 dB**(留 depth 1),强色散 PA 读出 **3.0 dB**(留 depth 3
++ 交叉项)。在强 PA 上用真实 802.11 信号扫 ILA-GMP 记忆深度,EVM 拐点
+正好落在双音预判的 depth 3:无记忆 DPD 只到 -19.7 dB,depth 2/3 拿到
+-27.9/-36.1 dB 的大头,再加深(depth 4/6 → -39.9/-41.5)收益递减。
+即**流片前用便宜的双音就把 DPD 记忆量级定下来**,系数留给实测训练。

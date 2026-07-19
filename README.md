@@ -121,6 +121,7 @@ src/padpd/               # Python 包(代码与注释为英文)
   │                      #   + align.py(整数+分数延迟对齐)
   cfr.py                 #   CFR 削峰(迭代削峰滤波,DPD 前级)
   loopback.py            #   环回观测通路损伤模型(DPD 预算研究)
+  two_tone.py            #   双音记忆诊断 → DPD 资源预判(流片前定规模)
   pa/hb_import.py        #   HB/S21 导入 → Wiener-Hammerstein(流片前预判)
   pa/drift.py            #   时变 PA(温漂/老化跟踪研究)
   dpd/adaptive.py        #   自适应/在线 DPD(块 RLS,跟踪 PA 漂移)
@@ -156,7 +157,9 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 - **GUI**:双版本图形界面(Streamlit Web 工作台 + PySide6 桌面版/exe 打包)✅
 - **Phase 5**:现场硬化与硅前/硅后落地 ✅ —— 自适应 RLS DPD(跟踪 PA 漂移,
   满漂移领先冻结 DPD 10.4 dB EVM)、物理漏极效率、QAT、**RTL 生成器
-  (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI
+  (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI、
+  **双音记忆诊断**(多 delta-f 双音粗判记忆强度 → 预判 DPD 记忆规模,
+  流片前用便宜表征定档,系数留给实测)
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 本环境(4 核 CPU、无 GPU)已完成可做部分;仍需硬件/EDA(FPGA 上板、SDR

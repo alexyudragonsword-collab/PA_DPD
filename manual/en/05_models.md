@@ -128,3 +128,49 @@ dpd.update(pa, x)                  # update from each block's loopback
 drifts cold->hot, a frozen batch DPD degrades to **-28.4 dB EVM** while
 the adaptive one holds **-38.8 dB** (a 10.4 dB gap at full drift) —
 the answer to "will DPD hold up in the field".
+
+## 5.8 Two-Tone Memory Diagnostics: Sizing DPD Before Tapeout
+
+A single-tone AM-AM/AM-PM sweep gives only the **static** nonlinearity
+and is blind to memory: the same static curve fits both a memoryless and
+a strongly dynamic PA. A **two-tone spacing sweep (delta-f)** is exactly
+the large-signal characterization a pre-tapeout circuit simulator gives
+cheaply (a harmonic-balance two-tone at a few tone spacings), making it
+the natural bridge from Spectre to a DPD-complexity estimate.
+
+The idea is not to force the two-tone to hand over full memory kernels,
+but to **gauge memory strength from IM3 across several delta-f**, decide
+how much DPD memory to reserve, and leave coefficient training to
+measured data. `padpd.two_tone` reads two orthogonal memory signatures:
+
+- **spacing dependence** — sweeping tone spacing sweeps the envelope
+  frequency; IM3 that changes with spacing means memory (bias/matching
+  electrical memory at MHz spacings, thermal memory at kHz). A memoryless
+  nonlinearity gives IM3 flat in spacing.
+- **upper/lower asymmetry** — a memoryless nonlinearity gives equal
+  lower and upper IM3; any imbalance is a memory (complex/cross-term)
+  signature, and its growth toward small spacing points at thermal memory.
+
+The larger of the two condenses to a scalar **memory strength (dB)** —
+roughly how many dB of IM3 a static model cannot reproduce.
+`recommend_dpd_budget` maps it to a rough DPD size: how much diagonal
+memory depth to reserve and whether GMP cross terms are worth carrying.
+
+```python
+from padpd.two_tone import sweep_two_tone, recommend_dpd_budget
+r = sweep_two_tone(pa, [0.5e6,1e6,2e6,5e6,10e6,20e6,40e6], fs=320e6)
+b = recommend_dpd_budget(r)          # {'memory_depth':3,'use_cross_terms':True,...}
+# a circuit two-tone sweep feeds in directly:
+from padpd.two_tone import memory_strength_from_table
+r = memory_strength_from_table(spacings, im3_lower_dbc, im3_upper_dbc)
+```
+
+`scripts/run_two_tone_study.py` closes the loop: a memoryless Saleh reads
+**0.0 dB** memory strength (reserve depth 1), a strongly dispersive PA
+reads **3.0 dB** (reserve depth 3 + cross terms). Sweeping a real ILA-GMP
+DPD over memory depth on a modulated 802.11 signal puts the EVM knee
+exactly at the two-tone-predicted depth 3: a memoryless DPD reaches only
+-19.7 dB, depth 2/3 bank the bulk (-27.9/-36.1 dB), and going deeper
+(depth 4/6 -> -39.9/-41.5) yields diminishing returns. So the **cheap
+two-tone sizes DPD memory before tapeout**, with the coefficients left to
+measured-data training.
