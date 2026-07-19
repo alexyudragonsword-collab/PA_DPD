@@ -156,6 +156,25 @@ roughly how many dB of IM3 a static model cannot reproduce.
 `recommend_dpd_budget` maps it to a rough DPD size: how much diagonal
 memory depth to reserve and whether GMP cross terms are worth carrying.
 
+The decision runs in three stages — **measure IM3 -> condense to three
+criteria -> gradient thresholds pick the size**:
+
+![Two-tone memory -> DPD budget decision flow](assets/two_tone_budget.png)
+
+- **Measure**: a two-tone sweep over several spacings reads the lower and
+  upper IM3 (dBc). A memoryless PA gives equal, spacing-flat IM3; memory
+  breaks that symmetry.
+- **Criteria**: `spread = ptp(avg IM3 over spacing)` gauges diagonal
+  (symmetric) memory; `asym = max|upper-lower|` gauges cross (complex)
+  memory; asymmetry peaking at the smallest spacing flags thermal memory;
+  `memory strength = max(spread, asym)`.
+- **Decide**: `spread` maps through `<0.5/1.5/3/6` to memory depth
+  `1/2/3/4/5`; `asym >= 1 dB` turns on GMP cross terms (`>= 4 dB` deepens
+  them); a thermal flag adds a slow envelope-LPF branch; the result is a
+  GMP recipe plus its coefficient count. The thresholds are a heuristic
+  calibrated against a closed-loop DPD sweep — they set a floor to
+  reserve, and the coefficients are still trained on measured data.
+
 ```python
 from padpd.two_tone import sweep_two_tone, recommend_dpd_budget
 r = sweep_two_tone(pa, [0.5e6,1e6,2e6,5e6,10e6,20e6,40e6], fs=320e6)

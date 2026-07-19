@@ -127,6 +127,20 @@ DPD 退化到 **-28.4 dB EVM**,自适应保持 **-38.8 dB**(满漂移领先
 复现的那部分 IM3 有多少 dB"。`recommend_dpd_budget` 把它映射到粗略
 DPD 规模:留多深的对角记忆、要不要 GMP 交叉项。
 
+判断链路分三段——**测量 IM3 → 浓缩成三个判据 → 阈值梯度定档**:
+
+![双音记忆 → DPD 预算的判断流程](assets/two_tone_budget.png)
+
+- **测量**:双音扫多个音间距,读上/下边带 IM3(dBc)。无记忆 PA 上下
+  相等且不随间距变,记忆打破这个对称。
+- **三判据**:`spread = ptp(各间距平均 IM3)` 度量对角(对称)记忆;
+  `asym = max|上−下|` 度量交叉(复数)记忆;不对称在最小间距处最大
+  ⇒ 疑似热记忆;`记忆强度 = max(spread, asym)`。
+- **定档**:`spread` 按 `<0.5/1.5/3/6` 档映射到记忆深度 `1/2/3/4/5`;
+  `asym≥1 dB` 起加 GMP 交叉项(`≥4 dB` 加深);热记忆再挂一条慢包络
+  LPF 支路;最后拼出 GMP 配方与估算系数量。阈值是拿闭环 DPD 扫描
+  标定的启发式,给的是"预留下限",系数仍用实测训练。
+
 ```python
 from padpd.two_tone import sweep_two_tone, recommend_dpd_budget
 r = sweep_two_tone(pa, [0.5e6,1e6,2e6,5e6,10e6,20e6,40e6], fs=320e6)
