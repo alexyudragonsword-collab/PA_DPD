@@ -8,6 +8,7 @@ from .memory_polynomial import MemoryPolynomialModel
 from .gmp import GMPModel
 from .ddr import DDRVolterraModel
 from .reference_pa import ReferencePA
+from .drift import DriftingReferencePA
 from .hb_import import (WienerHammersteinPA, load_amam_table, load_hb_pa,
                         s21_to_fir)
 from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
@@ -41,6 +42,7 @@ __all__ = [
     "GMPModel",
     "DDRVolterraModel",
     "ReferencePA",
+    "DriftingReferencePA",
     "WienerHammersteinPA",
     "load_amam_table",
     "load_hb_pa",
