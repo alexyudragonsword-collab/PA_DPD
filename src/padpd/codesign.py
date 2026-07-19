@@ -29,13 +29,41 @@ def saturation_amplitude(pa: ReferencePA) -> float:
     return float(np.abs(pa(r)).max())
 
 
-def pae_proxy(pa: ReferencePA, x: np.ndarray, eta_max: float = 0.70) -> float:
-    """Efficiency proxy in [0, eta_max]: Class-B-like average output
-    amplitude relative to saturation. Increases as the PA is driven
-    harder (higher operating point), capturing the efficiency-linearity
-    tension."""
+def drain_efficiency(pa, x: np.ndarray, pa_class: str = "B",
+                     eta_peak: float | None = None) -> float:
+    """Average drain efficiency of an ideal reduced-conduction-angle PA.
+
+    Physically grounded (not a bare proxy) and computable from any
+    :class:`~padpd.pa.base.PAModel` — the synthetic ReferencePA or a
+    Wiener-Hammerstein PA imported from harmonic-balance simulation — via
+    its AM-AM saturation. Instantaneous efficiency scales with output
+    voltage relative to the saturation amplitude ``Vmax``; averaging uses
+    the power (PAE) convention ``eta = <P_out> / <P_dc>``:
+
+    - **Class A**  : DC current constant, ``eta = eta_peak * <|y|^2>/Vmax^2``
+    - **Class B/AB**: DC current tracks output amplitude,
+      ``eta = eta_peak * <|y|^2> / (Vmax * <|y|>)``
+
+    At CW saturation both give ``eta_peak`` (pi/4 for Class B, 1/2 for
+    Class A by default). Back-off (high PAPR) drops the average, and
+    driving the PA harder raises it — the efficiency/linearity tension
+    the co-design balances. Pass ``eta_peak`` to model higher-efficiency
+    architectures (e.g. Doherty/Class-F peak ~0.9).
+    """
+    peaks = {"A": 0.5, "B": np.pi / 4, "AB": 0.6}
+    if eta_peak is None:
+        eta_peak = peaks.get(pa_class.upper(), np.pi / 4)
     y = pa(x)
-    return float(eta_max * np.mean(np.abs(y)) / saturation_amplitude(pa))
+    a = np.abs(y)
+    vmax = saturation_amplitude(pa)
+    if pa_class.upper() == "A":
+        return float(eta_peak * np.mean(a ** 2) / vmax ** 2)
+    return float(eta_peak * np.mean(a ** 2) / (vmax * np.mean(a) + 1e-30))
+
+
+def pae_proxy(pa: ReferencePA, x: np.ndarray, eta_max: float = 0.70) -> float:
+    """Deprecated alias kept for compatibility; see :func:`drain_efficiency`."""
+    return drain_efficiency(pa, x, pa_class="B")
 
 
 def _dpd_cost_options():
@@ -45,7 +73,8 @@ def _dpd_cost_options():
 
 def codesign_point(drive: float, x_train: np.ndarray, x_val, val_wf,
                    evm_spec_db: float, fs: float, bw: float,
-                   cfr_papr_db: float | None = None) -> dict:
+                   cfr_papr_db: float | None = None,
+                   pa_class: str = "B") -> dict:
     """Evaluate one PA operating point: efficiency, and the cheapest DDR
     DPD (if any) that meets the EVM spec.
 
@@ -59,7 +88,7 @@ def codesign_point(drive: float, x_train: np.ndarray, x_val, val_wf,
         xt = cfr_clip_filter(xt, cfr_papr_db, fs, bw)
         xv = cfr_clip_filter(xv, cfr_papr_db, fs, bw)
 
-    pae = pae_proxy(pa, xv)
+    pae = drain_efficiency(pa, xv, pa_class=pa_class)
     evm_nodpd = evm_of_signal(pa(xv), val_wf).db
 
     best = None
@@ -85,7 +114,7 @@ def codesign_point(drive: float, x_train: np.ndarray, x_val, val_wf,
 
 
 def codesign_sweep(drives, x_train, x_val, val_wf, evm_spec_db, fs, bw,
-                   cfr_papr_db=None):
+                   cfr_papr_db=None, pa_class="B"):
     """Run :func:`codesign_point` over a list of PA operating points."""
     return [codesign_point(d, x_train, x_val, val_wf, evm_spec_db, fs, bw,
-                           cfr_papr_db) for d in drives]
+                           cfr_papr_db, pa_class) for d in drives]

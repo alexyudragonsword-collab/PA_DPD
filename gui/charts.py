@@ -175,7 +175,7 @@ def fig_codesign(rows: list, budget: int | None = None,
     pal = palette()
     d = [r["drive"] for r in rows]
     fig.add_trace(go.Scatter(x=d, y=[100 * r["pae"] for r in rows],
-                             name=tr("PAE 代理 (%)"), mode="lines+markers",
+                             name=tr("漏极效率 (%)"), mode="lines+markers",
                              line=dict(color=pal[1])), secondary_y=False)
     fig.add_trace(go.Scatter(x=d, y=[r["dpd_cost"] for r in rows],
                              name=tr("DPD 达标代价 (系数)"),

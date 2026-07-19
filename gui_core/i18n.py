@@ -449,6 +449,7 @@ _EN = {
     "DPD 系数": "DPD coeffs",
     "DPD 达标代价 (系数)": "DPD cost to meet spec (coeffs)",
     "PAE 代理 (%)": "PAE proxy (%)",
+    "漏极效率 (%)": "Drain efficiency (%)",
     "✅ 扫描完成({n} 个工作点)":
         "✅ Sweep done ({n} operating points)",
     "初始 drive(保守)": "Initial drive (conservative)",
