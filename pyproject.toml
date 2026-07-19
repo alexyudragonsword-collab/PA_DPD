@@ -5,15 +5,32 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "padpd"
 version = "0.1.0"
-description = "WiFi 7 PA behavioral modeling and DPD baseline framework"
+description = "WiFi 7 PA behavioral modeling + DPD AI-assisted R&D platform"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
+keywords = ["DPD", "power-amplifier", "digital-predistortion", "WiFi7",
+            "802.11be", "RF", "behavioral-modeling"]
+authors = [{ name = "padpd contributors" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+    "Operating System :: OS Independent",
+]
 dependencies = [
     "numpy>=1.24",
     "scipy>=1.10",
     "matplotlib>=3.7",
 ]
+
+[project.urls]
+Homepage = "https://github.com/alexyudragonsword-collab/PA_DPD"
+Repository = "https://github.com/alexyudragonsword-collab/PA_DPD"
 
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]

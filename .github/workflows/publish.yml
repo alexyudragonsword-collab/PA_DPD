@@ -1,0 +1,30 @@
+name: Publish to PyPI
+
+# Publishes the sdist + wheel to PyPI when a v* tag is pushed. Uses PyPI
+# Trusted Publishing (OIDC) — configure the project as a trusted publisher
+# on PyPI (no API token needed). Falls back to nothing if not configured.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write        # required for trusted publishing
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Build
+        run: |
+          pip install build
+          python -m build
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          skip-existing: true
