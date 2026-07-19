@@ -375,6 +375,12 @@ def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
         vp = os.path.join(out_dir, f"reference_vectors_w{w_bits}.csv")
         export_reference_vectors(fp, x_e, vp, n=n_vectors)
         paths["vectors"] = vp
+        # synthesizable Verilog DPD MAC + bit-true testbench
+        from padpd.deploy.rtl import emit_rtl, verify_with_iverilog
+        rtl_dir = os.path.join(out_dir, "rtl")
+        rtl = emit_rtl(model, rtl_dir, w_bits=w_bits, data_bits=w_bits)
+        paths["rtl_verilog"] = rtl["verilog"]
+        paths["rtl_verified"] = verify_with_iverilog(rtl_dir)["passed"]
     return paths
 
 

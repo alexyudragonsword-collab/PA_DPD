@@ -189,6 +189,10 @@ class DeployPage(QWidget):
                 lines.append(tr("ONNX 数值验证") + " "
                              + (tr("✅ 通过") if paths["onnx_verified"]
                                 else tr("跳过")))
+            if "rtl_verified" in paths:
+                lines.append(tr("RTL bit-true 验证") + " "
+                             + (tr("✅ 通过") if paths["rtl_verified"]
+                                else tr("跳过")))
             self.msg.setText("📦 " + "\n".join(lines))
         except Exception as e:
             self.msg.setText(tr("❌ 导出失败:{e}").format(e=e))

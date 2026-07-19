@@ -102,3 +102,9 @@ if paths:
             else ui.tr("ONNX 数值验证 跳过"),
             "ok" if paths["onnx_verified"] else "info"),
             unsafe_allow_html=True)
+    if paths.get("rtl_verified") is not None:
+        st.markdown(ui.badge(
+            ui.tr("RTL bit-true 验证通过") if paths["rtl_verified"]
+            else ui.tr("RTL bit-true 验证跳过"),
+            "ok" if paths["rtl_verified"] else "info"),
+            unsafe_allow_html=True)
