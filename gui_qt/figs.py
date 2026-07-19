@@ -46,6 +46,19 @@ def ccdf_fig(curves: dict) -> Figure:
     return fig
 
 
+def two_tone_fig(res: dict) -> Figure:
+    """IM3 lower/upper (dBc) vs tone spacing (log-x). ``res`` is the dict
+    from ``services.analyze_two_tone_csv``."""
+    fig, ax = _fig()
+    s = np.asarray(res["spacings_hz"]) / 1e6
+    ax.semilogx(s, res["im3_lower_dbc"], "o-", lw=1.3, label=tr("下边带 IM3"))
+    ax.semilogx(s, res["im3_upper_dbc"], "s-", lw=1.3, label=tr("上边带 IM3"))
+    ax.set_xlabel(tr("音间距 (MHz)"))
+    ax.set_ylabel("IM3 (dBc)")
+    ax.legend(fontsize=8)
+    return fig
+
+
 def constellation_fig(points_by_label: dict) -> Figure:
     fig, ax = _fig(5.4, 5.0)
     for label, pts in points_by_label.items():

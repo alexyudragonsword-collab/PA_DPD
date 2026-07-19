@@ -137,6 +137,7 @@ gui/                     # Web 工作台(Streamlit + Plotly,8 页)
 gui_qt/                  # 桌面版(PySide6 + matplotlib,8 页,QSS 深色主题)
 packaging/               # PyInstaller 打包(spec / Windows bat / 说明)
 scripts/                 # 合成 demo / 数据集生成 / OpenDPD 真实数据 baseline
+examples/                # 可直接 load 的输入范例(双音 IM3 表等)
 tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数值等价测试)
 ```
 

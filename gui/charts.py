@@ -120,6 +120,27 @@ def fig_amam(am: dict, title: str = "AM-AM / AM-PM") -> go.Figure:
     return fig
 
 
+def fig_two_tone(res: dict, title: str | None = None) -> go.Figure:
+    """IM3 lower/upper (dBc) vs tone spacing on a log-x axis.
+
+    ``res`` is the dict from ``services.analyze_two_tone_csv``. Spacing
+    dependence (spread) and upper/lower gap (asymmetry) are the visible
+    memory signatures.
+    """
+    fig = _fig(tr("双音 IM3 vs 音间距") if title is None else title)
+    pal = palette()
+    s = np.asarray(res["spacings_hz"]) / 1e6
+    fig.add_trace(go.Scatter(x=s, y=res["im3_lower_dbc"], name=tr("下边带 IM3"),
+                             mode="lines+markers", line=dict(width=1.8,
+                             color=pal[0])))
+    fig.add_trace(go.Scatter(x=s, y=res["im3_upper_dbc"], name=tr("上边带 IM3"),
+                             mode="lines+markers", line=dict(width=1.8,
+                             color=pal[1])))
+    fig.update_xaxes(title=tr("音间距 (MHz)"), type="log")
+    fig.update_yaxes(title="IM3 (dBc)")
+    return fig
+
+
 def fig_ccdf(curves: dict, title: str | None = None) -> go.Figure:
     fig = _fig(tr("CCDF 峰值统计") if title is None else title)
     for label, (level, prob) in curves.items():

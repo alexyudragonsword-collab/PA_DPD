@@ -212,6 +212,49 @@ _EN = {
     "✅ 已注册:{name}": "✅ Registered: {name}",
     "移除": "Remove",
     "移除该数据源": "Remove this source",
+    # ---- two-tone memory diagnostics -------------------------------
+    "〰️ 双音记忆诊断": "〰️ Two-tone memory",
+    "双音记忆诊断": "Two-tone memory diagnostics",
+    "双音 IM3": "Two-tone IM3",
+    "双音 IM3 vs 音间距": "Two-tone IM3 vs spacing",
+    "下边带 IM3": "Lower IM3",
+    "上边带 IM3": "Upper IM3",
+    "音间距 (MHz)": "Tone spacing (MHz)",
+    "载入双音扫音间距的 IM3 表(电路仿真或实测),用记忆强度预判 DPD 该预留多少记忆资源;"
+    "系数仍用实测数据训练。CSV 列:spacing_hz, im3_lower_dbc, im3_upper_dbc"
+    "[, im5_avg_dbc]。":
+        "Load a two-tone IM3-vs-spacing table (circuit sim or bench); the "
+        "memory strength sizes how much DPD memory to reserve — the "
+        "coefficients are still trained on measured data. CSV columns: "
+        "spacing_hz, im3_lower_dbc, im3_upper_dbc[, im5_avg_dbc].",
+    "载入双音扫音间距的 IM3 表(电路仿真或实测),用记忆强度预判 DPD 该预留多少记忆;"
+    "系数仍用实测训练。":
+        "Load a two-tone IM3-vs-spacing table (circuit sim or bench); the "
+        "memory strength sizes how much DPD memory to reserve. The "
+        "coefficients are still trained on measured data.",
+    "载入示例(examples/two_tone_example.csv)":
+        "Load example (examples/two_tone_example.csv)",
+    "载入示例": "Load example",
+    "载入双音 IM3 表 (CSV)…": "Load two-tone IM3 table (CSV)…",
+    "载入双音 IM3 表": "Load two-tone IM3 table",
+    "上传双音 IM3 表 CSV": "Upload two-tone IM3 table CSV",
+    "CSV (*.csv);;全部 (*)": "CSV (*.csv);;All (*)",
+    "记忆强度": "Memory strength",
+    "建议记忆深度": "Suggested memory depth",
+    "GMP 交叉项": "GMP cross terms",
+    "估算系数量": "Est. coefficients",
+    "需要": "yes",
+    "不需要": "no",
+    "疑似": "suspected",
+    "无": "none",
+    "间距spread {spread:.1f} dB · 峰值不对称 {asym:.1f} dB · 热记忆:{th}":
+        "spacing spread {spread:.1f} dB · peak asymmetry {asym:.1f} dB · "
+        "thermal: {th}",
+    "记忆强度 {ms:.1f} dB → 建议记忆深度 {d}、交叉项 {cx}(约 {nc} 系数);"
+    "热记忆 {th}。系数仍用实测训练。":
+        "Memory strength {ms:.1f} dB → reserve memory depth {d}, cross "
+        "terms {cx} (~{nc} coeffs); thermal memory {th}. Coefficients are "
+        "still trained on measured data.",
     "train / val / test": "train / val / test",
     "主带宽": "Main bandwidth",
     "调制 / 子信道": "Modulation / sub-channels",

@@ -136,6 +136,12 @@ from padpd.two_tone import memory_strength_from_table
 r = memory_strength_from_table(spacings, im3_lower_dbc, im3_upper_dbc)
 ```
 
+**GUI 入口**:数据管理页"〰️ 双音记忆诊断"标签可直接"载入示例"或上传
+你的双音 IM3 表 CSV,即时看到记忆强度、建议记忆深度/交叉项/估算系数量、
+IM3-音间距曲线与热记忆判断(示例
+`examples/two_tone_example.csv` → 记忆强度 8.5 dB、深度 5、需交叉项、
+疑似热记忆)。
+
 `scripts/run_two_tone_study.py` 做了闭环验证:无记忆 Saleh 读出记忆
 强度 **0.0 dB**(留 depth 1),强色散 PA 读出 **3.0 dB**(留 depth 3
 + 交叉项)。在强 PA 上用真实 802.11 信号扫 ILA-GMP 记忆深度,EVM 拐点

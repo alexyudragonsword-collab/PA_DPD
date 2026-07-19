@@ -165,6 +165,13 @@ from padpd.two_tone import memory_strength_from_table
 r = memory_strength_from_table(spacings, im3_lower_dbc, im3_upper_dbc)
 ```
 
+**GUI entry**: the Data Manager's "〰️ Two-tone memory" tab lets you
+"Load example" or upload your own two-tone IM3 CSV and immediately see the
+memory strength, the recommended memory depth / cross terms / coefficient
+count, the IM3-vs-spacing curve, and the thermal-memory verdict (the
+shipped `examples/two_tone_example.csv` reads 8.5 dB, depth 5, cross terms
+needed, thermal suspected).
+
 `scripts/run_two_tone_study.py` closes the loop: a memoryless Saleh reads
 **0.0 dB** memory strength (reserve depth 1), a strongly dispersive PA
 reads **3.0 dB** (reserve depth 3 + cross terms). Sweeping a real ILA-GMP

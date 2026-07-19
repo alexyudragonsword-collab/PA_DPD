@@ -18,7 +18,7 @@ for p in (str(ROOT), str(ROOT / "src")):
         sys.path.insert(0, p)
 
 from padpd.pa import GMPModel, ReferencePA, SalehPA
-from padpd.two_tone import (TwoToneResult, measure_imd,
+from padpd.two_tone import (TwoToneResult, load_two_tone_csv, measure_imd,
                             memory_strength_from_table, recommend_dpd_budget,
                             sweep_two_tone, two_tone_signal)
 
@@ -98,6 +98,29 @@ def test_from_table_and_thermal_signature():
     assert r.thermal_suspected                              # peaks at min df
     b = recommend_dpd_budget(r)
     assert b["thermal_suspected"] and b["use_cross_terms"]
+
+
+def test_load_two_tone_csv_and_example():
+    example = ROOT / "examples" / "two_tone_example.csv"
+    assert example.exists(), "shipped example CSV missing"
+    r = load_two_tone_csv(str(example))
+    assert isinstance(r, TwoToneResult)
+    assert len(r.spacings_hz) == 9
+    assert np.all(np.diff(r.spacings_hz) > 0)          # sorted ascending
+    # the example is authored with clear electrical + thermal memory
+    assert r.memory_strength_db > 4.0
+    assert r.thermal_suspected
+    b = recommend_dpd_budget(r)
+    assert b["memory_depth"] >= 4 and b["use_cross_terms"]
+    assert GMPModel(**b["gmp_config"]).n_coeffs == b["est_coeffs"]
+
+
+def test_load_two_tone_csv_missing_column(tmp_path):
+    import pytest
+    p = tmp_path / "bad.csv"
+    p.write_text("spacing_hz,im3_lower_dbc\n1e6,-30\n", encoding="utf-8")
+    with pytest.raises(ValueError):
+        load_two_tone_csv(str(p))
 
 
 def test_table_sorts_by_spacing():

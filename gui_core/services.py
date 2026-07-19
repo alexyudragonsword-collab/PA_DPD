@@ -384,6 +384,37 @@ def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
     return paths
 
 
+# -- two-tone memory diagnostics -----------------------------------------
+EXAMPLE_TWO_TONE_CSV = str(_REPO_ROOT / "examples" / "two_tone_example.csv")
+
+
+def analyze_two_tone_csv(path: str) -> dict:
+    """Load a two-tone IM3-vs-spacing CSV and derive the DPD budget.
+
+    Returns a display-ready dict: the parsed sweep arrays, the condensed
+    memory metrics, and the recommended DPD sizing (GMP memory depth,
+    cross terms, coefficient count, rationale). Used by both GUIs' Data
+    Manager two-tone panel; the coefficients themselves are still trained
+    on measured data.
+    """
+    from padpd.two_tone import load_two_tone_csv, recommend_dpd_budget
+    r = load_two_tone_csv(path)
+    b = recommend_dpd_budget(r)
+    return {"result": r, "budget": b,
+            "spacings_hz": r.spacings_hz,
+            "im3_lower_dbc": r.im3_lower_dbc,
+            "im3_upper_dbc": r.im3_upper_dbc,
+            "im3_avg_dbc": r.im3_avg_dbc,
+            "memory_strength_db": r.memory_strength_db,
+            "im3_spread_db": r.im3_spread_db,
+            "im3_asym_db": r.im3_asym_db,
+            "thermal_suspected": r.thermal_suspected,
+            "memory_depth": b["memory_depth"],
+            "use_cross_terms": b["use_cross_terms"],
+            "est_coeffs": b["est_coeffs"],
+            "rationale": b["rationale"]}
+
+
 # -- misc plot data ------------------------------------------------------
 def psd_pair(y_dict: dict, fs: float) -> dict:
     return {label: psd(y, fs) for label, y in y_dict.items()}

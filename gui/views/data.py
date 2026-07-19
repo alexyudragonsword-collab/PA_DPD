@@ -15,8 +15,9 @@ ui.note(ui.tr("加载实测/仿真 PA 数据(输入输出 IQ 对),预览并注�
               "供 PA 建模与 DPD 页面使用。支持 OpenDPD 数据集目录、"
               "Cadence Envelope CSV、MATLAB .mat、IQDataset .npz。"))
 
-tab_dir, tab_up = st.tabs([ui.tr("📁 OpenDPD 数据集目录"),
-                           ui.tr("⬆️ 上传文件")])
+tab_dir, tab_up, tab_tt = st.tabs([ui.tr("📁 OpenDPD 数据集目录"),
+                                   ui.tr("⬆️ 上传文件"),
+                                   ui.tr("〰️ 双音记忆诊断")])
 
 with tab_dir:
     default = services.default_opendpd_dir()
@@ -66,6 +67,38 @@ with tab_up:
                                 total=f"{src['align_info']['lag_total']:.2f}"))
         except Exception as e:  # surface load errors to the user
             st.error(ui.tr("加载失败:{e}").format(e=e))
+
+with tab_tt:
+    st.caption(ui.tr("载入双音扫音间距的 IM3 表(电路仿真或实测),用记忆强度"
+                     "预判 DPD 该预留多少记忆资源;系数仍用实测数据训练。"
+                     "CSV 列:spacing_hz, im3_lower_dbc, im3_upper_dbc"
+                     "[, im5_avg_dbc]。"))
+    res = None
+    if st.button(ui.tr("载入示例(examples/two_tone_example.csv)")):
+        res = services.analyze_two_tone_csv(services.EXAMPLE_TWO_TONE_CSV)
+    tt_up = st.file_uploader(ui.tr("上传双音 IM3 表 CSV"), type=["csv"],
+                             key="tt_csv")
+    if tt_up is not None:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".csv") as f:
+            f.write(tt_up.getvalue())
+            tt_tmp = f.name
+        try:
+            res = services.analyze_two_tone_csv(tt_tmp)
+        except Exception as e:
+            st.error(ui.tr("加载失败:{e}").format(e=e))
+    if res is not None:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(ui.tr("记忆强度"), f"{res['memory_strength_db']:.1f} dB")
+        m2.metric(ui.tr("建议记忆深度"), str(res["memory_depth"]))
+        m3.metric(ui.tr("GMP 交叉项"),
+                  ui.tr("需要") if res["use_cross_terms"] else ui.tr("不需要"))
+        m4.metric(ui.tr("估算系数量"), str(res["est_coeffs"]))
+        st.caption(ui.tr("间距spread {spread:.1f} dB · 峰值不对称 "
+                         "{asym:.1f} dB · 热记忆:{th}").format(
+            spread=res["im3_spread_db"], asym=res["im3_asym_db"],
+            th=ui.tr("疑似") if res["thermal_suspected"] else ui.tr("无")))
+        st.plotly_chart(charts.fig_two_tone(res), use_container_width=True)
+        st.info(res["rationale"])
 
 st.divider()
 st.subheader(ui.tr("已注册数据源"))

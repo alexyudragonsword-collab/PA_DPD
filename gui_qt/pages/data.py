@@ -43,6 +43,19 @@ class DataPage(QWidget):
         gl.addWidget(self.align)
         lay.addWidget(grp)
 
+        tt = QGroupBox(tr("双音记忆诊断"))
+        ttl = QHBoxLayout(tt)
+        self.btn_tt = QPushButton(tr("载入双音 IM3 表 (CSV)…"))
+        self.btn_tt_ex = QPushButton(tr("载入示例"))
+        self.tt_msg = QLabel(tr("载入双音扫音间距的 IM3 表(电路仿真或实测),"
+                                "用记忆强度预判 DPD 该预留多少记忆;系数仍用"
+                                "实测训练。"))
+        self.tt_msg.setWordWrap(True)
+        ttl.addWidget(self.btn_tt)
+        ttl.addWidget(self.btn_tt_ex)
+        ttl.addWidget(self.tt_msg, 1)
+        lay.addWidget(tt)
+
         sel_row = QHBoxLayout()
         sel_row.addWidget(QLabel(tr("已注册数据源")))
         self.sel = QComboBox()
@@ -60,9 +73,11 @@ class DataPage(QWidget):
         lay.addWidget(card_row([self.c_fs, self.c_n, self.c_bw, self.c_mod]))
 
         self.tabs = QTabWidget()
-        self.p_psd, self.p_amam = FigurePane(), FigurePane()
+        self.p_psd, self.p_amam, self.p_tt = (FigurePane(), FigurePane(),
+                                              FigurePane())
         self.tabs.addTab(self.p_psd, "PSD")
         self.tabs.addTab(self.p_amam, "AM-AM / AM-PM")
+        self.tabs.addTab(self.p_tt, tr("双音 IM3"))
         lay.addWidget(self.tabs, 1)
         self.msg = QLabel("")
         lay.addWidget(self.msg)
@@ -71,6 +86,9 @@ class DataPage(QWidget):
         self.btn_scan.clicked.connect(self.scan)
         self.btn_load_ds.clicked.connect(self.load_ds)
         self.btn_file.clicked.connect(self.load_file)
+        self.btn_tt.clicked.connect(self.load_two_tone)
+        self.btn_tt_ex.clicked.connect(
+            lambda: self.load_two_tone(services.EXAMPLE_TWO_TONE_CSV))
         self.btn_rm.clicked.connect(self.remove)
         self.sel.currentTextChanged.connect(self.preview)
         self.scan()
@@ -126,6 +144,27 @@ class DataPage(QWidget):
                     lag=src["align_info"]["lag_total"]))
         except Exception as e:
             self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
+
+    def load_two_tone(self, path=None):
+        if not path:
+            path, _ = QFileDialog.getOpenFileName(
+                self, tr("载入双音 IM3 表"), "", tr("CSV (*.csv);;全部 (*)"))
+            if not path:
+                return
+        try:
+            res = services.analyze_two_tone_csv(path)
+        except Exception as e:
+            self.tt_msg.setText(tr("❌ 加载失败:{e}").format(e=e))
+            return
+        self.tt_msg.setText(tr(
+            "记忆强度 {ms:.1f} dB → 建议记忆深度 {d}、交叉项 {cx}"
+            "(约 {nc} 系数);热记忆 {th}。系数仍用实测训练。").format(
+            ms=res["memory_strength_db"], d=res["memory_depth"],
+            cx=(tr("需要") if res["use_cross_terms"] else tr("不需要")),
+            nc=res["est_coeffs"],
+            th=(tr("疑似") if res["thermal_suspected"] else tr("无"))))
+        self.p_tt.set_figure(figs.two_tone_fig(res))
+        self.tabs.setCurrentWidget(self.p_tt)
 
     def _register(self, src):
         self.state.sources[src["name"]] = src
