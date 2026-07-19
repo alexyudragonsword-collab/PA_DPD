@@ -85,3 +85,23 @@ demo 结果:GMP 拟合导入 PA 达 NMSE -43.7 dB;DPD 预测 EVM
 联合设计)即可在流片前回答:**这颗 PA 配多大 DPD、退多少功率能过
 spec**。建议同时做鲁棒性扫描(非线性强度/记忆深度扰动 ±20%)确认
 结论不翻转。CSV 列约定见 `docs/02_data_interface.md` 第 8 节。
+
+## 5.7 自适应/在线 DPD 与现场漂移
+
+批处理 DPD 一次性辨识;产品形态需要从环回持续自适应以跟踪 PA 漂移
+(温度/供电/老化)。`padpd.dpd.AdaptiveDPD` 用块 RLS 在 GMP/DDR 基上
+递归更新:
+
+```python
+from padpd.dpd import AdaptiveDPD
+dpd = AdaptiveDPD(forget=0.6)      # forget 越小跟踪越快、越噪
+dpd.warm_start(pa, x, blocks=6)    # 从直通收敛
+dpd.update(pa, x)                  # 每块从环回观测更新
+```
+
+**只提供 RLS**:多项式基条件数约 1e10,LMS/NLMS(即便白化)会发散
+——"线性参数模型必须用 LS 而非 SGD"在在线场景的翻版。
+
+`scripts/run_drift_study.py` 量化现场价值:PA 冷→热漂移中,冻结批处理
+DPD 退化到 **-28.4 dB EVM**,自适应保持 **-38.8 dB**(满漂移领先
+10.4 dB)。这回答了"DPD 在现场能不能扛住"。

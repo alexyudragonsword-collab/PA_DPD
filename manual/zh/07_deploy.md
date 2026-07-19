@@ -63,3 +63,17 @@ https://download.pytorch.org/whl/cpu`),避免把数 GB CUDA 运行库打进包�
 Web 版定位为团队工作台,不做 exe:任何有 Python 的机器
 `pip install -e .[gui] && streamlit run gui/app.py` 即可;局域网共享
 加 `--server.address 0.0.0.0`。两版共享 `gui_runs/` 注册表。
+
+## 7.5 QAT 与 RTL 生成(硅前落地)
+
+**量化感知训练**(`padpd.deploy.qat`):低位宽下 PTQ 直接舍入会掉精度;
+QAT 在微调中插入与部署量化器逐位一致的 fake-quant(直通估计),让浮点
+权重适配目标网格,再在同位宽 PTQ 即可回收精度。`scripts/run_qat_demo.py`
+给出 W10..W6 的 PTQ vs QAT 对比表。
+
+**RTL 生成器**(`padpd.deploy.rtl`)⭐:把定点 DPD 系数点积生成为可综合
+的复数 MAC Verilog(系数烧成 ROM,占 DSP 面积主体)+ 自检 testbench,
+用 Icarus Verilog **逐位验证**对 Python 整数金标准(39 抽头 GMP × 64
+向量 → 0 错误)。经典模型在部署页"生成产物"时会一并产出
+`rtl/dpd_mac.v` 并报告 bit-true 通过。基函数生成前端(延迟、|x|^k)
+作为独立块。

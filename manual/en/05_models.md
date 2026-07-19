@@ -105,3 +105,26 @@ and how much back-off passes spec**. A robustness sweep (perturb the
 nonlinearity strength / memory depth by +/-20%) is recommended to
 confirm the verdict does not flip. CSV column conventions are in
 `docs/02_data_interface.md`, Section 8.
+
+## 5.7 Adaptive / Online DPD and Field Drift
+
+Batch DPD identifies once; a product must adapt continuously from a
+loopback to track PA drift (temperature/supply/aging).
+`padpd.dpd.AdaptiveDPD` recursively updates a GMP/DDR predistorter with
+block RLS:
+
+```python
+from padpd.dpd import AdaptiveDPD
+dpd = AdaptiveDPD(forget=0.6)      # smaller forget = faster, noisier tracking
+dpd.warm_start(pa, x, blocks=6)    # converge from pass-through
+dpd.update(pa, x)                  # update from each block's loopback
+```
+
+**Only RLS is offered**: the polynomial basis has a condition number of
+~1e10, so LMS/NLMS (even whitened) diverge — the online counterpart of
+"linear-in-params models need LS, not SGD".
+
+`scripts/run_drift_study.py` quantifies the field value: as the PA
+drifts cold->hot, a frozen batch DPD degrades to **-28.4 dB EVM** while
+the adaptive one holds **-38.8 dB** (a 10.4 dB gap at full drift) —
+the answer to "will DPD hold up in the field".

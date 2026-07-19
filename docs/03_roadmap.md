@@ -194,3 +194,46 @@ Phase 1 (baseline) ✅
                         └─→ Phase 3 (部署:定点/PTQ/导出 ✅ / QAT·RTL ⏳)
                         └─→ Phase 4 (联合设计:权衡研究 ✅ / 梯度寻优 ✅)
 ```
+
+## Phase 5:现场硬化与硅前/硅后落地 ✅
+
+在完整平台(五阶段 + 双 GUI + 手册 + exe)之上补齐"实验室到量产"链路:
+
+### 5.1 自适应/在线 DPD(`padpd.dpd.AdaptiveDPD`)
+指数加权块 RLS 在 GMP/DDR 基上递归更新,从环回观测持续跟踪 PA 漂移。
+**LMS/NLMS 刻意不提供**:多项式基条件数 ~1e10,梯度法(即便用暖启协
+方差白化)发散为 NaN——这是"线性参数模型必须用 LS 而非 SGD"在在线
+场景的翻版。
+
+### 5.2 温漂/老化跟踪研究(`DriftingReferencePA` + `run_drift_study.py`)
+时变 PA(drive/AM-AM 拐点/AM-PM 斜率随状态 0→1 漂移)下,冻结批处理
+DPD 与自适应 RLS 对比:满漂移时**冻结退化到 -28.4 dB EVM(ACLR
+-34.3),自适应保持 -38.8 dB(ACLR -40.6)——现场失效差距 10.4 dB**。
+
+### 5.3 物理效率模型接入联合设计(`codesign.drain_efficiency`)
+用 PAE 惯例 `<P_out>/<P_dc>` 从任意 PA 模型的 AM-AM 饱和导出平均漏极
+效率(Class A/B/AB;CW 饱和达 π/4 / 0.5,已验证),替换原 PAE 代理;
+对 HB 导入的 Wiener-Hammerstein PA 同样成立,故联合设计的效率轴在
+流片前即有物理意义。
+
+### 5.4 量化感知训练(`padpd.deploy.qat`)
+直通估计的 fake-quant(功率-2 对称,与部署量化器逐位一致)在微调中
+把浮点权重适配到目标位宽;对已很抗量化的小 TCN 一致回收 ~0.7-0.8 dB,
+PTQ 损失越大回收越多。
+
+### 5.5 RTL 生成器(`padpd.deploy.rtl`)⭐
+生成可综合的定点复数 MAC(DPD 系数点积,占 DSP 面积主体)Verilog +
+自检 testbench,系数烧成 ROM;`verify_with_iverilog` 用 Icarus Verilog
+跑通并**逐位比对 Python 整数金标准:39 抽头 GMP DPD × 64 向量 → 0 错误**。
+全整数运算保证 RTL 与 Python 完全一致;基函数生成前端(延迟、|x|^k)
+作为独立块。已接入部署导出(经典模型导出即产 `rtl/dpd_mac.v` 并报告
+bit-true 通过)。
+
+### 5.6 跨平台 CI + PyPI 打包
+CI 扩为 ubuntu/windows/macos 矩阵(+ Linux 3.10/3.12),专用 Linux
+job 装 iverilog 跑 RTL 测试;`v*` tag 经 Trusted Publishing 发 PyPI。
+wheel/sdist 本地构建 + `twine check` 均通过。
+
+**Phase 3/4 的原 GPU/EDA 待办**:QAT ✅(CPU 可行部分)、RTL ✅(定点
+MAC + iverilog 验证);仍需硬件的是 FPGA 上板与 SDR/仪器在环、Spectre
+在环联合设计。

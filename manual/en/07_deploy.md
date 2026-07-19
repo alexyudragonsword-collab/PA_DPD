@@ -72,3 +72,21 @@ The Web version is positioned as a team workbench, not an exe: on any machine
 with Python, run `pip install -e .[gui] && streamlit run gui/app.py`; add
 `--server.address 0.0.0.0` for LAN sharing. Both versions share the
 `gui_runs/` registry.
+
+## 7.5 QAT and RTL Generation (Pre-Silicon Bring-Up)
+
+**Quantization-aware training** (`padpd.deploy.qat`): plain PTQ rounding
+loses accuracy at low bit widths; QAT inserts a fake-quantizer (bit-exact
+match to the deployed quantizer, straight-through gradient) during a
+fine-tune so the float weights adapt to the target grid, and the same
+PTQ then recovers accuracy. `scripts/run_qat_demo.py` prints a PTQ-vs-QAT
+table across W10..W6.
+
+**RTL generator** (`padpd.deploy.rtl`): emits the fixed-point DPD
+coefficient dot product as a synthesizable complex-MAC Verilog module
+(coefficients baked into a ROM, the bulk of the DSP-slice area) plus a
+self-checking testbench, and **verifies it bit-true** against the Python
+integer golden reference under Icarus Verilog (39-tap GMP x 64 vectors ->
+0 errors). Exporting a classical model from the Deployment page now also
+writes `rtl/dpd_mac.v` and reports the bit-true result. The
+basis-generation front-end (delays, |x|^k) is a separate block.

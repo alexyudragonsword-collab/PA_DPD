@@ -122,6 +122,10 @@ src/padpd/               # Python 包(代码与注释为英文)
   cfr.py                 #   CFR 削峰(迭代削峰滤波,DPD 前级)
   loopback.py            #   环回观测通路损伤模型(DPD 预算研究)
   pa/hb_import.py        #   HB/S21 导入 → Wiener-Hammerstein(流片前预判)
+  pa/drift.py            #   时变 PA(温漂/老化跟踪研究)
+  dpd/adaptive.py        #   自适应/在线 DPD(块 RLS,跟踪 PA 漂移)
+  deploy/qat.py          #   量化感知训练(fake-quant + 直通估计)
+  deploy/rtl.py          #   RTL 生成器(可综合 Verilog DPD MAC + bit-true 验证)
   codesign.py            #   Phase 4 PA/DPD 联合设计权衡研究
   deploy/                #   Phase 3 部署:bit-true 量化 + 神经 PTQ +
   │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
@@ -147,10 +151,13 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 - **Phase 1**:经典 baseline 全链路(Saleh/MP/GMP/DDR、ILA、CFR、指标)✅
 - **Phase 1.5**:OpenDPD 对标检视与补齐(真实数据 baseline)✅
 - **Phase 2 / 2.5**:神经 PA 建模(GRU/DGRU/TCN)+ DLA Neural DPD;TCN 超 GMP ✅
-- **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅(QAT/RTL 需 GPU/硬件)
+- **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅
 - **Phase 4**:PA/DPD 联合设计(离散 Pareto + 可微梯度寻优)✅(Spectre 回环需 EDA)
 - **GUI**:双版本图形界面(Streamlit Web 工作台 + PySide6 桌面版/exe 打包)✅
+- **Phase 5**:现场硬化与硅前/硅后落地 ✅ —— 自适应 RLS DPD(跟踪 PA 漂移,
+  满漂移领先冻结 DPD 10.4 dB EVM)、物理漏极效率、QAT、**RTL 生成器
+  (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
-本环境(4 核 CPU、无 GPU)已完成可做部分;需 GPU(QAT、多 seed)或硬件/EDA
-(FPGA RTL、SDR 台架、Spectre 回环)的项目物料与接口均已就绪,可用现有脚本推进。
+本环境(4 核 CPU、无 GPU)已完成可做部分;仍需硬件/EDA(FPGA 上板、SDR
+台架、Spectre 回环)的项目接口均已就绪,可用现有脚本推进。
