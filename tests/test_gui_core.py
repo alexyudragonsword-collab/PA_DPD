@@ -69,3 +69,21 @@ def test_export_artifacts_classical(synth, tmp_path):
     import os
     assert os.path.exists(paths["coeffs"])
     assert os.path.exists(paths["vectors"])
+
+
+def test_default_opendpd_dir_is_platform_appropriate(monkeypatch):
+    from pathlib import Path
+    # with a bogus env override and no real dirs, falls back to a
+    # home-relative path valid on the current OS (never a hardcoded
+    # foreign path)
+    monkeypatch.setenv("OPENDPD_DIR", str(Path("nope_xyz_123")))
+    monkeypatch.chdir(Path.home())
+    d = services.default_opendpd_dir()
+    assert d
+    assert "OpenDPD" in d and "datasets" in d
+
+
+def test_default_opendpd_dir_honours_env(tmp_path, monkeypatch):
+    (tmp_path / "spec_dir").mkdir()
+    monkeypatch.setenv("OPENDPD_DIR", str(tmp_path))
+    assert services.default_opendpd_dir() == str(tmp_path)

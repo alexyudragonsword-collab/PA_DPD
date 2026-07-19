@@ -3,6 +3,7 @@ from pathlib import Path
 from PySide6.QtWidgets import (QLabel, QTableWidget, QTableWidgetItem,
                                QVBoxLayout, QWidget)
 
+from gui_core import services
 from gui_qt.common import (MetricCard, card_row, get_state, page_scaffold,
                            tr)
 
@@ -52,7 +53,7 @@ class HomePage(QWidget):
                 v=torch.__version__))
         except ImportError:
             parts.append(tr("⚠️ PyTorch 未安装(神经功能不可用)"))
-        od = Path("/home/user/OpenDPD/datasets")
+        od = Path(services.default_opendpd_dir())
         parts.append(tr("✅ OpenDPD 数据集:{path}").format(path=od)
                      if od.is_dir()
                      else tr("ℹ️ OpenDPD 未找到(可在数据页指定)"))

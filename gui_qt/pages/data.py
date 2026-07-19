@@ -24,7 +24,9 @@ class DataPage(QWidget):
 
         grp = QGroupBox(tr("加载"))
         gl = QHBoxLayout(grp)
-        self.root = QLineEdit("/home/user/OpenDPD/datasets")
+        self.root = QLineEdit(services.default_opendpd_dir())
+        self.root.setPlaceholderText(tr("选择 OpenDPD 的 datasets 目录"))
+        self.btn_browse = QPushButton(tr("浏览…"))
         self.ds = QComboBox()
         self.btn_scan = QPushButton(tr("扫描目录"))
         self.btn_load_ds = QPushButton(tr("加载数据集"))
@@ -33,6 +35,7 @@ class DataPage(QWidget):
         self.align = QCheckBox(tr("自动延迟对齐"))
         gl.addWidget(QLabel(tr("OpenDPD 目录")))
         gl.addWidget(self.root, 2)
+        gl.addWidget(self.btn_browse)
         gl.addWidget(self.btn_scan)
         gl.addWidget(self.ds, 1)
         gl.addWidget(self.btn_load_ds)
@@ -64,6 +67,7 @@ class DataPage(QWidget):
         self.msg = QLabel("")
         lay.addWidget(self.msg)
 
+        self.btn_browse.clicked.connect(self.browse)
         self.btn_scan.clicked.connect(self.scan)
         self.btn_load_ds.clicked.connect(self.load_ds)
         self.btn_file.clicked.connect(self.load_file)
@@ -71,12 +75,27 @@ class DataPage(QWidget):
         self.sel.currentTextChanged.connect(self.preview)
         self.scan()
 
+    def browse(self):
+        start = self.root.text() if Path(self.root.text()).is_dir() else ""
+        path = QFileDialog.getExistingDirectory(
+            self, tr("选择 OpenDPD 的 datasets 目录"), start)
+        if path:
+            self.root.setText(path)
+            self.scan()
+
     def scan(self):
         self.ds.clear()
         root = Path(self.root.text())
         if root.is_dir():
-            self.ds.addItems(sorted(p.name for p in root.iterdir()
-                                    if (p / "spec.json").exists()))
+            names = sorted(p.name for p in root.iterdir()
+                           if (p / "spec.json").exists())
+            self.ds.addItems(names)
+            self.msg.setText(
+                tr("扫描到 {n} 个数据集").format(n=len(names)) if names
+                else tr("该目录下没有 OpenDPD 数据集(缺 spec.json)"))
+        else:
+            self.msg.setText(tr("目录不存在:{path}").format(
+                path=self.root.text()))
 
     def load_ds(self):
         name = self.ds.currentText()

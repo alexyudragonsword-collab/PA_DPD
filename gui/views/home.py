@@ -39,9 +39,9 @@ with col1:
                     + " " + ui.tr("神经页面不可用"), unsafe_allow_html=True)
 
 with col2:
-    opendpd = Path("/home/user/OpenDPD/datasets")
-    alt = Path("../OpenDPD/datasets")
-    found = opendpd if opendpd.is_dir() else (alt if alt.is_dir() else None)
+    from gui_core import services
+    guess = Path(services.default_opendpd_dir())
+    found = guess if guess.is_dir() else None
     if found:
         n = len([p for p in found.iterdir() if (p / "spec.json").exists()])
         st.markdown(ui.badge(ui.tr("OpenDPD × {n} 数据集").format(n=n), "ok")

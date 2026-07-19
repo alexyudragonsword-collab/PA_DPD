@@ -19,7 +19,7 @@ tab_dir, tab_up = st.tabs([ui.tr("📁 OpenDPD 数据集目录"),
                            ui.tr("⬆️ 上传文件")])
 
 with tab_dir:
-    default = "/home/user/OpenDPD/datasets"
+    default = services.default_opendpd_dir()
     root = st.text_input(ui.tr("OpenDPD datasets 目录"), default)
     rootp = Path(root)
     if rootp.is_dir():

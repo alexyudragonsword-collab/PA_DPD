@@ -177,6 +177,13 @@ _EN = {
     "OpenDPD datasets 目录": "OpenDPD datasets directory",
     "OpenDPD 目录": "OpenDPD directory",
     "扫描目录": "Scan",
+    "浏览…": "Browse…",
+    "选择 OpenDPD 的 datasets 目录":
+        "Select the OpenDPD datasets directory",
+    "扫描到 {n} 个数据集": "Found {n} datasets",
+    "该目录下没有 OpenDPD 数据集(缺 spec.json)":
+        "No OpenDPD datasets here (no spec.json found)",
+    "目录不存在:{path}": "Directory does not exist: {path}",
     "选择数据集": "Dataset",
     "加载数据集": "Load dataset",
     "加载文件": "Load file",

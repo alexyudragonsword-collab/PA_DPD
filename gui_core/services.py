@@ -36,6 +36,38 @@ from padpd.waveform import OFDMConfig, generate_ofdm, papr_db
 
 WARMUP = 200
 
+from pathlib import Path  # noqa: E402
+
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def default_opendpd_dir() -> str:
+    """Best-guess OpenDPD ``datasets`` directory, cross-platform.
+
+    The GUI ships to any OS (notably the packaged Windows exe), so the
+    default must not be a hardcoded Linux path. Checks the OPENDPD_DIR
+    env var, then common locations relative to the repo, the working
+    directory and the user's home; returns the first that exists, else
+    a home-relative hint that is at least valid on the current OS.
+    """
+    env = os.environ.get("OPENDPD_DIR", "").strip()
+    candidates = [Path(env)] if env else []
+    candidates += [
+        _REPO_ROOT.parent / "OpenDPD" / "datasets",   # sibling of repo
+        _REPO_ROOT / "OpenDPD" / "datasets",           # inside repo
+        Path.cwd() / "OpenDPD" / "datasets",
+        Path.home() / "OpenDPD" / "datasets",
+        Path.home() / "Downloads" / "OpenDPD" / "datasets",
+    ]
+    for c in candidates:
+        try:
+            if c.is_dir():
+                return str(c)
+        except OSError:
+            continue
+    return str(Path.home() / "OpenDPD" / "datasets")
+
+
 CLASSICAL_MODELS = {
     "MP": lambda p: MemoryPolynomialModel(order=p.get("order", 7),
                                           memory_depth=p.get("memory", 4)),
