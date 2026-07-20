@@ -1,6 +1,12 @@
-# WiFi 7 PA + DPD AI 辅助研发工程
+<p align="center">
+  <img src="gui_qt/assets/padpd.png" width="128" alt="padpd logo">
+</p>
 
-![CI](https://github.com/alexyudragonsword-collab/PA_DPD/actions/workflows/ci.yml/badge.svg)
+<h1 align="center">WiFi 7 PA + DPD AI 辅助研发工程</h1>
+
+<p align="center">
+  <img src="https://github.com/alexyudragonsword-collab/PA_DPD/actions/workflows/ci.yml/badge.svg" alt="CI">
+</p>
 
 面向 RFIC/Analog IC 团队的 WiFi 7(802.11be)功率放大器(PA)+ 数字预失真(DPD)研发框架,覆盖:
 
