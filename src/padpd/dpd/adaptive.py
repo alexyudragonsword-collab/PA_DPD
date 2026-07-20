@@ -23,13 +23,18 @@ they differ in how much of it they use per step, trading cost for speed:
   solved as ``w = (R + ridge*I)^{-1} p`` each block. O(N^2)/block, reaches
   the least-squares floor in ~1 block, most robust. ``forget`` (ff) sets
   the tracking memory (smaller = faster, noisier).
-- ``"whitened"``: a one-time Cholesky whitening of the first block's
-  covariance, then plain NLMS in the decorrelated domain -- an *amortized
-  RLS* (O(N^2) once, then O(N)/sample) that converges as fast as RLS while
-  the signal statistics hold.
+- ``"whitened"``: a one-time Cholesky whitening (O(N^3)) of the first
+  block's covariance, then NLMS in the decorrelated domain. Applying the
+  dense whitening is O(N^2)/sample -- the *same per-sample order as
+  block-RLS*, not cheaper; what it buys is per-sample tracking and it can
+  settle very low on stationary data. The whitening is frozen from block
+  0, so it goes stale if the *signal* statistics change (waveform /
+  bandwidth / power) -- RLS re-estimates the covariance every block and is
+  the more robust default.
 - ``"apa"``: affine projection -- decorrelate over the last ``apa_k``
-  regressor rows (a mini-RLS window), O(N*apa_k)/sample. ``apa_k=1`` is
-  NLMS, larger approaches RLS: a tunable cost/speed middle ground.
+  regressor rows (a mini-RLS window), O(apa_k^2 * N)/sample. ``apa_k=1``
+  is NLMS, larger approaches RLS: the middle ground that actually *lowers*
+  per-sample cost (small ``apa_k``) versus RLS/whitened.
 
 Plain LMS/NLMS and naive *diagonal* preconditioning are intentionally
 *not* offered: on this basis the instability comes from column

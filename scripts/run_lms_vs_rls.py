@@ -11,18 +11,20 @@ same axis:
 The three stable estimators are the shipped ``padpd.dpd.AdaptiveDPD``
 methods; NLMS/LMS are local baselines it refuses.
 
-- **RLS** (``method="rls"``): inverts the covariance each block, O(N^2)
-  -> reaches the least-squares floor in ~1 block, robust.
+- **RLS** (``method="rls"``): inverts the covariance each block,
+  O(N^2)/sample -> reaches the least-squares floor in ~1 block, robust.
 - **Whitened NLMS** (``method="whitened"``): one-time Cholesky whitening
-  of the warm-up covariance, then plain NLMS in the decorrelated domain
-  -- an "amortized RLS": O(N^2) once, then O(N)/sample, converging as fast
-  as RLS.
+  of the warm-up covariance, then NLMS in the decorrelated domain.
+  Applying the dense whitening is O(N^2)/sample -- the *same order as
+  block-RLS*, not cheaper (an earlier note that said O(N)/sample was
+  wrong). It can settle very low on stationary data, but the whitening is
+  frozen so it goes stale if the signal statistics change.
 - **APA(K)** (``method="apa"``): decorrelates over a K-sample window (a
-  mini-RLS), O(N*K). K=1 is NLMS, larger K approaches RLS -- the classic
-  tunable middle ground.
-- **NLMS** (per-sample, power-normalized): O(N), survives but crawls and
-  plateaus well short -- the ill-conditioned modes barely move.
-- **LMS** (plain, un-normalized): O(N), diverges to NaN on block 1.
+  mini-RLS), O(K^2*N)/sample. K=1 is NLMS, larger K approaches RLS -- the
+  middle ground that actually lowers per-sample cost (small K).
+- **NLMS** (per-sample, power-normalized): O(N)/sample, survives but
+  crawls and plateaus well short -- the ill-conditioned modes barely move.
+- **LMS** (plain, un-normalized): O(N)/sample, diverges to NaN on block 1.
 
 Note (reported honestly, not plotted to avoid clutter): naive *diagonal*
 preconditioning -- normalizing each column by its own power -- also
@@ -129,15 +131,16 @@ def run(estimator, pa, blocks):
 # refuses (they diverge/stall), kept only for the comparison.
 def _estimators():
     return {
-        "RLS  (O(N^2)/block)":
+        "RLS  (O(N^2)/sample)":
             (AdaptiveDPD(_factory, method="rls", forget=0.98, ridge=1e-6),
              "#1f9d57"),
-        "whitened NLMS  (O(N^2) once, then O(N))":
+        "whitened NLMS  (O(N^2)/sample, frozen whitening)":
             (AdaptiveDPD(_factory, method="whitened", mu=0.5), "#3b6fd4"),
-        "APA K=4  (O(N*K))":
+        "APA K=4  (O(K^2 N)/sample)":
             (AdaptiveDPD(_factory, method="apa", apa_k=4, mu=0.3), "#8a55e0"),
-        "NLMS  (O(N))": (BlockNLMS(0.7, normalized=True), "#c9721f"),
-        "LMS plain  (O(N))": (BlockNLMS(3e-3, normalized=False), "#d3402f"),
+        "NLMS  (O(N)/sample)": (BlockNLMS(0.7, normalized=True), "#c9721f"),
+        "LMS plain  (O(N)/sample)":
+            (BlockNLMS(3e-3, normalized=False), "#d3402f"),
     }
 
 
@@ -163,9 +166,9 @@ def main():
         cells = "  ".join(f"{v:5.0f}" if np.isfinite(v) else "  NaN"
                           for v in c)
         print(f"{name:<42} {cells}", flush=True)
-    print("\nmiddle grounds: whitened-NLMS matches RLS at O(N) per sample "
-          "after a one-time O(N^2) whitening; APA(K) tunes cost vs speed "
-          "between NLMS and RLS.")
+    print("\nnote: whitened-NLMS is O(N^2)/sample like block-RLS (not "
+          "cheaper) but can settle very low on stationary data; APA(K) is "
+          "the middle ground that actually lowers per-sample cost.")
 
     _plot(curves, ests, n_blocks)
 

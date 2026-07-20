@@ -135,19 +135,26 @@ options "between RLS and NLMS" on one axis:
 
 ![Online DPD estimator spectrum: RLS / middle grounds / LMS·NLMS](assets/lms_vs_rls.png)
 
-- **RLS** (O(N^2)/block): inverts the covariance each block, convergence
+- **RLS** (O(N^2)/sample): inverts the covariance each block, convergence
   independent of the conditioning — reaches the least-squares floor in
-  **one block** (EVM -52 dB) and holds.
-- **Whitened NLMS** (O(N^2) once, then O(N)/sample): a one-time Cholesky
-  whitening of the warm-up covariance, then plain NLMS in the decorrelated
-  domain — an **amortized RLS** that converges as fast as RLS (and settles
-  even lower).
-- **APA (affine projection, K=4, O(N*K))**: decorrelates over a K-sample
-  window (a mini-RLS), climbing near RLS within a few blocks — the classic
-  **tunable** middle ground (K=1 is NLMS, larger K approaches RLS).
-- **NLMS** (O(N)): survives but crawls and plateaus ~6-12 dB above RLS
-  (the ill-conditioned modes barely move).
-- **plain LMS** (O(N)): diverges to NaN on the first block.
+  **one block** (EVM ~-46 dB steady state) and holds; **most robust**.
+- **Whitened NLMS** (O(N^2)/sample, frozen whitening): a one-time Cholesky
+  whitening (O(N^3)) of the warm-up covariance, then NLMS in the
+  decorrelated domain. **Note: applying the dense whitening is still
+  O(N^2)/sample — the same order as block-RLS, not cheaper** (an earlier
+  "O(N)/sample" note was wrong). It settles very low on **stationary** data
+  (-65..-68, even below the RLS LS floor) — but that is a per-sample,
+  recency-weighted fixed point of the self-referential ILA loop, so it is
+  **setup-specific, not a universal "whitened beats RLS"**; the whitening
+  is frozen, so it goes stale when the signal statistics shift, whereas RLS
+  re-estimates every block.
+- **APA (affine projection, K=4, O(K^2*N)/sample)**: decorrelates over a
+  K-sample window (a mini-RLS), climbing near RLS within a few blocks — the
+  middle ground that actually **lowers per-sample cost** (small K), tunable
+  (K=1 is NLMS, larger K approaches RLS).
+- **NLMS** (O(N)/sample): survives but crawls and plateaus ~6-12 dB above
+  RLS (the ill-conditioned modes barely move).
+- **plain LMS** (O(N)/sample): diverges to NaN on the first block.
 
 **The key point**: every method that clears the conditioning uses the
 covariance's **off-diagonal** terms (whitening / APA / RLS). An honest
@@ -157,10 +164,13 @@ collinear high-order columns. The killer on this basis is column
 **correlation**, not scale, so fixing scale without decorrelating does not
 help.
 
-**Choosing**: small N + slow drift (this project) -> a low-rate block RLS
-or whitened NLMS is nearly free; large N / neural / hardware -> QR-RLS
-(for accuracy and fixed-point-safe numerics) or APA / transform-domain LMS
-(for low cost).
+**Choosing**: default to **RLS** (most robust; at small N its O(N^2) is
+nearly free, optionally at a low update rate). To push lower on a
+**stationary** signal when compute is not the constraint -> **whitened
+NLMS**. To genuinely **cut per-sample cost** -> **APA (small K)** or
+transform-domain LMS (DCT-LMS, a fixed fast transform, O(N log N)). Large
+N / hardware that still needs RLS accuracy -> **QR-RLS** (fixed-point-safe
+numerics).
 
 `scripts/run_drift_study.py` quantifies the field value: as the PA
 drifts cold->hot, a frozen batch DPD degrades to **-28.4 dB EVM** while
