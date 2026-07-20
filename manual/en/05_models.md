@@ -124,20 +124,38 @@ dpd.update(pa, x)                  # update from each block's loopback
 ~1e10, so gradient methods on this basis either diverge or stall — the
 online counterpart of "linear-in-params models need LS, not SGD".
 
-`scripts/run_lms_vs_rls.py` runs three online estimators from the same
-pass-through start, on the same static PA and the same GMP basis:
+`scripts/run_lms_vs_rls.py` runs several online estimators from the same
+pass-through start, on the same static PA and GMP basis, putting the
+options "between RLS and NLMS" on one axis:
 
-![Online DPD estimators: RLS vs LMS/NLMS](assets/lms_vs_rls.png)
+![Online DPD estimator spectrum: RLS / middle grounds / LMS·NLMS](assets/lms_vs_rls.png)
 
-RLS reaches the least-squares floor in **one block** (EVM -52 dB) and
-holds; a power-normalized NLMS converges slowly and erratically, plateauing
-~6-12 dB above RLS (the ill-conditioned modes barely move); a plain
-un-normalized LMS diverges to NaN on the first block. Why: RLS explicitly
-inverts the covariance each block, so convergence is independent of the
-conditioning; a gradient method's convergence rate scales with the
-condition number (~1e10) while stability caps the step at `< 2/λ_max` —
-squeezed from both sides. A product that must "converge in one block and
-never NaN" can only use RLS.
+- **RLS** (O(N^2)/block): inverts the covariance each block, convergence
+  independent of the conditioning — reaches the least-squares floor in
+  **one block** (EVM -52 dB) and holds.
+- **Whitened NLMS** (O(N^2) once, then O(N)/sample): a one-time Cholesky
+  whitening of the warm-up covariance, then plain NLMS in the decorrelated
+  domain — an **amortized RLS** that converges as fast as RLS (and settles
+  even lower).
+- **APA (affine projection, K=4, O(N*K))**: decorrelates over a K-sample
+  window (a mini-RLS), climbing near RLS within a few blocks — the classic
+  **tunable** middle ground (K=1 is NLMS, larger K approaches RLS).
+- **NLMS** (O(N)): survives but crawls and plateaus ~6-12 dB above RLS
+  (the ill-conditioned modes barely move).
+- **plain LMS** (O(N)): diverges to NaN on the first block.
+
+**The key point**: every method that clears the conditioning uses the
+covariance's **off-diagonal** terms (whitening / APA / RLS). An honest
+counter-example: naive **diagonal** preconditioning — dividing each column
+by its own power — also diverges here, because it amplifies the weak,
+collinear high-order columns. The killer on this basis is column
+**correlation**, not scale, so fixing scale without decorrelating does not
+help.
+
+**Choosing**: small N + slow drift (this project) -> a low-rate block RLS
+or whitened NLMS is nearly free; large N / neural / hardware -> QR-RLS
+(for accuracy and fixed-point-safe numerics) or APA / transform-domain LMS
+(for low cost).
 
 `scripts/run_drift_study.py` quantifies the field value: as the PA
 drifts cold->hot, a frozen batch DPD degrades to **-28.4 dB EVM** while
