@@ -17,7 +17,9 @@ from gui import ui  # noqa: E402
 
 ui.apply_theme()
 
-st.set_page_config(page_title=ui.tr("padpd 工作台"), page_icon="📡",
+_icon = ROOT / "gui_qt" / "assets" / "padpd.png"   # shared with desktop app
+st.set_page_config(page_title=ui.tr("padpd 工作台"),
+                   page_icon=str(_icon) if _icon.exists() else "📡",
                    layout="wide", initial_sidebar_state="expanded")
 
 pages = [
