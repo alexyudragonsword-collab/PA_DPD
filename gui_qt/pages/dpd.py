@@ -93,12 +93,18 @@ class DpdPage(QWidget):
         self.ad_forget.setRange(0.50, 0.99)
         self.ad_forget.setSingleStep(0.01)
         self.ad_forget.setValue(0.60)
+        self.ad_k = QSpinBox()
+        self.ad_k.setRange(1, 8)
+        self.ad_k.setValue(4)
+        self.ad_k.setToolTip(tr("APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS"
+                                "(仅 method=apa 生效)"))
         self.ad_run = QPushButton(tr("运行自适应 DPD"))
         self.ad_run.setObjectName("primary")
         for lbl, w in [(tr("方法"), self.ad_method),
                        (tr("块数"), self.ad_blocks),
                        (tr("漂移"), self.ad_span),
-                       ("forget", self.ad_forget)]:
+                       ("forget", self.ad_forget),
+                       ("APA K", self.ad_k)]:
             al.addWidget(QLabel(lbl))
             al.addWidget(w)
         al.addStretch(1)
@@ -194,7 +200,7 @@ class DpdPage(QWidget):
             return services.run_adaptive_dpd(
                 method=method, n_blocks=self.ad_blocks.value(),
                 drift_span=self.ad_span.value(),
-                forget=self.ad_forget.value())
+                forget=self.ad_forget.value(), apa_k=self.ad_k.value())
 
         self._ad_worker = FnWorker(job)
         self._ad_worker.done.connect(self._finish_adaptive)

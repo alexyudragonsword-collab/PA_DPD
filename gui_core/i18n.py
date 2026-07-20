@@ -272,6 +272,9 @@ _EN = {
         "drifting PA.",
     "自适应方法": "Adaptive method",
     "方法": "Method",
+    "APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS(仅 method=apa 生效)":
+        "APA projection order: K=1 is NLMS, larger K approaches RLS "
+        "(only affects method=apa)",
     "块数(冷 → 热)": "Blocks (cold → hot)",
     "块数": "Blocks",
     "漂移强度": "Drift span",
