@@ -121,8 +121,23 @@ dpd.update(pa, x)                  # update from each block's loopback
 ```
 
 **Only RLS is offered**: the polynomial basis has a condition number of
-~1e10, so LMS/NLMS (even whitened) diverge — the online counterpart of
-"linear-in-params models need LS, not SGD".
+~1e10, so gradient methods on this basis either diverge or stall — the
+online counterpart of "linear-in-params models need LS, not SGD".
+
+`scripts/run_lms_vs_rls.py` runs three online estimators from the same
+pass-through start, on the same static PA and the same GMP basis:
+
+![Online DPD estimators: RLS vs LMS/NLMS](assets/lms_vs_rls.png)
+
+RLS reaches the least-squares floor in **one block** (EVM -52 dB) and
+holds; a power-normalized NLMS converges slowly and erratically, plateauing
+~6-12 dB above RLS (the ill-conditioned modes barely move); a plain
+un-normalized LMS diverges to NaN on the first block. Why: RLS explicitly
+inverts the covariance each block, so convergence is independent of the
+conditioning; a gradient method's convergence rate scales with the
+condition number (~1e10) while stability caps the step at `< 2/λ_max` —
+squeezed from both sides. A product that must "converge in one block and
+never NaN" can only use RLS.
 
 `scripts/run_drift_study.py` quantifies the field value: as the PA
 drifts cold->hot, a frozen batch DPD degrades to **-28.4 dB EVM** while
