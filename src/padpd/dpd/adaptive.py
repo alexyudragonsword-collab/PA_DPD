@@ -11,17 +11,30 @@ post-inverse regressors:
     post-inverse regressors  Phi = basis(y / G),   target = u
     reduce  || u - Phi @ w ||  and apply  DPD(x) = basis(x) @ w
 
-The update is exponentially-weighted recursive least squares in block
-covariance form: ``R = ff*R + Phi^H Phi`` and ``p = ff*p + Phi^H u``,
-solved as ``w = (R + ridge*I)^{-1} p`` each block. The forgetting factor
-``ff`` sets the tracking memory (smaller = faster tracking, noisier).
+The ``|x|^k`` polynomial columns make the regressor covariance
+ill-conditioned (condition number ~1e10), so a plain gradient method
+(LMS/NLMS) either diverges or stalls -- the same reason batch fitting
+uses closed-form least squares rather than SGD. Every method offered here
+therefore uses the *off-diagonal* covariance to clear that conditioning;
+they differ in how much of it they use per step, trading cost for speed:
 
-Only RLS is offered: plain LMS/NLMS diverges on this basis. The |x|^k
-polynomial columns give the regressor covariance a condition number on
-the order of 1e10, so gradient-descent steps (even whitened by the
-warm-up covariance) are unstable — the same reason batch fitting uses
-closed-form least squares rather than SGD. RLS tracks because it
-implicitly inverts that covariance every block.
+- ``"rls"`` (default): exponentially-weighted recursive least squares in
+  block covariance form, ``R = ff*R + Phi^H Phi``, ``p = ff*p + Phi^H u``,
+  solved as ``w = (R + ridge*I)^{-1} p`` each block. O(N^2)/block, reaches
+  the least-squares floor in ~1 block, most robust. ``forget`` (ff) sets
+  the tracking memory (smaller = faster, noisier).
+- ``"whitened"``: a one-time Cholesky whitening of the first block's
+  covariance, then plain NLMS in the decorrelated domain -- an *amortized
+  RLS* (O(N^2) once, then O(N)/sample) that converges as fast as RLS while
+  the signal statistics hold.
+- ``"apa"``: affine projection -- decorrelate over the last ``apa_k``
+  regressor rows (a mini-RLS window), O(N*apa_k)/sample. ``apa_k=1`` is
+  NLMS, larger approaches RLS: a tunable cost/speed middle ground.
+
+Plain LMS/NLMS and naive *diagonal* preconditioning are intentionally
+*not* offered: on this basis the instability comes from column
+correlation (off-diagonal covariance), not scale, so scale-only methods
+still diverge (see ``scripts/run_lms_vs_rls.py``).
 """
 
 from __future__ import annotations
@@ -33,16 +46,20 @@ import numpy as np
 from ..pa.base import PAModel
 from ..pa.gmp import GMPModel
 
+_METHODS = ("rls", "apa", "whitened")
+
 
 class AdaptiveDPD:
     def __init__(self, model_factory: Callable[[], PAModel] | None = None,
                  target_gain: complex | None = None,
                  forget: float = 0.995, ridge: float = 1e-6,
-                 method: str = "rls"):
-        if method != "rls":
+                 method: str = "rls", mu: float = 0.5, apa_k: int = 4,
+                 apa_delta: float = 1e-3, whiten_ridge: float = 1e-3):
+        if method not in _METHODS:
             raise ValueError(
-                "only 'rls' is supported; LMS/NLMS diverge on the "
-                "ill-conditioned polynomial DPD basis (see module docstring)")
+                f"method must be one of {_METHODS}; plain LMS/NLMS and "
+                "diagonal preconditioning diverge on the ill-conditioned "
+                "polynomial DPD basis (see module docstring)")
         self.template = (model_factory or GMPModel)()
         if not hasattr(self.template, "basis_matrix"):
             raise TypeError("adaptive DPD needs a linear-in-params model "
@@ -51,9 +68,15 @@ class AdaptiveDPD:
         self.target_gain = target_gain
         self.forget = float(forget)
         self.ridge = float(ridge)
+        self.mu = float(mu)
+        self.apa_k = int(apa_k)
+        self.apa_delta = float(apa_delta)
+        self.whiten_ridge = float(whiten_ridge)
         self.w: np.ndarray | None = None
         self._R: np.ndarray | None = None   # RLS covariance
         self._p: np.ndarray | None = None   # RLS cross term
+        self._wf: np.ndarray | None = None   # whitening transform (once)
+        self._v: np.ndarray | None = None    # whitened-domain weights
 
     @property
     def n_coeffs(self) -> int:
@@ -76,6 +99,40 @@ class AdaptiveDPD:
 
     __call__ = predistort
 
+    # ---- per-method coefficient update ------------------------------
+    def _update_rls(self, phi: np.ndarray, u: np.ndarray) -> None:
+        self._R = self.forget * self._R + phi.conj().T @ phi
+        self._p = self.forget * self._p + phi.conj().T @ u
+        n = self._R.shape[0]
+        lam = self.ridge * np.trace(self._R).real / max(n, 1)
+        self.w = np.linalg.solve(self._R + lam * np.eye(n), self._p)
+
+    def _update_apa(self, phi: np.ndarray, u: np.ndarray) -> None:
+        k = self.apa_k
+        eye_k = self.apa_delta * np.eye(k)
+        for n in range(k, phi.shape[0]):
+            p = phi[n - k:n]                        # k x N window
+            e = u[n - k:n] - p @ self.w
+            gram = p @ p.conj().T + eye_k
+            self.w = self.w + self.mu * p.conj().T @ np.linalg.solve(gram, e)
+
+    def _update_whitened(self, phi: np.ndarray, u: np.ndarray) -> None:
+        n = phi.shape[1]
+        if self._wf is None:
+            r = phi.conj().T @ phi / phi.shape[0]
+            lam = self.whiten_ridge * np.trace(r).real / max(n, 1)
+            chol = np.linalg.cholesky(r + lam * np.eye(n))
+            self._wf = np.linalg.inv(chol.conj().T)   # cov(phi @ wf) ~ I
+            self._v = chol.conj().T @ self.w          # w = wf @ v
+        z = phi @ self._wf
+        v = self._v
+        for k in range(z.shape[0]):
+            zk = z[k]
+            e = u[k] - zk @ v
+            v = v + self.mu * np.conj(zk) * e / (np.vdot(zk, zk).real + 1e-6)
+        self._v = v
+        self.w = self._wf @ v
+
     def update(self, pa: Callable[[np.ndarray], np.ndarray],
                x: np.ndarray) -> dict:
         """Run one adaptation block against ``pa``; returns block metrics.
@@ -92,11 +149,12 @@ class AdaptiveDPD:
         phi = self._phi(y / self.target_gain)
         self._init(phi.shape[1])
 
-        self._R = self.forget * self._R + phi.conj().T @ phi
-        self._p = self.forget * self._p + phi.conj().T @ u
-        n = self._R.shape[0]
-        lam = self.ridge * np.trace(self._R).real / max(n, 1)
-        self.w = np.linalg.solve(self._R + lam * np.eye(n), self._p)
+        if self.method == "rls":
+            self._update_rls(phi, u)
+        elif self.method == "apa":
+            self._update_apa(phi, u)
+        else:
+            self._update_whitened(phi, u)
 
         resid = u - phi @ self.w
         return {

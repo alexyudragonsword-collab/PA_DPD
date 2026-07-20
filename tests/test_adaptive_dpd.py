@@ -73,10 +73,60 @@ def test_rls_tracks_pa_drift():
     assert e_tracked < -44
 
 
+def _dpd_method(method):
+    kw = {"rls": dict(forget=0.85),
+          "apa": dict(mu=0.3, apa_k=4),
+          "whitened": dict(mu=0.5)}[method]
+    return AdaptiveDPD(lambda: GMPModel(order=7, memory_depth=4),
+                       method=method, **kw)
+
+
+@pytest.mark.parametrize("method", ["apa", "whitened"])
+def test_middle_ground_methods_converge(method):
+    """APA and whitened NLMS are the stable RLS<->NLMS middle grounds:
+    they converge from pass-through without diverging."""
+    pa = ReferencePA(drive=0.14)
+    wf = _wf(0)
+    dpd = _dpd_method(method)
+    e0 = _evm(pa, dpd, wf)                 # pass-through
+    dpd.warm_start(pa, wf.x, blocks=8)
+    e1 = _evm(pa, dpd, wf)
+    assert np.isfinite(e1)                 # did not diverge
+    assert e1 < -40                        # strong linearization
+    assert e1 < e0 - 20
+
+
+@pytest.mark.parametrize("method", ["apa", "whitened"])
+def test_middle_ground_methods_track_drift(method):
+    wf = _wf(0)
+    dpd = _dpd_method(method)
+    dpd.warm_start(ReferencePA(drive=0.14), wf.x, blocks=8)
+    drifted = ReferencePA(drive=0.155)
+    e_stale = _evm(drifted, dpd, wf)
+    for _ in range(8):
+        dpd.update(drifted, wf.x)
+    e_tracked = _evm(drifted, dpd, wf)
+    assert e_tracked < e_stale - 3
+    assert e_tracked < -40
+
+
+@pytest.mark.parametrize("method", ["apa", "whitened"])
+def test_middle_ground_freeze_and_save(method, tmp_path):
+    pa = ReferencePA(drive=0.14)
+    wf = _wf(0)
+    dpd = _dpd_method(method)
+    dpd.warm_start(pa, wf.x, blocks=4)
+    frozen = dpd.as_model()
+    assert np.allclose(frozen(wf.x), dpd(wf.x))
+    dpd.save(str(tmp_path / f"{method}.npz"))
+    assert (tmp_path / f"{method}.npz").exists()
+
+
 def test_rejects_lms_and_nonlinear_model():
     from padpd.pa import SalehPA
-    with pytest.raises(ValueError):
-        AdaptiveDPD(method="nlms")
+    for bad in ("nlms", "lms", "diag"):
+        with pytest.raises(ValueError):
+            AdaptiveDPD(method=bad)
     with pytest.raises(TypeError):
         AdaptiveDPD(SalehPA)
 

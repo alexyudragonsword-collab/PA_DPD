@@ -94,13 +94,18 @@ spec**。建议同时做鲁棒性扫描(非线性强度/记忆深度扰动 ±20%
 
 ```python
 from padpd.dpd import AdaptiveDPD
-dpd = AdaptiveDPD(forget=0.6)      # forget 越小跟踪越快、越噪
+dpd = AdaptiveDPD(forget=0.6)      # 默认 method="rls";forget 越小跟踪越快、越噪
+# 中间档也可直接选:
+#   AdaptiveDPD(method="whitened", mu=0.5)       # 摊销版 RLS(见下图)
+#   AdaptiveDPD(method="apa", apa_k=4, mu=0.3)   # 仿射投影,K 可调
 dpd.warm_start(pa, x, blocks=6)    # 从直通收敛
 dpd.update(pa, x)                  # 每块从环回观测更新
 ```
 
-**只提供 RLS**:多项式基条件数约 1e10,梯度法在这个基上要么发散、
-要么原地打转——"线性参数模型必须用 LS 而非 SGD"在在线场景的翻版。
+**不单独提供普通 LMS/NLMS**:多项式基条件数约 1e10,只调尺度的梯度法
+要么发散、要么原地打转——"线性参数模型必须用 LS 而非 SGD"在在线场景
+的翻版。提供的三种方法(`rls`、`whitened`、`apa`)都用到协方差的非对角
+项来跨过病态。
 
 `scripts/run_lms_vs_rls.py` 在同一颗静态 PA、同一 GMP 基、同一直通
 起点上并排跑几种在线估计器,把"介于 RLS 和 NLMS 之间"的中间档也

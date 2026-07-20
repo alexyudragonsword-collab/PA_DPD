@@ -115,14 +115,19 @@ block RLS:
 
 ```python
 from padpd.dpd import AdaptiveDPD
-dpd = AdaptiveDPD(forget=0.6)      # smaller forget = faster, noisier tracking
+dpd = AdaptiveDPD(forget=0.6)      # default method="rls"; smaller forget = faster/noisier
+# the middle grounds are selectable too:
+#   AdaptiveDPD(method="whitened", mu=0.5)       # amortized RLS (figure below)
+#   AdaptiveDPD(method="apa", apa_k=4, mu=0.3)   # affine projection, tunable K
 dpd.warm_start(pa, x, blocks=6)    # converge from pass-through
 dpd.update(pa, x)                  # update from each block's loopback
 ```
 
-**Only RLS is offered**: the polynomial basis has a condition number of
-~1e10, so gradient methods on this basis either diverge or stall — the
-online counterpart of "linear-in-params models need LS, not SGD".
+**Plain LMS/NLMS is not offered**: the polynomial basis has a condition
+number of ~1e10, so a scale-only gradient method diverges or stalls — the
+online counterpart of "linear-in-params models need LS, not SGD". The
+offered methods (`rls`, `whitened`, `apa`) all use the off-diagonal
+covariance to clear that conditioning.
 
 `scripts/run_lms_vs_rls.py` runs several online estimators from the same
 pass-through start, on the same static PA and GMP basis, putting the

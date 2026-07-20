@@ -8,14 +8,18 @@ start against the same static ReferencePA and reports per-block
 linearization EVM, placing the "in between RLS and NLMS" options on the
 same axis:
 
-- **RLS** (``padpd.dpd.AdaptiveDPD``): inverts the covariance each block,
-  O(N^2) -> reaches the least-squares floor in ~1 block, robust.
-- **Whitened NLMS**: one-time Cholesky whitening of the warm-up
-  covariance, then plain NLMS in the decorrelated domain -- an "amortized
-  RLS": O(N^2) once, then O(N)/sample, and it converges as fast as RLS.
-- **APA(K)** (affine projection): decorrelates over a K-sample window
-  (a mini-RLS), O(N*K). K=1 is NLMS, larger K approaches RLS -- the
-  classic tunable middle ground.
+The three stable estimators are the shipped ``padpd.dpd.AdaptiveDPD``
+methods; NLMS/LMS are local baselines it refuses.
+
+- **RLS** (``method="rls"``): inverts the covariance each block, O(N^2)
+  -> reaches the least-squares floor in ~1 block, robust.
+- **Whitened NLMS** (``method="whitened"``): one-time Cholesky whitening
+  of the warm-up covariance, then plain NLMS in the decorrelated domain
+  -- an "amortized RLS": O(N^2) once, then O(N)/sample, converging as fast
+  as RLS.
+- **APA(K)** (``method="apa"``): decorrelates over a K-sample window (a
+  mini-RLS), O(N*K). K=1 is NLMS, larger K approaches RLS -- the classic
+  tunable middle ground.
 - **NLMS** (per-sample, power-normalized): O(N), survives but crawls and
   plateaus well short -- the ill-conditioned modes barely move.
 - **LMS** (plain, un-normalized): O(N), diverges to NaN on block 1.
@@ -103,57 +107,6 @@ class BlockNLMS(_LinBase):
                 return
 
 
-class APA(_LinBase):
-    """Affine projection: decorrelate over the last K regressor rows."""
-
-    def __init__(self, K: int = 4, mu: float = 0.3, delta: float = 1e-3):
-        super().__init__()
-        self.K = K
-        self.mu = mu
-        self.delta = delta
-
-    def update(self, pa, x):
-        u, phi = self._prep(pa, x)
-        K = self.K
-        for n in range(K, phi.shape[0]):
-            P = phi[n - K:n]                       # K x N window
-            e = u[n - K:n] - P @ self.w
-            gram = P @ P.conj().T + self.delta * np.eye(K)
-            self.w = self.w + self.mu * P.conj().T @ np.linalg.solve(gram, e)
-            if not np.all(np.isfinite(self.w)):
-                return
-
-
-class WhitenedNLMS(_LinBase):
-    """One-time whitening (Cholesky of the warm-up covariance) then NLMS
-    in the decorrelated domain: an amortized RLS."""
-
-    def __init__(self, mu: float = 0.5, ridge: float = 1e-3):
-        super().__init__()
-        self.mu = mu
-        self.ridge = ridge
-        self.Linv = None
-
-    def update(self, pa, x):
-        u, phi = self._prep(pa, x)
-        n_dim = phi.shape[1]
-        if self.Linv is None:
-            R = phi.conj().T @ phi / phi.shape[0]
-            lam = self.ridge * np.trace(R).real / n_dim
-            L = np.linalg.cholesky(R + lam * np.eye(n_dim))
-            self.Linv = np.linalg.inv(L.conj().T)   # cov(phi @ Linv) ~ I
-        Z = phi @ self.Linv
-        v = np.linalg.solve(self.Linv, self.w)      # whitened-domain weights
-        for n in range(Z.shape[0]):
-            zn = Z[n]
-            e = u[n] - zn @ v
-            v = v + self.mu * np.conj(zn) * e / (np.vdot(zn, zn).real + 1e-6)
-            if not np.all(np.isfinite(v)):
-                self.w = self.Linv @ v
-                return
-        self.w = self.Linv @ v
-
-
 def evm_db(pa, sig, wf):
     y = pa(sig)
     if not np.all(np.isfinite(y)):
@@ -171,14 +124,18 @@ def run(estimator, pa, blocks):
     return curve
 
 
-# name -> (estimator, cost tag, plot color)
+# name -> (estimator, plot color). The three offered methods come from
+# the shipped padpd.dpd.AdaptiveDPD; NLMS/LMS are local baselines it
+# refuses (they diverge/stall), kept only for the comparison.
 def _estimators():
     return {
         "RLS  (O(N^2)/block)":
-            (AdaptiveDPD(_factory, forget=0.98, ridge=1e-6), "#1f9d57"),
+            (AdaptiveDPD(_factory, method="rls", forget=0.98, ridge=1e-6),
+             "#1f9d57"),
         "whitened NLMS  (O(N^2) once, then O(N))":
-            (WhitenedNLMS(mu=0.5), "#3b6fd4"),
-        "APA K=4  (O(N*K))": (APA(K=4, mu=0.3), "#8a55e0"),
+            (AdaptiveDPD(_factory, method="whitened", mu=0.5), "#3b6fd4"),
+        "APA K=4  (O(N*K))":
+            (AdaptiveDPD(_factory, method="apa", apa_k=4, mu=0.3), "#8a55e0"),
         "NLMS  (O(N))": (BlockNLMS(0.7, normalized=True), "#c9721f"),
         "LMS plain  (O(N))": (BlockNLMS(3e-3, normalized=False), "#d3402f"),
     }
