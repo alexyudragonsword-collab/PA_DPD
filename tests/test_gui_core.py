@@ -110,3 +110,19 @@ def test_run_adaptive_dpd_tracks_drift(method):
 def test_run_adaptive_dpd_rejects_bad_method():
     with pytest.raises(ValueError):
         services.run_adaptive_dpd(method="nlms")
+
+
+def test_adaptive_run_record_shape():
+    res = services.run_adaptive_dpd(method="apa", n_blocks=6, warm_blocks=4,
+                                    apa_k=3)
+    name, cfg, metrics = services.adaptive_run_record(res)
+    assert "APA(K3)" in name                      # K encoded for apa
+    assert cfg["algo"] == "adaptive" and cfg["apa_k"] == 3
+    # metrics slot alongside batch DPD (evm_db plotted the same way)
+    assert metrics["evm_db"] == res["final_adaptive"]
+    assert metrics["evm_before_db"] == res["final_frozen"]
+    assert "gap_db" in metrics
+
+    r = services.adaptive_run_record(
+        services.run_adaptive_dpd(method="rls", n_blocks=6, warm_blocks=4))
+    assert r[0] == "Adapt-RLS @ drift"            # no K suffix for non-apa

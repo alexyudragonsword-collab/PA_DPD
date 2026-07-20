@@ -450,7 +450,27 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
             "states": states, "evm_frozen": e_frozen, "evm_adaptive": e_adapt,
             "final_frozen": e_frozen[-1], "final_adaptive": e_adapt[-1],
             "gap_db": e_frozen[-1] - e_adapt[-1], "n_coeffs": adapt.n_coeffs,
-            "drive_cold": drive0, "drive_hot": drive0 + drift_span}
+            "drive_cold": drive0, "drive_hot": drive0 + drift_span,
+            # echo the run parameters so callers can register a run
+            "n_blocks": n_blocks, "drift_span": drift_span,
+            "forget": forget, "apa_k": apa_k}
+
+
+def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
+    """Build (name, config, metrics) to register an adaptive run so it
+    compares alongside batch DPD (evm_db = adaptive, evm_before_db =
+    frozen)."""
+    tag = res["method"].upper()
+    if res["method"] == "apa":
+        tag += f"(K{res['apa_k']})"
+    name = f"Adapt-{tag} @ drift"
+    config = {"algo": "adaptive", "method": res["method"],
+              "apa_k": res["apa_k"], "n_blocks": res["n_blocks"],
+              "drift_span": res["drift_span"], "forget": res["forget"]}
+    metrics = {"evm_db": res["final_adaptive"],
+               "evm_before_db": res["final_frozen"],
+               "gap_db": res["gap_db"], "n_coeffs": res["n_coeffs"]}
+    return name, config, metrics
 
 
 # -- two-tone memory diagnostics -----------------------------------------

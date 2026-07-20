@@ -291,6 +291,13 @@ _EN = {
     "满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB(领先 {g:.1f} dB)":
         "Full-drift EVM: frozen {f:.1f} dB → adaptive {m} {a:.1f} dB "
         "(lead {g:.1f} dB)",
+    "满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB(领先 {g:.1f} dB);"
+    "已注册为 run。":
+        "Full-drift EVM: frozen {f:.1f} dB → adaptive {m} {a:.1f} dB "
+        "(lead {g:.1f} dB); registered as a run.",
+    "已注册为 run(kind=dpd),可在结果比较页与批处理 DPD 并排对比。":
+        "Registered as a run (kind=dpd); compare it against batch DPD on "
+        "the Compare Runs page.",
     "train / val / test": "train / val / test",
     "主带宽": "Main bandwidth",
     "调制 / 子信道": "Modulation / sub-channels",

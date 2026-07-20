@@ -179,6 +179,9 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
                 method=method, n_blocks=n_blocks, drift_span=drift_span,
                 forget=forget, apa_k=apa_k)
         st.session_state["last_adaptive"] = res
+        a_name, a_cfg, a_metrics = services.adaptive_run_record(res)
+        state.runstore.add(Run(name=a_name, kind="dpd", config=a_cfg,
+                               metrics=a_metrics))
     ares = st.session_state.get("last_adaptive")
     if ares:
         m1, m2, m3 = st.columns(3)
@@ -190,3 +193,5 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
         m3.metric(ui.tr("自适应领先"), f"{ares['gap_db']:.1f} dB")
         st.plotly_chart(charts.fig_adaptive_evm(ares),
                         use_container_width=True)
+        st.caption(ui.tr("已注册为 run(kind=dpd),可在结果比较页与批处理 "
+                         "DPD 并排对比。"))

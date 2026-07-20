@@ -213,9 +213,12 @@ class DpdPage(QWidget):
         self.ad_run.setEnabled(True)
         self.p_adapt.set_figure(figs.adaptive_evm_fig(res))
         self.tabs.setCurrentWidget(self.p_adapt)
+        name, cfg, metrics = services.adaptive_run_record(res)
+        self.state.runstore.add(Run(name=name, kind="dpd", config=cfg,
+                                    metrics=metrics))
         self.ad_msg.setText(tr(
             "满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB"
-            "(领先 {g:.1f} dB)").format(
+            "(领先 {g:.1f} dB);已注册为 run。").format(
             f=res["final_frozen"], m=res["method"].upper(),
             a=res["final_adaptive"], g=res["gap_db"]))
 
