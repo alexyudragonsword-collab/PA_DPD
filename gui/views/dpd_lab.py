@@ -158,3 +158,32 @@ if last:
                              "请以 PSD 与谱域指标为准。"))
 else:
     st.info(ui.tr("在左侧配置数据源与 DPD 方案,点击「运行 DPD」。"))
+
+st.divider()
+with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=False):
+    st.caption(ui.tr("在会漂移(温度/供电/老化)的合成 PA 上跑在线自适应 "
+                     "DPD,与一次性冻结的批处理 DPD 逐块比较 EVM,演示现场"
+                     "跟踪价值。三种方法(rls/whitened/apa)见手册 5.7。"))
+    ac1, ac2, ac3, ac4 = st.columns(4)
+    method = ac1.selectbox(ui.tr("自适应方法"),
+                           list(services.ADAPTIVE_METHODS))
+    n_blocks = ac2.slider(ui.tr("块数(冷 → 热)"), 4, 16, 10)
+    drift_span = ac3.slider(ui.tr("漂移强度"), 0.01, 0.05, 0.02, 0.005)
+    forget = ac4.slider("forget (RLS)", 0.50, 0.99, 0.60, 0.01)
+    if st.button(ui.tr("运行自适应 DPD"), type="primary"):
+        with st.spinner(ui.tr("自适应跟踪中…")):
+            res = services.run_adaptive_dpd(
+                method=method, n_blocks=n_blocks, drift_span=drift_span,
+                forget=forget)
+        st.session_state["last_adaptive"] = res
+    ares = st.session_state.get("last_adaptive")
+    if ares:
+        m1, m2, m3 = st.columns(3)
+        m1.metric(ui.tr("EVM(冻结,满漂移)"),
+                  f"{ares['final_frozen']:.1f} dB")
+        m2.metric(ui.tr("EVM(自适应,满漂移)"),
+                  f"{ares['final_adaptive']:.1f} dB",
+                  f"{ares['final_adaptive'] - ares['final_frozen']:+.1f} dB")
+        m3.metric(ui.tr("自适应领先"), f"{ares['gap_db']:.1f} dB")
+        st.plotly_chart(charts.fig_adaptive_evm(ares),
+                        use_container_width=True)

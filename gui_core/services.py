@@ -384,6 +384,75 @@ def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
     return paths
 
 
+# -- adaptive / online DPD (drift tracking) ------------------------------
+ADAPTIVE_METHODS = ("rls", "whitened", "apa")
+
+
+def _evm_drift(pa, sig, wf) -> float:
+    """Constellation EVM of a signal through ``pa``, per-block gain-fit."""
+    from padpd.metrics import evm
+    from padpd.waveform import demodulate_ofdm
+    y = pa(sig)
+    if not np.all(np.isfinite(y)):
+        return float("nan")
+    g = np.vdot(wf.x, y) / np.vdot(wf.x, wf.x)
+    return evm(demodulate_ofdm(y / g, wf), wf.tx_symbols).db
+
+
+def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
+                     drift_span: float = 0.02, drive0: float = 0.13,
+                     forget: float = 0.6, mu: float = 0.5, apa_k: int = 4,
+                     bw: float = 80e6, qam: int = 1024, n_symbols: int = 6,
+                     warm_blocks: int = 6, seed: int = 0) -> dict:
+    """Drift-tracking demo: an adaptive DPD vs a frozen batch DPD on a
+    PA that drifts cold->hot across ``n_blocks`` signal blocks.
+
+    ``method`` is one of :data:`ADAPTIVE_METHODS` (rls / whitened / apa).
+    Returns per-block linearization EVM for both the frozen baseline and
+    the adaptive predistorter, plus the final gap — the field value of
+    adaptation. Runs on the synthetic DriftingReferencePA (no data source
+    needed).
+    """
+    if method not in ADAPTIVE_METHODS:
+        raise ValueError(f"method must be one of {ADAPTIVE_METHODS}")
+    if n_blocks < 2:
+        raise ValueError("n_blocks must be >= 2")
+    from padpd.dpd import AdaptiveDPD, ILAPredistorter
+    from padpd.pa import DriftingReferencePA
+
+    blocks = [generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=qam,
+                                       n_symbols=n_symbols, seed=seed + s))
+              for s in range(n_blocks)]
+    drift = DriftingReferencePA(drive0=drive0, drive_span=drift_span,
+                                beta_a_span=0.2, alpha_p_span=0.5)
+    drift.set_state(0.0)
+    cold = drift.pa()
+
+    def factory():
+        return GMPModel(order=7, memory_depth=4)
+
+    frozen = ILAPredistorter(factory, n_iterations=3)
+    frozen.fit(cold, blocks[0].x)
+    adapt = AdaptiveDPD(factory, method=method, forget=forget, mu=mu,
+                        apa_k=apa_k)
+    adapt.warm_start(cold, blocks[0].x, blocks=warm_blocks)
+
+    states, e_frozen, e_adapt = [], [], []
+    for i, wf in enumerate(blocks):
+        drift.set_state(i / (n_blocks - 1))
+        pa = drift.pa()
+        e_frozen.append(_evm_drift(pa, frozen(wf.x), wf))
+        e_adapt.append(_evm_drift(pa, adapt(wf.x), wf))
+        adapt.update(pa, wf.x)
+        states.append(drift.state)
+
+    return {"method": method, "blocks": list(range(n_blocks)),
+            "states": states, "evm_frozen": e_frozen, "evm_adaptive": e_adapt,
+            "final_frozen": e_frozen[-1], "final_adaptive": e_adapt[-1],
+            "gap_db": e_frozen[-1] - e_adapt[-1], "n_coeffs": adapt.n_coeffs,
+            "drive_cold": drive0, "drive_hot": drive0 + drift_span}
+
+
 # -- two-tone memory diagnostics -----------------------------------------
 EXAMPLE_TWO_TONE_CSV = str(_REPO_ROOT / "examples" / "two_tone_example.csv")
 

@@ -255,6 +255,39 @@ _EN = {
         "Memory strength {ms:.1f} dB → reserve memory depth {d}, cross "
         "terms {cx} (~{nc} coeffs); thermal memory {th}. Coefficients are "
         "still trained on measured data.",
+    # ---- adaptive / online DPD (drift tracking) --------------------
+    "🔁 自适应 / 在线 DPD(漂移跟踪)":
+        "🔁 Adaptive / online DPD (drift tracking)",
+    "自适应 / 在线 DPD(漂移跟踪)":
+        "Adaptive / online DPD (drift tracking)",
+    "自适应(漂移)": "Adaptive (drift)",
+    "在会漂移(温度/供电/老化)的合成 PA 上跑在线自适应 DPD,与一次性冻结的批处理 "
+    "DPD 逐块比较 EVM,演示现场跟踪价值。三种方法(rls/whitened/apa)见手册 5.7。":
+        "Run an online adaptive DPD on a synthetic PA that drifts "
+        "(temperature/supply/aging) and compare its per-block EVM against a "
+        "once-frozen batch DPD, showing the field value of adaptation. The "
+        "three methods (rls/whitened/apa) are covered in manual 5.7.",
+    "在会漂移的合成 PA 上比较自适应 vs 冻结批处理 DPD 的逐块 EVM。":
+        "Compare adaptive vs frozen batch DPD per-block EVM on a synthetic "
+        "drifting PA.",
+    "自适应方法": "Adaptive method",
+    "方法": "Method",
+    "块数(冷 → 热)": "Blocks (cold → hot)",
+    "块数": "Blocks",
+    "漂移强度": "Drift span",
+    "漂移": "Drift",
+    "运行自适应 DPD": "Run adaptive DPD",
+    "自适应跟踪中…": "Adapting…",
+    "EVM(冻结,满漂移)": "EVM (frozen, full drift)",
+    "EVM(自适应,满漂移)": "EVM (adaptive, full drift)",
+    "自适应领先": "Adaptive lead",
+    "漂移跟踪:每块 EVM": "Drift tracking: per-block EVM",
+    "冻结批处理 DPD": "Frozen batch DPD",
+    "自适应 {m}": "Adaptive {m}",
+    "块(冷 → 热)": "Block (cold → hot)",
+    "满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB(领先 {g:.1f} dB)":
+        "Full-drift EVM: frozen {f:.1f} dB → adaptive {m} {a:.1f} dB "
+        "(lead {g:.1f} dB)",
     "train / val / test": "train / val / test",
     "主带宽": "Main bandwidth",
     "调制 / 子信道": "Modulation / sub-channels",

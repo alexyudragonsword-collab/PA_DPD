@@ -87,3 +87,26 @@ def test_default_opendpd_dir_honours_env(tmp_path, monkeypatch):
     (tmp_path / "spec_dir").mkdir()
     monkeypatch.setenv("OPENDPD_DIR", str(tmp_path))
     assert services.default_opendpd_dir() == str(tmp_path)
+
+
+def test_analyze_two_tone_csv_example():
+    res = services.analyze_two_tone_csv(services.EXAMPLE_TWO_TONE_CSV)
+    assert res["memory_strength_db"] > 4.0
+    assert res["memory_depth"] >= 4 and res["use_cross_terms"]
+    assert len(res["spacings_hz"]) == len(res["im3_lower_dbc"])
+
+
+@pytest.mark.parametrize("method", ["rls", "whitened", "apa"])
+def test_run_adaptive_dpd_tracks_drift(method):
+    res = services.run_adaptive_dpd(method=method, n_blocks=8, warm_blocks=5)
+    assert res["method"] == method
+    assert len(res["evm_adaptive"]) == 8 == len(res["evm_frozen"])
+    assert np.all(np.isfinite(res["evm_adaptive"]))   # did not diverge
+    # adaptation beats the frozen baseline at full drift
+    assert res["final_adaptive"] < res["final_frozen"] - 1.0
+    assert res["gap_db"] > 1.0
+
+
+def test_run_adaptive_dpd_rejects_bad_method():
+    with pytest.raises(ValueError):
+        services.run_adaptive_dpd(method="nlms")

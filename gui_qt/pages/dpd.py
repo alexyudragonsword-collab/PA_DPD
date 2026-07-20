@@ -69,15 +69,49 @@ class DpdPage(QWidget):
         lay.addWidget(card_row([self.c_e0, self.c_e1, self.c_a0, self.c_a1]))
 
         self.tabs = QTabWidget()
-        self.p_psd, self.p_const = FigurePane(), FigurePane()
+        self.p_psd, self.p_const, self.p_adapt = (FigurePane(), FigurePane(),
+                                                 FigurePane())
         self.tabs.addTab(self.p_psd, tr("PSD 前后对比"))
         self.tabs.addTab(self.p_const, tr("星座前后对比"))
+        self.tabs.addTab(self.p_adapt, tr("自适应(漂移)"))
         lay.addWidget(self.tabs, 1)
         self.msg = QLabel("")
         lay.addWidget(self.msg)
 
+        agrp = QGroupBox(tr("自适应 / 在线 DPD(漂移跟踪)"))
+        al = QHBoxLayout(agrp)
+        self.ad_method = QComboBox()
+        self.ad_method.addItems(list(services.ADAPTIVE_METHODS))
+        self.ad_blocks = QSpinBox()
+        self.ad_blocks.setRange(4, 16)
+        self.ad_blocks.setValue(10)
+        self.ad_span = QDoubleSpinBox()
+        self.ad_span.setRange(0.01, 0.05)
+        self.ad_span.setSingleStep(0.005)
+        self.ad_span.setValue(0.02)
+        self.ad_forget = QDoubleSpinBox()
+        self.ad_forget.setRange(0.50, 0.99)
+        self.ad_forget.setSingleStep(0.01)
+        self.ad_forget.setValue(0.60)
+        self.ad_run = QPushButton(tr("运行自适应 DPD"))
+        self.ad_run.setObjectName("primary")
+        for lbl, w in [(tr("方法"), self.ad_method),
+                       (tr("块数"), self.ad_blocks),
+                       (tr("漂移"), self.ad_span),
+                       ("forget", self.ad_forget)]:
+            al.addWidget(QLabel(lbl))
+            al.addWidget(w)
+        al.addStretch(1)
+        al.addWidget(self.ad_run)
+        lay.addWidget(agrp)
+        self.ad_msg = QLabel(tr("在会漂移的合成 PA 上比较自适应 vs 冻结批处理 "
+                                "DPD 的逐块 EVM。"))
+        self.ad_msg.setWordWrap(True)
+        lay.addWidget(self.ad_msg)
+
         self.algo.currentIndexChanged.connect(self._toggle)
         self.run_btn.clicked.connect(self.run)
+        self.ad_run.clicked.connect(self.run_adaptive)
         self.refresh()
         self._toggle(self.algo.currentIndex())
 
@@ -150,6 +184,34 @@ class DpdPage(QWidget):
                 self._worker.start()
         except Exception as e:
             self.msg.setText(f"❌ {e}")
+
+    def run_adaptive(self):
+        self.ad_run.setEnabled(False)
+        self.ad_msg.setText(tr("自适应跟踪中…"))
+        method = self.ad_method.currentText()
+
+        def job(on_progress=None):
+            return services.run_adaptive_dpd(
+                method=method, n_blocks=self.ad_blocks.value(),
+                drift_span=self.ad_span.value(),
+                forget=self.ad_forget.value())
+
+        self._ad_worker = FnWorker(job)
+        self._ad_worker.done.connect(self._finish_adaptive)
+        self._ad_worker.failed.connect(
+            lambda e: (self.ad_msg.setText(f"❌ {e}"),
+                       self.ad_run.setEnabled(True)))
+        self._ad_worker.start()
+
+    def _finish_adaptive(self, res):
+        self.ad_run.setEnabled(True)
+        self.p_adapt.set_figure(figs.adaptive_evm_fig(res))
+        self.tabs.setCurrentWidget(self.p_adapt)
+        self.ad_msg.setText(tr(
+            "满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB"
+            "(领先 {g:.1f} dB)").format(
+            f=res["final_frozen"], m=res["method"].upper(),
+            a=res["final_adaptive"], g=res["gap_db"]))
 
     def _finish(self, out, label, cfg, src):
         self.prog.hide()

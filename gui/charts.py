@@ -120,6 +120,24 @@ def fig_amam(am: dict, title: str = "AM-AM / AM-PM") -> go.Figure:
     return fig
 
 
+def fig_adaptive_evm(res: dict, title: str | None = None) -> go.Figure:
+    """Per-block EVM: frozen batch DPD vs the adaptive method, as the PA
+    drifts cold->hot. ``res`` is ``services.run_adaptive_dpd`` output."""
+    fig = _fig(tr("漂移跟踪:每块 EVM") if title is None else title)
+    pal = palette()
+    b = res["blocks"]
+    fig.add_trace(go.Scatter(x=b, y=res["evm_frozen"], mode="lines+markers",
+                             name=tr("冻结批处理 DPD"),
+                             line=dict(width=1.8, color=pal[1])))
+    fig.add_trace(go.Scatter(
+        x=b, y=res["evm_adaptive"], mode="lines+markers",
+        name=tr("自适应 {m}").format(m=res["method"].upper()),
+        line=dict(width=1.8, color=pal[0])))
+    fig.update_xaxes(title=tr("块(冷 → 热)"))
+    fig.update_yaxes(title="EVM (dB)")
+    return fig
+
+
 def fig_two_tone(res: dict, title: str | None = None) -> go.Figure:
     """IM3 lower/upper (dBc) vs tone spacing on a log-x axis.
 

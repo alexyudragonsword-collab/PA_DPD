@@ -46,6 +46,20 @@ def ccdf_fig(curves: dict) -> Figure:
     return fig
 
 
+def adaptive_evm_fig(res: dict) -> Figure:
+    """Per-block EVM: frozen batch DPD vs the adaptive method as the PA
+    drifts. ``res`` is ``services.run_adaptive_dpd`` output."""
+    fig, ax = _fig()
+    b = res["blocks"]
+    ax.plot(b, res["evm_frozen"], "s-", lw=1.4, label=tr("冻结批处理 DPD"))
+    ax.plot(b, res["evm_adaptive"], "o-", lw=1.6,
+            label=tr("自适应 {m}").format(m=res["method"].upper()))
+    ax.set_xlabel(tr("块(冷 → 热)"))
+    ax.set_ylabel("EVM (dB)")
+    ax.legend(fontsize=8)
+    return fig
+
+
 def two_tone_fig(res: dict) -> Figure:
     """IM3 lower/upper (dBc) vs tone spacing (log-x). ``res`` is the dict
     from ``services.analyze_two_tone_csv``."""
