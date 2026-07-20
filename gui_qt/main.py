@@ -12,6 +12,7 @@ for p in (str(ROOT), str(ROOT / "src")):
         sys.path.insert(0, p)
 
 from PySide6.QtCore import Qt  # noqa: E402
+from PySide6.QtGui import QIcon  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,  # noqa: E402
                                QLabel, QListWidget, QMainWindow,
                                QStackedWidget, QVBoxLayout, QWidget)
@@ -19,6 +20,16 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,  # noqa: E4
 from gui_qt import common  # noqa: E402
 from gui_qt.common import apply_theme, set_pref, tr  # noqa: E402
 from gui_qt.themes import render_qss  # noqa: E402
+
+
+def app_icon() -> QIcon:
+    """The app icon, resolvable both in-repo and inside a PyInstaller
+    bundle (datas map it under ``gui_qt/assets``)."""
+    for base in (Path(getattr(sys, "_MEIPASS", ROOT)), ROOT):
+        p = base / "gui_qt" / "assets" / "padpd.png"
+        if p.exists():
+            return QIcon(str(p))
+    return QIcon()
 
 PAGES = [
     ("🏠", "总览", "home", "HomePage"),
@@ -151,7 +162,10 @@ class MainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     app.setStyle("Fusion")
+    app.setApplicationName("padpd")
+    app.setWindowIcon(app_icon())
     win = MainWindow()
+    win.setWindowIcon(app_icon())
     win.show()
     sys.exit(app.exec())
 

@@ -19,6 +19,18 @@
 
 以下本地构建方式作为无法使用 Actions 时的备选。
 
+## 应用图标
+
+图标源图在 `packaging/icon/source.png`。运行
+`python packaging/make_icon.py` 会生成:
+
+- `packaging/icon/padpd.ico`(16–256 多分辨率)——EXE 图标,`padpd_qt.spec`
+  自动引用;
+- `gui_qt/assets/padpd.png`(512, 圆角透明)——随包分发,作为窗口/任务栏
+  图标(`gui_qt/main.py` 设置)。
+
+换图标只需替换 `source.png` 后重跑该脚本。
+
 ## 重要限制:PyInstaller 不能跨平台
 
 PyInstaller 只能在**目标平台上**构建目标平台的产物:

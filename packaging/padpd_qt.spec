@@ -42,6 +42,8 @@ a = Analysis(  # noqa: F821
     binaries=[],
     datas=[
         (os.path.join(ROOT, "gui_qt", "style_template.qss"), "gui_qt"),
+        (os.path.join(ROOT, "gui_qt", "assets"), os.path.join("gui_qt",
+                                                              "assets")),
         (os.path.join(ROOT, "manual"), "manual"),
     ],
     hiddenimports=hiddenimports,
@@ -50,6 +52,7 @@ a = Analysis(  # noqa: F821
 )
 pyz = PYZ(a.pure)  # noqa: F821
 
+_icon = os.path.join(SPECPATH, "icon", "padpd.ico")  # noqa: F821
 exe = EXE(  # noqa: F821
     pyz,
     a.scripts,
@@ -60,6 +63,7 @@ exe = EXE(  # noqa: F821
     strip=False,
     upx=False,
     console=False,
+    icon=_icon if os.path.exists(_icon) else None,
 )
 coll = COLLECT(  # noqa: F821
     exe,
