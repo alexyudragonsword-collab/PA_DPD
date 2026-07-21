@@ -10,11 +10,14 @@
 1. GitHub 仓库页 → **Actions** → **Build Windows EXE** →
    **Run workflow**(可选任意分支)→ 等待完成(slim 约 8 分钟,
    full 约 20 分钟);
-2. 在该 run 的 **Artifacts** 下载
-   `padpd-desktop-windows-slim.zip`(精简版,~200 MB,经典功能全可用)
-   或 `padpd-desktop-windows-full.zip`(含 CPU 版 torch,神经功能
-   可用);解压后运行 `padpd-desktop\padpd-desktop.exe`。
-3. 推送 `v*` tag(如 `v1.0.0`)会自动构建两个变体并附到 GitHub
+2. 在该 run 的 **Artifacts** 下载:
+   - `padpd-desktop-windows-slim.zip`(PyInstaller onedir 精简版,~200 MB,
+     经典功能全可用);
+   - `padpd-desktop-windows-full.zip`(onedir 完整版,含 CPU 版 torch,
+     神经功能可用);解压后运行 `padpd-desktop\padpd-desktop.exe`;
+   - `padpd-desktop-windows-onefile`(**Nuitka 单文件 exe**,精简版,
+     下载即单个 `padpd-desktop.exe`,双击即运行,无需解压目录)。
+3. 推送 `v*` tag(如 `v1.0.0`)会自动构建全部变体并附到 GitHub
    Release。
 
 以下本地构建方式作为无法使用 Actions 时的备选。
@@ -69,13 +72,47 @@ PyInstaller 只能在**目标平台上**构建目标平台的产物:
 https://download.pytorch.org/whl/cpu`),否则 PyInstaller 会把几个 GB 的
 CUDA 运行库一起打进去。
 
+## 方式二:Nuitka 单文件构建(single .exe,仅精简版)
+
+想要**一个 exe 文件**(而非整目录)分发时,用 Nuitka:
+
+```bat
+:: 在 Windows 上,从 packaging/ 运行
+build_windows_nuitka.bat
+```
+
+产物是**单个** `packaging\build_nuitka\padpd-desktop.exe`,双击即运行。
+Nuitka 把 Python 编译成 C 再链接,启动后把自身解压到 `%TEMP%`。
+
+单文件 vs onedir 取舍:
+
+| | PyInstaller onedir(方式一) | Nuitka onefile(方式二) |
+|---|---|---|
+| 产物 | 一个目录、几百个文件 | **单个 .exe** |
+| 分发 | 拷整目录 / zip | 拷一个文件 |
+| 首次启动 | 快 | 略慢(解压到 %TEMP%) |
+| torch 完整版 | ✅ 支持 | ❌ 仅精简版(见下) |
+| 构建时长 | 快(几分钟) | 慢(10–30 min,编译 C) |
+
+**为什么只做精简版**:onefile 每次启动都要把内容解压到临时目录,塞进
+几 GB 的 torch 会让体积和首启都不可接受。需要神经功能的完整版请用
+方式一(PyInstaller)。Nuitka 同样**不能跨平台**——Windows exe 必须在
+Windows 上构建。
+
 ## Linux 冒烟验证(本仓库 CI/开发环境)
+
+PyInstaller:
 
 ```bash
 cd packaging
 PADPD_NO_TORCH=1 python -m PyInstaller --clean --noconfirm padpd_qt.spec
 QT_QPA_PLATFORM=offscreen ./dist/padpd-desktop/padpd-desktop   # 应正常启动
 ```
+
+Nuitka onefile(Linux 需先 `apt-get install patchelf`;`pip install
+"nuitka[onefile]"`):同一命令去掉 `--windows-*`、加 `--linux-icon`,
+从仓库根运行,产物 `packaging/build_nuitka/padpd-desktop`,
+`QT_QPA_PLATFORM=offscreen` 下启动冒烟。
 
 ## Streamlit Web 版怎么“打包”?
 
@@ -97,3 +134,6 @@ streamlit run gui/app.py
   "Microsoft Visual C++ Redistributable x64"。
 - **图中文字变方框**:系统需有中文字体(Windows 自带微软雅黑,无需处理;
   精简 Linux 需 `fonts-wqy-zenhei` 之类)。
+- **Nuitka 单文件首次启动慢**:onefile 每次运行先解压到 `%TEMP%`,首启
+  比 onedir 慢几秒,之后正常;对启动速度敏感就用方式一的 onedir。杀软
+  对单文件自解压偶有误报,同样加白名单即可。

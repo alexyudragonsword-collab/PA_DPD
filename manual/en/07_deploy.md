@@ -49,9 +49,18 @@ build_windows.bat --no-torch :: lite build (about 400 MB, all classical features
 The output lands in `packaging/dist/padpd-desktop/` with the entry point
 `padpd-desktop.exe`; copy the whole directory to distribute it.
 
-**Key limitation: PyInstaller cannot cross-compile** — a Windows exe must be
-built on Windows (this repository has verified building and launching on
-Linux with the same spec file).
+**For a single .exe file** (rather than a directory), build a onefile with
+Nuitka: `packaging/build_windows_nuitka.bat` produces one
+`build_nuitka/padpd-desktop.exe` that runs on double-click (it unpacks to
+`%TEMP%` on first launch, so the cold start is a bit slower). The cloud
+**Build Windows EXE** workflow also emits this as the
+`padpd-desktop-windows-onefile` artifact. **Nuitka onefile is slim-only** —
+a onefile unpacks on every launch, so bundling several GB of torch is
+impractical; use PyInstaller for the full (neural) build.
+
+**Key limitation: neither packager can cross-compile** — a Windows exe must
+be built on Windows (this repository has verified building and launching on
+Linux with the same PyInstaller spec / Nuitka command).
 
 | | Lite build --no-torch | Full build |
 |---|---|---|

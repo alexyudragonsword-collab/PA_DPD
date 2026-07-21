@@ -43,8 +43,17 @@ build_windows.bat --no-torch :: 精简版(约 400 MB,经典功能全可用)
 产物在 `packaging/dist/padpd-desktop/`,入口 `padpd-desktop.exe`,
 整个目录拷贝即可分发。
 
-**关键限制:PyInstaller 不能跨平台**——Windows exe 必须在 Windows 上
-构建(本仓库已在 Linux 用同一份 spec 验证过构建与启动)。
+**要单个 exe 文件**(而非整目录)时,用 Nuitka 打成 onefile:
+`packaging/build_windows_nuitka.bat` 产出单个
+`build_nuitka/padpd-desktop.exe`,双击即运行(首次启动先解压到
+`%TEMP%`,略慢)。云端 **Build Windows EXE** 也会出
+`padpd-desktop-windows-onefile` 这个单文件产物。**Nuitka onefile 仅
+精简版**——onefile 每次启动都要解压,塞几 GB torch 不现实,需要神经
+功能的完整版仍用 PyInstaller。
+
+**关键限制:两种打包器都不能跨平台**——Windows exe 必须在 Windows 上
+构建(本仓库已在 Linux 用同一份 PyInstaller spec / Nuitka 命令验证过
+构建与启动)。
 
 | | 精简版 --no-torch | 完整版 |
 |---|---|---|

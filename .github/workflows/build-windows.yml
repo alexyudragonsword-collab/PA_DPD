@@ -76,3 +76,61 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: packaging/padpd-desktop-windows-${{ matrix.variant }}.zip
+
+  # Nuitka single-file (.exe) build — slim only (no torch). Independent of
+  # the PyInstaller matrix above: Nuitka compiles to C and is much slower,
+  # so it must not block or replace the fast onedir path.
+  build-nuitka:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install build dependencies (slim, no torch)
+        run: pip install -e .[gui-qt] "nuitka[onefile]"
+
+      - name: Build single-file exe with Nuitka
+        run: |
+          python -m nuitka --standalone --onefile --assume-yes-for-downloads `
+            --enable-plugin=pyside6 `
+            --include-package=gui_qt --include-package=gui_core --include-package=padpd `
+            --include-module=matplotlib.backends.backend_qtagg `
+            --include-data-dir=manual=manual `
+            --include-data-dir=gui_qt/assets=gui_qt/assets `
+            --include-data-files=gui_qt/style_template.qss=gui_qt/style_template.qss `
+            --nofollow-import-to=streamlit,plotly,playwright,IPython,pytest,tkinter,PyQt5,PyQt6,torch,onnx,onnxscript,onnxruntime,nvidia,triton `
+            --windows-icon-from-ico=packaging/icon/padpd.ico `
+            --windows-console-mode=disable `
+            --company-name=padpd --product-name=padpd-desktop `
+            --output-dir=packaging/build_nuitka --output-filename=padpd-desktop.exe `
+            packaging/desktop_launcher_qt.py
+
+      - name: Launch smoke test
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          $p = Start-Process -PassThru .\packaging\build_nuitka\padpd-desktop.exe
+          Start-Sleep -Seconds 20
+          if ($p.HasExited) {
+            Write-Error "app exited early with code $($p.ExitCode)"
+            exit 1
+          }
+          Stop-Process -Id $p.Id -Force
+          Write-Output "smoke OK: single-file app stayed alive for 20 s"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: padpd-desktop-windows-onefile
+          path: packaging/build_nuitka/padpd-desktop.exe
+          retention-days: 14
+
+      - name: Attach to release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: packaging/build_nuitka/padpd-desktop.exe

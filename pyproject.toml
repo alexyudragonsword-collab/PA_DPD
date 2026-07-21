@@ -37,6 +37,7 @@ dev = ["pytest>=7.0"]
 nn = ["torch>=2.0"]
 gui = ["streamlit>=1.36", "plotly>=5.20"]
 gui-qt = ["pyside6>=6.6", "markdown>=3.5"]
+packaging = ["pyinstaller", "nuitka[onefile]>=2.4"]   # desktop exe builders
 
 [tool.setuptools.packages.find]
 where = ["src"]

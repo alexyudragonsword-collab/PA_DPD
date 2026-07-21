@@ -24,4 +24,6 @@ deploy_export/
 gui_runs/
 packaging/dist/
 packaging/build/
+packaging/build_nuitka/
+packaging/build_nuitka.log
 gui_prefs.json
