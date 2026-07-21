@@ -23,6 +23,7 @@ python -m nuitka --standalone --onefile --assume-yes-for-downloads ^
   --windows-icon-from-ico=packaging/icon/padpd.ico ^
   --windows-console-mode=disable ^
   --company-name=padpd --product-name=padpd-desktop ^
+  --product-version=0.1.0 --file-version=0.1.0 ^
   --output-dir=packaging/build_nuitka --output-filename=padpd-desktop.exe ^
   packaging/desktop_launcher_qt.py || goto :err
 
