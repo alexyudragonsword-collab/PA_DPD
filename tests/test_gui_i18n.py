@@ -90,3 +90,21 @@ def test_page_sources_only_use_known_keys():
     assert not missing, (
         f"{len(missing)} tr() keys missing from i18n dict, e.g. "
         f"{sorted(missing)[:8]}")
+
+
+def test_i18n_dict_has_no_duplicate_keys():
+    """A duplicate key in the dict literal silently overrides the earlier
+    translation — parse the AST to reject them at test time."""
+    import ast
+    from pathlib import Path
+    src = (Path(__file__).parent.parent / "gui_core" / "i18n.py").read_text(
+        encoding="utf-8")
+    tree = ast.parse(src)
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Dict) and len(node.keys) > 20:  # the _EN dict
+            keys = []
+            for k in node.keys:
+                if isinstance(k, ast.Constant):
+                    keys.append(k.value)
+            dupes = {k for k in keys if keys.count(k) > 1}
+            assert not dupes, f"duplicate i18n keys: {sorted(dupes)[:5]}"

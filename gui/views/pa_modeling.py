@@ -24,11 +24,8 @@ with st.sidebar:
         bw = st.select_slider(ui.tr("带宽 (MHz)"), [20, 40, 80, 160], 80) * 1e6
         qam = st.select_slider("QAM", [256, 1024, 4096], 1024)
         drive = st.slider(ui.tr("PA 工作点 drive"), 0.06, 0.24, 0.14, 0.01)
-        key = f"synth_{bw}_{qam}_{drive}"
-        if key not in st.session_state:
-            st.session_state[key] = services.make_synthetic_source(
-                bw, qam, symbols=8, drive=drive)
-        src = st.session_state[key]
+        src = services.cached_synthetic_source(bw, qam, symbols=8,
+                                               drive=drive)
     else:
         src = state.sources[src_name]
 
@@ -112,11 +109,13 @@ if last:
             use_container_width=True)
 
     st.subheader(ui.tr("保存"))
+    from gui_core.paths import user_data_dir
+    _stem = f"gui_{last['name'].split(' @')[0].replace(' ', '_')}"
     col1, col2 = st.columns(2)
     with col1:
         fname = st.text_input(
             ui.tr("checkpoint 文件名"),
-            f"models/gui_{last['name'].split(' @')[0].replace(' ', '_')}"
+            str(user_data_dir() / "models" / _stem)
             + (".pt" if last["cfg"]["family"] == "neural" else ".npz"))
     with col2:
         st.write("")

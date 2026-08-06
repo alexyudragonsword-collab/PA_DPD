@@ -28,7 +28,7 @@ with st.sidebar:
                          disabled=not use_cfr)
 
 
-@st.cache_data(show_spinner=ui.tr("生成波形…"))
+@st.cache_data(show_spinner=ui.tr("生成波形…"), max_entries=8)
 def _gen(bw, qam, symbols, seed, cfr):
     w = services.make_waveform(bw, qam, symbols, seed, cfr)
     return w

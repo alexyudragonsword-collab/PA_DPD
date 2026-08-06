@@ -137,11 +137,14 @@ class LoopbackChannel:
         if self.cfo_hz:
             y = y * np.exp(2j * np.pi * self.cfo_hz * t)
         if self.phase_noise_rms_deg:
+            from scipy.signal import lfilter
             w = rng.standard_normal(n)
             alpha = np.exp(-2 * np.pi * self.phase_noise_bw_hz / fs)
-            p = np.zeros(n)
-            for i in range(1, n):
-                p[i] = alpha * p[i - 1] + (1 - alpha) * w[i]
+            # one-pole shaping p[i] = a*p[i-1] + (1-a)*w[i], vectorized
+            # (bit-identical to the former per-sample loop, which had
+            # p[0]=0 and started at i=1 — hence w[0]=0)
+            w[0] = 0.0
+            p = lfilter([1 - alpha], [1, -alpha], w)
             p *= np.deg2rad(self.phase_noise_rms_deg) / max(np.std(p), 1e-30)
             y = y * np.exp(1j * p)
 

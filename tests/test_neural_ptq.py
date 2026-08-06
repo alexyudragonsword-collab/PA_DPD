@@ -3,6 +3,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
+pytestmark = pytest.mark.slow  # minutes-long trainings; full CI lane only
+
 from padpd.nn import NeuralPAModel, quantize_neural_ptq
 from padpd.pa import ReferencePA, nmse_db
 from padpd.waveform import OFDMConfig, generate_ofdm

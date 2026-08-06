@@ -57,10 +57,12 @@ class HomePage(QWidget):
         parts.append(tr("✅ OpenDPD 数据集:{path}").format(path=od)
                      if od.is_dir()
                      else tr("ℹ️ OpenDPD 未找到(可在数据页指定)"))
-        n_models = len(list(Path("models").glob("*"))) \
-            if Path("models").is_dir() else 0
+        from gui_core.paths import user_data_dir
+        _mdir = user_data_dir() / "models"
+        n_models = len(list(_mdir.glob("*"))) if _mdir.is_dir() else 0
         runs = get_state().runstore.list()
-        parts.append(f"ℹ️ checkpoint × {n_models} · run × {len(runs)}")
+        parts.append("ℹ️ " + tr("模型 checkpoint × {n}").format(n=n_models)
+                     + " · " + tr("实验 run × {n}").format(n=len(runs)))
         self.env.setText("   ".join(parts))
 
         self.table.setRowCount(0)

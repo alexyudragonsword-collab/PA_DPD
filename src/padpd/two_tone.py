@@ -179,25 +179,17 @@ def load_two_tone_csv(path: str) -> TwoToneResult:
     fundamental tone). Returns a :class:`TwoToneResult`; pass it to
     :func:`recommend_dpd_budget` for a DPD sizing.
     """
-    import csv
-    with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    if not rows:
-        raise ValueError(f"{path}: empty CSV")
-    cols = {k.strip().lower(): k for k in rows[0]}
+    from .data.io import read_csv_columns
+    cols = read_csv_columns(path)
     need = ("spacing_hz", "im3_lower_dbc", "im3_upper_dbc")
     for key in need:
         if key not in cols:
             raise ValueError(f"{path}: missing column '{key}' "
                              f"(need {', '.join(need)})")
-
-    def column(key):
-        return np.array([float(r[cols[key]]) for r in rows])
-
-    im5 = column("im5_avg_dbc") if "im5_avg_dbc" in cols else None
-    return TwoToneResult.from_curves(column("spacing_hz"),
-                                     column("im3_lower_dbc"),
-                                     column("im3_upper_dbc"), im5)
+    return TwoToneResult.from_curves(cols["spacing_hz"],
+                                     cols["im3_lower_dbc"],
+                                     cols["im3_upper_dbc"],
+                                     cols.get("im5_avg_dbc"))
 
 
 def recommend_dpd_budget(result, order: int = 5) -> dict:

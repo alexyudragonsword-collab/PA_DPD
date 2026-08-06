@@ -27,13 +27,10 @@ with st.sidebar:
         cfr_on = st.toggle(ui.tr("CFR 削峰"))
         cfr = st.slider(ui.tr("CFR 目标 PAPR (dB)"), 5.0, 10.0, 8.0, 0.5,
                         disabled=not cfr_on)
-        key = f"dpdsynth_{bw}_{qam}_{drive}_{cfr if cfr_on else None}"
-        if key not in st.session_state:
-            with st.spinner(ui.tr("准备合成数据源…")):
-                st.session_state[key] = services.make_synthetic_source(
-                    bw, qam, symbols=8, drive=drive,
-                    cfr_papr_db=cfr if cfr_on else None)
-        src = st.session_state[key]
+        with st.spinner(ui.tr("准备合成数据源…")):
+            src = services.cached_synthetic_source(
+                bw, qam, symbols=8, drive=drive,
+                cfr_papr_db=cfr if cfr_on else None)
     else:
         src = state.sources[src_name]
 

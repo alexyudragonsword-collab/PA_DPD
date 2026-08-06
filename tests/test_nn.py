@@ -3,6 +3,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
+pytestmark = pytest.mark.slow  # minutes-long trainings; full CI lane only
+
 from padpd.nn import (DGRUBackbone, DLAPredistorter, FrameDataset,
                       GRUBackbone, NeuralPAModel, TCNBackbone,
                       complex_to_iq, count_params, iq_features,

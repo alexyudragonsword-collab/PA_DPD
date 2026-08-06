@@ -13,6 +13,8 @@ for p in (str(ROOT), str(ROOT / "src")):
 
 pytest.importorskip("torch")
 
+pytestmark = pytest.mark.slow  # minutes-long trainings; full CI lane only
+
 from padpd.deploy.neural_ptq import quantize_neural_ptq
 from padpd.deploy.qat import fake_quant, quantize_aware_finetune
 from padpd.nn.torch_model import NeuralPAModel, nmse_db

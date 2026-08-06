@@ -120,6 +120,25 @@ def make_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
             "x_val": xv, "y_val": pa(xv), "wf_val": va["wf"]}
 
 
+from functools import lru_cache  # noqa: E402
+
+
+@lru_cache(maxsize=3)
+def cached_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
+                            symbols: int = 8, drive: float = 0.14,
+                            cfr_papr_db: float | None = None,
+                            seed: int = 0) -> dict:
+    """Bounded shared cache for synthetic sources.
+
+    Both GUIs previously kept their own unbounded per-parameter caches
+    (tens of MB per entry at 160/320 MHz) — an hour of slider
+    exploration grew the process by GBs. Three entries cover the
+    common flip-back-and-forth without hoarding.
+    """
+    return make_synthetic_source(bandwidth_hz, qam, symbols, drive,
+                                 cfr_papr_db, seed)
+
+
 def eval_source_for(meta: dict, sources: dict) -> dict:
     """Pick the evaluation source matching a fitted model.
 

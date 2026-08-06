@@ -19,6 +19,22 @@ import numpy as np
 from .dataset import IQDataset
 
 
+def read_csv_columns(path: str) -> dict[str, np.ndarray]:
+    """Read a numeric CSV into {lowercased_header: float array}.
+
+    Shared by the Cadence loader, the HB importer and the two-tone table
+    loader; utf-8-sig handles BOM'd exports. Raises ValueError on an
+    empty or header-only file.
+    """
+    try:
+        cols = _read_csv_columns(path)
+    except (StopIteration, IndexError):
+        raise ValueError(f"{path}: empty CSV") from None
+    if not cols or not len(next(iter(cols.values()))):
+        raise ValueError(f"{path}: empty CSV")
+    return cols
+
+
 def _read_csv_columns(path: str) -> dict[str, np.ndarray]:
     # utf-8-sig strips a UTF-8 BOM if present (seen in OpenDPD examples)
     with open(path, newline="", encoding="utf-8-sig") as f:

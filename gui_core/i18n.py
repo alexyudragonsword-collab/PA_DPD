@@ -95,7 +95,6 @@ _EN = {
     "最近实验": "Recent runs",
     "时间": "Time",
     "名称": "Name",
-    "类型": "Kind",
     "指标": "Metrics",
     # ---- waveform ---------------------------------------------------
     "生成 802.11be 风格 OFDM 基带波形,查看 PSD / CCDF / 星座与 PAPR;":
@@ -359,7 +358,6 @@ _EN = {
     "💾 保存 checkpoint": "💾 Save checkpoint",
     "保存 checkpoint…": "Save checkpoint…",
     "保存模型": "Save model",
-    "已保存 {fname}": "Saved {fname}",
     "💾 已保存 {path}": "💾 Saved {path}",
     "在左侧选择数据源与模型,点击「拟合模型」。":
         "Pick a source and model on the left, then click \"Fit model\".",
@@ -415,7 +413,6 @@ _EN = {
     "在左侧配置数据源与 DPD 方案,点击「运行 DPD」。":
         "Configure the source and DPD scheme on the left, then click "
         "\"Run DPD\".",
-    "运行失败:{e}": "Run failed: {e}",
     "EVM(无 DPD)": "EVM (no DPD)",
     "EVM(DPD 后)": "EVM (with DPD)",
     "ACLR(无 DPD)": "ACLR (no DPD)",
@@ -504,7 +501,6 @@ _EN = {
     "导出中…": "Exporting…",
     "❌ 导出失败:{e}": "❌ Export failed: {e}",
     "ONNX 数值验证 ": "ONNX numerical check ",
-    "ONNX 数值验证": "ONNX numerical check",
     "RTL bit-true 验证": "RTL bit-true check",
     "RTL bit-true 验证通过": "RTL bit-true check passed",
     "RTL bit-true 验证跳过": "RTL bit-true check skipped",

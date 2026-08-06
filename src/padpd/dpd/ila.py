@@ -55,7 +55,8 @@ class ILAPredistorter:
             model = self.model_factory()
             model.fit(y / self.target_gain, u, **self.fit_kwargs)
             self.dpd_model = model
-            u = model(x)
+            if it < self.n_iterations - 1:   # final pass's u is never used
+                u = model(x)
         return self
 
     def fit_measured(self, x: np.ndarray, y: np.ndarray) -> "ILAPredistorter":

@@ -52,7 +52,9 @@ with col2:
                     unsafe_allow_html=True)
 
 with col3:
-    models = list(Path("models").glob("*")) if Path("models").is_dir() else []
+    from gui_core.paths import user_data_dir
+    _mdir = user_data_dir() / "models"
+    models = list(_mdir.glob("*")) if _mdir.is_dir() else []
     runs = state.runstore.list()
     st.markdown(
         ui.badge(ui.tr("模型 checkpoint × {n}").format(n=len(models)),

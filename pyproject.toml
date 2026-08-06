@@ -44,3 +44,6 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = [
+  "slow: long-running neural training tests (CI runs them in the full lane only)",
+]

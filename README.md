@@ -23,7 +23,7 @@ CMOS/SOI PA 设计 → 电路仿真(Spectre)→ 行为建模(GMP baseline / 神�
 
 ```bash
 pip install -e .          # 安装 padpd 包(依赖 numpy/scipy/matplotlib)
-pytest tests/             # 运行全部单元测试(57 项)
+pytest tests/             # 运行全部单元测试(200+ 项;-m "not slow" 跳过长训练)
 python scripts/run_baseline_demo.py       # 合成数据端到端 demo
 python scripts/generate_dataset.py        # 生成合成 PA 数据集(.npz)
 

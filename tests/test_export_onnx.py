@@ -17,7 +17,14 @@ def test_export_onnx_tcn(tmp_path):
     p = str(tmp_path / "tcn.onnx")
     res = export_onnx(model, p, frame_length=64)
     assert res["path"] == p
-    # onnxruntime is installed in CI/dev, so verification should pass
-    if "max_abs_err" in res:
+    try:
+        import onnxruntime  # noqa: F401
+        have_ort = True
+    except ImportError:
+        have_ort = False
+    if have_ort:
+        # runtime present -> verification MUST have run and passed
         assert res["verified"]
         assert res["max_abs_err"] < 1e-4
+    else:
+        assert "max_abs_err" not in res

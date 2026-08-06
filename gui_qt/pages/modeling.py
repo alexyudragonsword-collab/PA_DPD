@@ -112,11 +112,7 @@ class ModelingPage(QWidget):
     def _get_source(self):
         name = self.src.currentText()
         if name == tr("合成 ReferencePA"):
-            key = f"_synth_{self.drive.value():.2f}"
-            if not hasattr(self.state, key):
-                setattr(self.state, key, services.make_synthetic_source(
-                    drive=self.drive.value()))
-            return getattr(self.state, key)
+            return services.cached_synthetic_source(drive=self.drive.value())
         return self.state.sources[name]
 
     def fit(self):

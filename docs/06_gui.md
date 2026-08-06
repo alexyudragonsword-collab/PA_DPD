@@ -96,7 +96,7 @@ pip install -e .[gui-qt]     # pyside6(matplotlib 已是主依赖)
 python -m gui_qt.main
 ```
 
-- 左侧导航 + 页面栈,QSS 深色主题(`gui_qt/style.qss`)与 Web 版
+- 左侧导航 + 页面栈,QSS 深色主题(`gui_qt/style_template.qss`)与 Web 版
   视觉语言一致;图表为 matplotlib Qt canvas(`gui_qt/figs.py` 深色
   模板,自动选择系统中文字体)。
 - 长任务跑在 `QThread`(`gui_qt/common.py: FnWorker`),UI 不卡顿,

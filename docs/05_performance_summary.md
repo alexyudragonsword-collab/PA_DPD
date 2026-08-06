@@ -15,7 +15,7 @@
 | Phase 3 | 部署:线性定点 / 神经 PTQ / ONNX·系数·参考向量导出 | ✅(QAT·RTL 需 GPU/硬件) |
 | Phase 4 | PA/DPD 联合设计:离散 Pareto 扫描 + 可微梯度寻优 | ✅(Spectre 回环需 EDA) |
 
-规模:src ~2740 行、scripts ~1180、tests ~1280(109 测试)、docs ~1140;
+规模:src ~3900 行、scripts ~1800、tests ~2500(200+ 测试)、docs+manual ~2800;
 经典模型 Saleh/MP/GMP/DDR,神经 GRU/DGRU/TCN,DPD ILA(GMP/DDR/MP 基)+
 DLA(神经),部署定点+PTQ+导出,联合设计离散+可微。
 

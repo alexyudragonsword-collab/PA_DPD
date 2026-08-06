@@ -152,12 +152,8 @@ class DpdPage(QWidget):
         if name == tr("合成 ReferencePA"):
             cfr = self.cfr.value() if self.cfr_on.isChecked() else None
             bw = float(self.bw.currentText()) * 1e6
-            key = f"_dpdsynth_{bw:.0f}_{self.drive.value():.2f}_{cfr}"
-            if not hasattr(self.state, key):
-                setattr(self.state, key, services.make_synthetic_source(
-                    bandwidth_hz=bw, drive=self.drive.value(),
-                    cfr_papr_db=cfr))
-            return getattr(self.state, key)
+            return services.cached_synthetic_source(
+                bandwidth_hz=bw, drive=self.drive.value(), cfr_papr_db=cfr)
         return self.state.sources[name]
 
     def run(self):
@@ -282,6 +278,7 @@ class DpdPage(QWidget):
             metrics={"evm_db": m["DPD"]["evm_db"],
                      "evm_before_db": m["no DPD"]["evm_db"],
                      "aclr_high_dbc": m["DPD"]["aclr_high"],
+                     "aclr_before_dbc": m["no DPD"]["aclr_high"],
                      "convention": out["convention"]}))
         self.msg.setText(tr("✅ {label} 完成({conv} 口径),已注册 run")
                          .format(label=label, conv=out["convention"]))

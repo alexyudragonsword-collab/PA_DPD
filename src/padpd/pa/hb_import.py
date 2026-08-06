@@ -96,14 +96,8 @@ class WienerHammersteinPA(PAModel):
 
 
 def _read_csv_columns(path: str) -> dict:
-    import csv
-    with open(path, newline="", encoding="utf-8") as f:
-        rows = list(csv.DictReader(f))
-    if not rows:
-        raise ValueError(f"{path}: empty CSV")
-    cols = {k.strip().lower(): np.array([float(r[k]) for r in rows])
-            for k in rows[0]}
-    return cols
+    from ..data.io import read_csv_columns
+    return read_csv_columns(path)
 
 
 def load_amam_table(path: str) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
