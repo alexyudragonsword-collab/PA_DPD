@@ -30,7 +30,8 @@ from padpd.metrics import (aclr, aclr_opendpd, ccdf, check_mask,
                            psd, target_gain_opendpd)
 from padpd.metrics.amam import am_am_am_pm
 from padpd.pa import (DDRVolterraModel, GMPModel, MemoryPolynomialModel,
-                      ReferencePA, ddr_volterra_default, gmp_opendpd_510,
+                      ReferencePA, SplineGMP, SplineMemoryPolynomial,
+                      ddr_volterra_default, gmp_opendpd_510,
                       load_model, mp_opendpd_500, nmse_db)
 from padpd.waveform import OFDMConfig, generate_ofdm, papr_db
 
@@ -68,17 +69,25 @@ def default_opendpd_dir() -> str:
     return str(Path.home() / "OpenDPD" / "datasets")
 
 
+# Values take (params, x_train): spline entries place their knots from the
+# training signal; polynomial entries ignore the second argument.
 CLASSICAL_MODELS = {
-    "MP": lambda p: MemoryPolynomialModel(order=p.get("order", 7),
-                                          memory_depth=p.get("memory", 4)),
-    "GMP": lambda p: GMPModel(order=p.get("order", 7),
-                              memory_depth=p.get("memory", 4)),
-    "DDR": lambda p: DDRVolterraModel(order=p.get("order", 5),
-                                      memory_depth=p.get("memory", 15),
-                                      dynamic_order=p.get("dynamic_order", 1)),
-    "MP-500 (OpenDPD)": lambda p: mp_opendpd_500(),
-    "GMP-510 (OpenDPD)": lambda p: gmp_opendpd_510(),
-    "DDR-140 (preset)": lambda p: ddr_volterra_default(),
+    "MP": lambda p, x: MemoryPolynomialModel(
+        order=p.get("order", 7), memory_depth=p.get("memory", 4)),
+    "GMP": lambda p, x: GMPModel(order=p.get("order", 7),
+                                 memory_depth=p.get("memory", 4)),
+    "DDR": lambda p, x: DDRVolterraModel(
+        order=p.get("order", 5), memory_depth=p.get("memory", 15),
+        dynamic_order=p.get("dynamic_order", 1)),
+    # parametric spline: the GUI "order" slider doubles as the knot count
+    "Spline-MP": lambda p, x: SplineMemoryPolynomial.from_signal(
+        x, n_knots=p.get("order", 8), memory_depth=p.get("memory", 4)),
+    "MP-500 (OpenDPD)": lambda p, x: mp_opendpd_500(),
+    "GMP-510 (OpenDPD)": lambda p, x: gmp_opendpd_510(),
+    "DDR-140 (preset)": lambda p, x: ddr_volterra_default(),
+    "Spline-MP (K8,M4)": lambda p, x: SplineMemoryPolynomial.from_signal(
+        x, n_knots=8, memory_depth=4),
+    "Spline-GMP (K8)": lambda p, x: SplineGMP.from_signal(x, n_knots=8),
 }
 
 
@@ -233,7 +242,7 @@ def _warm_predict(model, src: dict, x_eval: np.ndarray) -> np.ndarray:
 
 def fit_classical(src: dict, model_name: str, params: dict | None = None,
                   regularization: float = 1e-9) -> dict:
-    model = CLASSICAL_MODELS[model_name](params or {})
+    model = CLASSICAL_MODELS[model_name](params or {}, src["x_train"])
     model.fit(src["x_train"], src["y_train"], regularization=regularization)
     x_e, y_e = _eval_split(src)
     pred = _warm_predict(model, src, x_e)
@@ -266,7 +275,8 @@ def run_dpd_ila(src: dict, basis: str = "GMP-510 (OpenDPD)",
     """ILA DPD. Synthetic: closed loop against the live ReferencePA.
     Measured: single-shot fit_measured; evaluation via ``surrogate``
     (a fitted PA model; required for measured sources)."""
-    factory = lambda: CLASSICAL_MODELS[basis](params or {})  # noqa: E731
+    factory = lambda: CLASSICAL_MODELS[basis](params or {},  # noqa: E731
+                                              src["x_train"])
     if src["kind"] == "synthetic":
         pa = src["pa"]
         dpd = ILAPredistorter(model_factory=factory,
@@ -379,6 +389,31 @@ def bitwidth_sweep(model, src: dict, bits=(16, 12, 10, 8)) -> dict:
     return out
 
 
+def lut_sweep(model, src: dict, entries=(1024, 256, 128, 64, 32),
+              entry_bits: int | None = None) -> dict:
+    """LUT-depth axis of the deployment trade-off (mirrors bitwidth_sweep).
+
+    Extracts an interpolated LUT from a branch-gain model (spline/MP) at
+    each table depth and measures the NMSE vs the float model's own
+    prediction target. ``entry_bits`` optionally adds entry quantization
+    on top (the two axes are orthogonal).
+    """
+    from padpd.deploy import (LUTDPD, lut_from_model, quantize_lut,
+                              spline_mac_cost)
+    x_e, y_e = _eval_split(src)
+    out = {"float": nmse_db(y_e, _warm_predict(model, src, x_e)),
+           "entries": {}}
+    for n in entries:
+        lut = lut_from_model(model, n_entries=n)
+        if entry_bits is not None:
+            lut = quantize_lut(lut, entry_bits)
+        out["entries"][n] = nmse_db(
+            y_e, _warm_predict(LUTDPD.from_table(lut), src, x_e))
+    out["macs"] = spline_mac_cost(len(model.branch_delays()), src["fs"],
+                                  degree=getattr(model, "degree", 3))
+    return out
+
+
 def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
                      n_vectors: int = 2048) -> dict:
     from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
@@ -415,6 +450,8 @@ def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
 
 # -- adaptive / online DPD (drift tracking) ------------------------------
 ADAPTIVE_METHODS = ("rls", "whitened", "apa")
+ADAPTIVE_BASES = ("gmp", "spline")
+ADAPTIVE_DUTS = ("drift", "thermal")
 
 
 def _evm_drift(pa, sig, wf) -> float:
@@ -432,22 +469,32 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
                      drift_span: float = 0.02, drive0: float = 0.13,
                      forget: float = 0.6, mu: float = 0.5, apa_k: int = 4,
                      bw: float = 80e6, qam: int = 1024, n_symbols: int = 6,
-                     warm_blocks: int = 6, seed: int = 0) -> dict:
+                     warm_blocks: int = 6, seed: int = 0,
+                     basis: str = "gmp", dut: str = "drift") -> dict:
     """Drift-tracking demo: an adaptive DPD vs a frozen batch DPD on a
-    PA that drifts cold->hot across ``n_blocks`` signal blocks.
+    PA that changes underneath it across ``n_blocks`` signal blocks.
 
-    ``method`` is one of :data:`ADAPTIVE_METHODS` (rls / whitened / apa).
+    ``method`` is one of :data:`ADAPTIVE_METHODS` (rls / whitened / apa);
+    ``basis`` one of :data:`ADAPTIVE_BASES` (gmp = polynomial GMP,
+    spline = SplineMemoryPolynomial, knots placed on block 0); ``dut``
+    one of :data:`ADAPTIVE_DUTS` — "drift" ramps DriftingReferencePA
+    cold->hot externally, "thermal" runs the self-heating
+    ThermalReferencePA whose state follows its own dissipated power.
     Returns per-block linearization EVM for both the frozen baseline and
     the adaptive predistorter, plus the final gap — the field value of
-    adaptation. Runs on the synthetic DriftingReferencePA (no data source
-    needed).
+    adaptation. No data source needed.
     """
     if method not in ADAPTIVE_METHODS:
         raise ValueError(f"method must be one of {ADAPTIVE_METHODS}")
+    if basis not in ADAPTIVE_BASES:
+        raise ValueError(f"basis must be one of {ADAPTIVE_BASES}")
+    if dut not in ADAPTIVE_DUTS:
+        raise ValueError(f"dut must be one of {ADAPTIVE_DUTS}")
     if n_blocks < 2:
         raise ValueError("n_blocks must be >= 2")
     from padpd.dpd import AdaptiveDPD, ILAPredistorter
-    from padpd.pa import DriftingReferencePA
+    from padpd.pa import (DriftingReferencePA, SplineMemoryPolynomial,
+                          ThermalReferencePA)
 
     blocks = [generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=qam,
                                        n_symbols=n_symbols, seed=seed + s))
@@ -456,9 +503,24 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
                                 beta_a_span=0.2, alpha_p_span=0.5)
     drift.set_state(0.0)
     cold = drift.pa()
+    thermal = None
+    if dut == "thermal":
+        # time constants scaled to the block length so the self-heating
+        # actually accumulates ACROSS blocks (visible drift to track)
+        fs = blocks[0].sample_rate_hz
+        t_block = len(blocks[0].x) / fs
+        thermal = ThermalReferencePA(drive0=drive0, fs=fs,
+                                     taus_s=(0.5 * t_block, 3.0 * t_block),
+                                     heat_gain=0.5)
 
-    def factory():
-        return GMPModel(order=7, memory_depth=4)
+    if basis == "spline":
+        def factory():
+            return SplineMemoryPolynomial.from_signal(blocks[0].x,
+                                                      n_knots=8,
+                                                      memory_depth=4)
+    else:
+        def factory():
+            return GMPModel(order=7, memory_depth=4)
 
     frozen = ILAPredistorter(factory, n_iterations=3)
     frozen.fit(cold, blocks[0].x)
@@ -468,12 +530,15 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
 
     states, e_frozen, e_adapt = [], [], []
     for i, wf in enumerate(blocks):
-        drift.set_state(i / (n_blocks - 1))
-        pa = drift.pa()
+        if thermal is not None:
+            pa = thermal              # stateful: every pass heats it
+        else:
+            drift.set_state(i / (n_blocks - 1))
+            pa = drift.pa()
         e_frozen.append(_evm_drift(pa, frozen(wf.x), wf))
         e_adapt.append(_evm_drift(pa, adapt(wf.x), wf))
         adapt.update(pa, wf.x)
-        states.append(drift.state)
+        states.append(thermal.state if thermal is not None else drift.state)
 
     return {"method": method, "blocks": list(range(n_blocks)),
             "states": states, "evm_frozen": e_frozen, "evm_adaptive": e_adapt,
@@ -482,7 +547,8 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
             "drive_cold": drive0, "drive_hot": drive0 + drift_span,
             # echo the run parameters so callers can register a run
             "n_blocks": n_blocks, "drift_span": drift_span,
-            "forget": forget, "apa_k": apa_k, "bw": bw}
+            "forget": forget, "apa_k": apa_k, "bw": bw,
+            "basis": basis, "dut": dut}
 
 
 def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
@@ -492,8 +558,12 @@ def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
     tag = res["method"].upper()
     if res["method"] == "apa":
         tag += f"(K{res['apa_k']})"
-    name = f"Adapt-{tag} @ drift"
+    if res.get("basis", "gmp") == "spline":
+        tag += "-Spl"
+    name = f"Adapt-{tag} @ {res.get('dut', 'drift')}"
     config = {"algo": "adaptive", "method": res["method"],
+              "basis": res.get("basis", "gmp"), "dut": res.get("dut",
+                                                               "drift"),
               "apa_k": res["apa_k"], "n_blocks": res["n_blocks"],
               "drift_span": res["drift_span"], "forget": res["forget"],
               "bw_mhz": res.get("bw", 80e6) / 1e6}
@@ -531,6 +601,9 @@ def analyze_two_tone_csv(path: str) -> dict:
             "memory_depth": b["memory_depth"],
             "use_cross_terms": b["use_cross_terms"],
             "est_coeffs": b["est_coeffs"],
+            "spline_config": b["spline_config"],
+            "spline_est_coeffs": b["spline_est_coeffs"],
+            "spline_runtime_macs": b["spline_runtime_macs"],
             "rationale": b["rationale"]}
 
 

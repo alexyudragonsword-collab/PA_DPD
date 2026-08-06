@@ -68,7 +68,7 @@ class AdaptiveDPD:
         self.template = (model_factory or GMPModel)()
         if not hasattr(self.template, "basis_matrix"):
             raise TypeError("adaptive DPD needs a linear-in-params model "
-                            "with basis_matrix() (GMP/DDR/MP)")
+                            "with basis_matrix() (GMP/DDR/MP/spline)")
         self.method = method
         self.target_gain = target_gain
         self.forget = float(forget)
@@ -92,8 +92,12 @@ class AdaptiveDPD:
 
     def _init(self, n: int) -> None:
         if self.w is None:
-            self.w = np.zeros(n, dtype=complex)
-            self.w[0] = 1.0                      # start from pass-through
+            pass_through = getattr(self.template, "passthrough_coeffs", None)
+            if pass_through is not None:   # e.g. spline basis: w[0]=1 is
+                self.w = np.asarray(pass_through(), dtype=complex).copy()
+            else:                          # not the identity there
+                self.w = np.zeros(n, dtype=complex)
+                self.w[0] = 1.0            # start from pass-through
             self._R = np.zeros((n, n), dtype=complex)
             self._p = np.zeros(n, dtype=complex)
 

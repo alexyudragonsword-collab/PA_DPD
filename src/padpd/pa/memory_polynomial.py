@@ -47,6 +47,20 @@ class MemoryPolynomialModel(PAModel):
                 cols.append(xm * am**k)
         return np.stack(cols, axis=1)
 
+    def branch_delays(self) -> list[tuple[int, int]]:
+        """(carrier delay, envelope delay) per branch — LUT metadata."""
+        return [(m, m) for m in range(self.memory_depth)]
+
+    def gain_curve(self, r: np.ndarray) -> np.ndarray:
+        """Complex gain of each memory tap vs envelope: sum_k c_km r^k."""
+        if self.coeffs is None:
+            raise RuntimeError("model is not fitted; call fit(x, y) first")
+        r = np.asarray(r, dtype=float)
+        powers = np.stack([r**k for k in range(self.order)], axis=1)
+        return np.stack([powers @ self.coeffs[m * self.order:
+                                              (m + 1) * self.order]
+                         for m in range(self.memory_depth)])
+
     def fit(self, x: np.ndarray, y: np.ndarray,
             regularization: float = 0.0) -> "MemoryPolynomialModel":
         self.coeffs = lstsq_fit(self.basis_matrix(x), y, regularization)

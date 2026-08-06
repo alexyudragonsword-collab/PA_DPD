@@ -206,3 +206,47 @@ IM3-音间距曲线与热记忆判断(示例
 正好落在双音预判的 depth 3:无记忆 DPD 只到 -19.7 dB,depth 2/3 拿到
 -27.9/-36.1 dB 的大头,再加深(depth 4/6 → -39.9/-41.5)收益递减。
 即**流片前用便宜的双音就把 DPD 记忆量级定下来**,系数留给实测训练。
+
+## 5.9 分段样条模型与 LUT DPD:从拟合到硬件表
+
+MP/GMP 用全局幂次 |x|^k 描述包络非线性,幂列彼此高度相关(实测条件数
+可到 1e7+),阶数一高就数值病态、峰值区外推失控。样条族改用**局部支撑
+的 B 样条基**:每个基函数只覆盖相邻几个节点区间,任意幅度处只有
+degree+1(三次为 4)个基非零。
+
+![节点放置与样条/多项式基对比](../assets/spline_knots.png)
+
+**模型家族**(全部线性于系数,LS 一步解;`from_signal()` 自动依数据
+放节点后即为固定节点,可持久化、可作 AdaptiveDPD 模板):
+
+| 模型 | 结构 | 适用 |
+|---|---|---|
+| `SplineMemoryPolynomial` | x(n-m)·B_j(\|x(n-m)\|) | 默认样条基,SMP |
+| `SplineGMP` | + 滞后/超前交叉包络分支 | 记忆不对称强的 PA |
+| `StateConditionedSpline` | + 慢包络功率状态 q_k 与 (r,q) 二维面 | 热瞬态/长时记忆 |
+| `CoefficientScheduler` | 系数随温度/偏置/功率标量插值 | 跨工况点调度 |
+
+**节点放置**:`place_knots` 支持 uniform / quantile / hybrid(默认:
+分位数铺主体 + 均匀铺 95% 以上尾部)——数据密处给分辨率,压缩膝与
+峰值区保证有节点。**估计升级**:`fit(x, y, regularization=...,
+smoothness=...(P 样条二阶差分惩罚), weights=...(WLS))`;
+`basis_cond()` 可直接对比条件数(样条比 7 阶 MP 低 100 倍以上)。
+
+**运行时与部署**——样条的核心卖点是它天然就是硬件 LUT:
+
+1. `lut_from_model(model, n_entries)` 把每分支复增益采成均匀插值表,
+   `LUTDPD` 是该数据通路的浮点孪生(逐分支 `np.interp` + 端点钳位);
+2. 每样本每分支只需 1 次线性插值 + 1 次复乘(约 6 实数 MAC),与节点
+   数无关;对照 GMP 的系数级 MAC(`spline_mac_cost` vs `mac_cost`);
+3. `export_lut` 输出整数表项 JSON;`emit_lut_rtl` 生成 **LUT 寻址 +
+   线性插值 + 延迟线 + 复数 MAC 的 Verilog**,自带测试台与整数 golden
+   模型,`verify_with_iverilog` 位真验证(errors=0 才算过);
+4. 位宽轴(`bitwidth_sweep`)与表深轴(`lut_sweep`)正交,部署页
+   两个面板分别扫描。
+
+**热/长时记忆**:`ThermalReferencePA` 是自热虚拟 DUT——耗散功率经
+双极点 RC 网络驱动漂移状态,突发信号(`burst_stimulus`)下冷热增益
+明显不同。纯 SMP 对它只能拟到平均曲线;`StateConditionedSpline` 补上
+慢功率状态后 NMSE 改善约 8-11 dB(训练与留出突发都成立)。双音诊断
+(§5.8)的预算输出现在同时给出 GMP 与样条两套配方
+(`spline_config` / `spline_runtime_macs`)。

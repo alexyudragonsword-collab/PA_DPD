@@ -43,7 +43,10 @@ with st.sidebar:
         basis = st.selectbox(ui.tr("基函数族"), ["GMP-510 (OpenDPD)",
                                                  "DDR-140 (preset)",
                                                  "MP-500 (OpenDPD)",
-                                                 "GMP", "DDR", "MP"])
+                                                 "GMP", "DDR", "MP",
+                                                 "Spline-MP (K8,M4)",
+                                                 "Spline-GMP (K8)",
+                                                 "Spline-MP"])
         surrogate_name = None
         if src["kind"] != "synthetic":
             surrogate_name = st.selectbox(
@@ -161,9 +164,11 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
     st.caption(ui.tr("在会漂移(温度/供电/老化)的合成 PA 上跑在线自适应 "
                      "DPD,与一次性冻结的批处理 DPD 逐块比较 EVM,演示现场"
                      "跟踪价值。三种方法(rls/whitened/apa)见手册 5.7。"))
-    ac1, ac2, ac3, ac4, ac5, ac6 = st.columns(6)
+    ac1, ac2, ac3, ac4, ac5, ac6, ac7, ac8 = st.columns(8)
     method = ac1.selectbox(ui.tr("自适应方法"),
                            list(services.ADAPTIVE_METHODS))
+    ad_basis = ac7.selectbox(ui.tr("基底"), list(services.ADAPTIVE_BASES))
+    ad_dut = ac8.selectbox(ui.tr("虚拟 DUT"), list(services.ADAPTIVE_DUTS))
     ad_bw = ac2.select_slider(ui.tr("带宽 (MHz)"), [20, 40, 80, 160, 320],
                               80, help=ui.tr("带宽越大采样率越高,自适应每块"
                                              "的计算越慢(80 MHz 为演示默认)"))
@@ -177,7 +182,8 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
         with st.spinner(ui.tr("自适应跟踪中…")):
             res = services.run_adaptive_dpd(
                 method=method, n_blocks=n_blocks, drift_span=drift_span,
-                forget=forget, apa_k=apa_k, bw=ad_bw * 1e6)
+                forget=forget, apa_k=apa_k, bw=ad_bw * 1e6,
+                basis=ad_basis, dut=ad_dut)
         st.session_state["last_adaptive"] = res
         a_name, a_cfg, a_metrics = services.adaptive_run_record(res)
         state.runstore.add(Run(name=a_name, kind="dpd", config=a_cfg,

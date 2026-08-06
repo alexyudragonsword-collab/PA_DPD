@@ -132,10 +132,14 @@ src/padpd/               # Python 包(代码与注释为英文)
   loopback.py            #   环回观测通路损伤模型(DPD 预算研究)
   two_tone.py            #   双音记忆诊断 → DPD 资源预判(流片前定规模)
   pa/hb_import.py        #   HB/S21 导入 → Wiener-Hammerstein(流片前预判)
+  pa/spline.py           #   分段样条模型(SMP/SplineGMP,B 样条基 + 节点放置)
+  pa/spline_state.py     #   状态条件化样条(慢功率状态)+ 工况系数调度器
+  pa/thermal.py          #   自热虚拟 DUT(耗散功率→RC 热网络→漂移)
   pa/drift.py            #   时变 PA(温漂/老化跟踪研究)
   dpd/adaptive.py        #   自适应/在线 DPD(块 RLS,跟踪 PA 漂移)
   deploy/qat.py          #   量化感知训练(fake-quant + 直通估计)
-  deploy/rtl.py          #   RTL 生成器(可综合 Verilog DPD MAC + bit-true 验证)
+  deploy/lut.py          #   LUT 提取(样条→插值表)+ LUTDPD 运行时孪生
+  deploy/rtl.py          #   RTL 生成器(Verilog DPD MAC / LUT 寻址+插值,bit-true 验证)
   codesign.py            #   Phase 4 PA/DPD 联合设计权衡研究
   deploy/                #   Phase 3 部署:bit-true 量化 + 神经 PTQ +
   │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
@@ -170,6 +174,11 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
   (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI、
   **双音记忆诊断**(多 delta-f 双音粗判记忆强度 → 预判 DPD 记忆规模,
   流片前用便宜表征定档,系数留给实测)
+- **Phase 6**:分段样条 + LUT DPD ✅ —— B 样条 SMP/SplineGMP(条件数比
+  高阶多项式低 100 倍,运行时每分支仅 4 次有效 MAC)、P 样条平滑/WLS
+  估计、状态条件化样条(自热虚拟 DUT 上比纯 SMP 改善 ~10 dB)、跨工况
+  系数调度器、LUT 提取 + 表深/位宽双轴扫描、**LUT 寻址+线性插值 RTL
+  (iverilog 逐位验证 0 错误)**,手册 §5.9
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 本环境(4 核 CPU、无 GPU)已完成可做部分;仍需硬件/EDA(FPGA 上板、SDR

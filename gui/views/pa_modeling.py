@@ -36,7 +36,8 @@ with st.sidebar:
     if family == ui.tr("经典 (LS)"):
         mtype = st.selectbox(ui.tr("类型"), list(services.CLASSICAL_MODELS))
         order = st.slider(ui.tr("非线性阶数"), 3, 9, 5,
-                          disabled="(" in mtype)
+                          disabled="(" in mtype,
+                          help=ui.tr("Spline-MP:阶数滑条 = 节点数"))
         memory = st.slider(ui.tr("记忆深度"), 1, 30, 4, disabled="(" in mtype)
     else:
         backbone = st.selectbox("backbone", ["dgru", "gru", "tcn"])

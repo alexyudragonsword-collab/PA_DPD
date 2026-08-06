@@ -40,7 +40,9 @@ class DpdPage(QWidget):
         self.algo.addItems([tr("ILA(经典)"), tr("DLA(神经)")])
         self.basis = QComboBox()
         self.basis.addItems(["GMP-510 (OpenDPD)", "DDR-140 (preset)",
-                             "MP-500 (OpenDPD)", "GMP", "DDR", "MP"])
+                             "MP-500 (OpenDPD)", "GMP", "DDR", "MP",
+                             "Spline-MP (K8,M4)", "Spline-GMP (K8)",
+                             "Spline-MP"])
         self.surrogate = QComboBox()
         self.epochs = QSpinBox()
         self.epochs.setRange(5, 100)
@@ -107,6 +109,10 @@ class DpdPage(QWidget):
         self.ad_k.setValue(4)
         self.ad_k.setToolTip(tr("APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS"
                                 "(仅 method=apa 生效)"))
+        self.ad_basis = QComboBox()
+        self.ad_basis.addItems(list(services.ADAPTIVE_BASES))
+        self.ad_dut = QComboBox()
+        self.ad_dut.addItems(list(services.ADAPTIVE_DUTS))
         self.ad_run = QPushButton(tr("运行自适应 DPD"))
         self.ad_run.setObjectName("primary")
         for lbl, w in [(tr("方法"), self.ad_method),
@@ -114,7 +120,9 @@ class DpdPage(QWidget):
                        (tr("块数"), self.ad_blocks),
                        (tr("漂移"), self.ad_span),
                        ("forget", self.ad_forget),
-                       ("APA K", self.ad_k)]:
+                       ("APA K", self.ad_k),
+                       (tr("基底"), self.ad_basis),
+                       (tr("虚拟 DUT"), self.ad_dut)]:
             al.addWidget(QLabel(lbl))
             al.addWidget(w)
         al.addStretch(1)
@@ -222,11 +230,13 @@ class DpdPage(QWidget):
         drift_span = self.ad_span.value()
         forget = self.ad_forget.value()
         apa_k = self.ad_k.value()
+        basis = self.ad_basis.currentText()
+        dut = self.ad_dut.currentText()
 
         def job(on_progress=None):
             return services.run_adaptive_dpd(
                 method=method, n_blocks=n_blocks, drift_span=drift_span,
-                forget=forget, apa_k=apa_k, bw=bw)
+                forget=forget, apa_k=apa_k, bw=bw, basis=basis, dut=dut)
 
         self._ad_worker = FnWorker(job)
         self._ad_worker.done.connect(self._finish_adaptive)

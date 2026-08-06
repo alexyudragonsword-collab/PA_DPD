@@ -42,7 +42,10 @@ class PAModel(ABC):
 
 
 def lstsq_fit(phi: np.ndarray, y: np.ndarray,
-              regularization: float = 0.0) -> np.ndarray:
+              regularization: float = 0.0, *,
+              weights: np.ndarray | None = None,
+              penalty: np.ndarray | None = None,
+              penalty_weight: float = 0.0) -> np.ndarray:
     """Solve y ~= phi @ w by (optionally ridge-regularized) least squares.
 
     ``regularization`` is a relative Tikhonov factor: the ridge term is
@@ -50,7 +53,31 @@ def lstsq_fit(phi: np.ndarray, y: np.ndarray,
     signal scale. Ill-conditioned polynomial bases (condition numbers of
     1e7+ on measured PA data) otherwise produce huge, delicately
     cancelling coefficients that blow up on memory-warmup boundaries.
+
+    Keyword-only extensions (defaults reproduce the plain solver):
+
+    - ``weights``: per-sample non-negative WLS weights — de-emphasize
+      low-SNR feedback samples or corrupted segments, or emphasize the
+      rare high-amplitude peaks that dominate spectral regrowth.
+    - ``penalty`` (Q, n) with ``penalty_weight``: structural Tikhonov
+      term ``mu * P^H P``, e.g. a second-difference matrix over spline
+      control points (the P-spline roughness penalty). ``penalty_weight``
+      is relative like ``regularization``: ``mu = penalty_weight *
+      trace(phi^H phi) / trace(P^H P)``, so it is scale-invariant.
     """
+    if weights is not None:
+        sw = np.sqrt(np.asarray(weights, dtype=float).reshape(-1))
+        phi = phi * sw[:, None]
+        y = y * sw
+    if penalty is not None and penalty_weight > 0 and penalty.size:
+        a = phi.conj().T @ phi
+        n = a.shape[0]
+        ptp = penalty.conj().T @ penalty
+        mu = penalty_weight * np.trace(a).real / max(np.trace(ptp).real,
+                                                     1e-30)
+        if regularization > 0:
+            a = a + (regularization * np.trace(a).real / n) * np.eye(n)
+        return np.linalg.solve(a + mu * ptp, phi.conj().T @ y)
     if regularization > 0:
         a = phi.conj().T @ phi
         lam = regularization * np.trace(a).real / a.shape[0]
@@ -58,6 +85,17 @@ def lstsq_fit(phi: np.ndarray, y: np.ndarray,
                                phi.conj().T @ y)
     coeffs, *_ = np.linalg.lstsq(phi, y, rcond=None)
     return coeffs
+
+
+def basis_cond(model, x: np.ndarray, n_samples: int = 8192) -> float:
+    """Condition number of the model's design matrix on a signal slice.
+
+    The practical health check before trusting an LS fit: polynomial
+    envelope bases routinely reach 1e7+ where B-spline bases stay within
+    a few orders of magnitude.
+    """
+    phi = model.basis_matrix(np.asarray(x)[:n_samples])
+    return float(np.linalg.cond(phi))
 
 
 def nmse_db(y_ref: np.ndarray, y_est: np.ndarray) -> float:

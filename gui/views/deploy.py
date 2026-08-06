@@ -68,6 +68,29 @@ if sweeps:
     st.dataframe(rows, use_container_width=True, hide_index=True)
 
 st.divider()
+st.subheader(ui.tr("LUT 深度扫描"))
+lut_name = st.selectbox(ui.tr("模型"), list(models), key="lut_model")
+lut_entry = models[lut_name]
+if not hasattr(lut_entry["model"], "gain_curve"):
+    st.info(ui.tr("该模型不支持 LUT 提取(需要样条/MP 增益曲线)"))
+else:
+    if st.button(ui.tr("LUT 深度扫描"), key="lut_btn"):
+        lut_src = services.eval_source_for(lut_entry["meta"], state.sources)
+        with st.spinner(ui.tr("LUT 深度扫描中…")):
+            st.session_state["deploy_lut"] = services.lut_sweep(
+                lut_entry["model"], lut_src)
+    lres = st.session_state.get("deploy_lut")
+    if lres:
+        lut_rows = [{ui.tr("LUT 深度 (点数)"): "float",
+                     "NMSE (dB)": f"{lres['float']:.2f}"}]
+        lut_rows += [{ui.tr("LUT 深度 (点数)"): str(n),
+                      "NMSE (dB)": f"{v:.2f}"}
+                     for n, v in lres["entries"].items()]
+        st.dataframe(lut_rows, use_container_width=True, hide_index=True)
+        st.caption(ui.tr("LUT MAC/样本") + ": "
+                   + str(lres["macs"]["real_macs_per_sample_lut"]))
+
+st.divider()
 st.subheader(ui.tr("导出交接产物"))
 col1, col2 = st.columns(2)
 with col1:

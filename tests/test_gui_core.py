@@ -148,3 +148,51 @@ def test_eval_source_for_rebuilds_exact_synthetic_source():
     assert rebuilt["cfr_papr"] == 8.0
     assert rebuilt["drive"] == 0.15
     assert rebuilt["name"].endswith("CFR8.0")
+
+
+def test_fit_classical_spline_entries(synth):
+    res = services.fit_classical(synth, "Spline-MP (K8,M4)")
+    assert res["metrics"]["nmse_db"] < -30
+    assert res["metrics"]["n_coeffs"] == 4 * (8 - 1 + 3)
+    res_p = services.fit_classical(synth, "Spline-MP",
+                                   {"order": 6, "memory": 2})
+    assert res_p["metrics"]["n_coeffs"] == 2 * (6 - 1 + 3)
+
+
+def test_ila_dpd_spline_basis(synth):
+    res = services.run_dpd_ila(synth, basis="Spline-GMP (K8)")
+    m = res["metrics"]
+    assert m["DPD"]["evm_db"] < m["no DPD"]["evm_db"] - 10
+
+
+def test_lut_sweep_service(synth):
+    res = services.fit_classical(synth, "Spline-MP (K8,M4)")
+    sweep = services.lut_sweep(res["model"], synth, entries=(256, 16))
+    assert sweep["entries"][256] <= sweep["entries"][16]
+    assert np.isfinite(sweep["float"])
+    assert sweep["macs"]["real_macs_per_sample_lut"] == 4 * 6
+
+
+def test_run_adaptive_dpd_spline_thermal_smoke():
+    res = services.run_adaptive_dpd(basis="spline", dut="thermal",
+                                    n_blocks=2, n_symbols=2,
+                                    warm_blocks=1, bw=20e6)
+    assert res["basis"] == "spline" and res["dut"] == "thermal"
+    assert np.all(np.isfinite(res["evm_adaptive"]))
+    assert 0.0 < res["states"][-1] <= 1.0
+    name, config, _ = services.adaptive_run_record(res)
+    assert "Spl" in name and "thermal" in name
+    assert config["basis"] == "spline"
+
+
+def test_run_adaptive_dpd_rejects_bad_basis_and_dut():
+    with pytest.raises(ValueError):
+        services.run_adaptive_dpd(basis="volterra", n_blocks=2)
+    with pytest.raises(ValueError):
+        services.run_adaptive_dpd(dut="oven", n_blocks=2)
+
+
+def test_two_tone_csv_includes_spline_recipe():
+    out = services.analyze_two_tone_csv(services.EXAMPLE_TWO_TONE_CSV)
+    assert out["spline_config"]["memory_depth"] == out["memory_depth"]
+    assert out["spline_runtime_macs"] >= 4 * out["memory_depth"]

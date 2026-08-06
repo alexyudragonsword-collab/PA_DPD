@@ -271,6 +271,8 @@ _EN = {
         "drifting PA.",
     "自适应方法": "Adaptive method",
     "方法": "Method",
+    "基底": "Basis",
+    "虚拟 DUT": "Virtual DUT",
     "APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS(仅 method=apa 生效)":
         "APA projection order: K=1 is NLMS, larger K approaches RLS "
         "(only affects method=apa)",
@@ -341,6 +343,7 @@ _EN = {
     "类型": "Type",
     "非线性阶数": "Nonlinear order",
     "阶数": "Order",
+    "Spline-MP:阶数滑条 = 节点数": "Spline-MP: order slider = knot count",
     "记忆深度": "Memory depth",
     "记忆": "Memory",
     "🚀 拟合模型": "🚀 Fit model",
@@ -489,6 +492,12 @@ _EN = {
     "定点位宽 vs 精度": "Fixed-point bit width vs accuracy",
     "扫描中…": "Sweeping…",
     "MAC/样本": "MAC/sample",
+    "LUT 深度扫描": "LUT depth sweep",
+    "LUT 深度扫描中…": "LUT depth sweeping…",
+    "LUT 深度 (点数)": "LUT depth (entries)",
+    "LUT MAC/样本": "LUT MAC/sample",
+    "该模型不支持 LUT 提取(需要样条/MP 增益曲线)":
+        "This model has no LUT extraction (needs a spline/MP gain curve)",
     "请先勾选至少一个模型和位宽":
         "Tick at least one model and one bit width first",
     "✅ 扫描完成({n} 模型),已注册 run":

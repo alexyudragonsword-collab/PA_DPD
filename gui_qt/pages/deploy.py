@@ -60,6 +60,20 @@ class DeployPage(QWidget):
         self.table.setMaximumHeight(150)
         lay.addWidget(self.table)
 
+        lgrp = QGroupBox(tr("LUT 深度扫描"))
+        ll = QHBoxLayout(lgrp)
+        self.lut_model = QComboBox()
+        self.lut_btn = QPushButton(tr("LUT 深度扫描"))
+        ll.addWidget(QLabel(tr("模型")))
+        ll.addWidget(self.lut_model, 2)
+        ll.addStretch(1)
+        ll.addWidget(self.lut_btn)
+        lay.addWidget(lgrp)
+        self.lut_table = QTableWidget(0, 2)
+        self.lut_table.setMaximumHeight(120)
+        self.lut_table.hide()
+        lay.addWidget(self.lut_table)
+
         exp = QGroupBox(tr("导出交接产物"))
         el = QHBoxLayout(exp)
         self.exp_model = QComboBox()
@@ -79,6 +93,7 @@ class DeployPage(QWidget):
         lay.addWidget(self.msg)
 
         self.sweep_btn.clicked.connect(self.sweep)
+        self.lut_btn.clicked.connect(self.lut_sweep)
         self.exp_btn.clicked.connect(self.export)
         self.refresh()
 
@@ -94,6 +109,8 @@ class DeployPage(QWidget):
             self.model_list.item(0).setCheckState(Qt.CheckState.Checked)
         self.exp_model.clear()
         self.exp_model.addItems(names or [tr("<先在建模页拟合模型>")])
+        self.lut_model.clear()
+        self.lut_model.addItems(names or [tr("<先在建模页拟合模型>")])
 
     def _picked_models(self):
         return [self.model_list.item(i).text()
@@ -166,6 +183,48 @@ class DeployPage(QWidget):
                             for b, v in s["bits"].items()}}))
         self.msg.setText(tr("✅ 扫描完成({n} 模型),已注册 run").format(
             n=len(sweeps)))
+
+    def lut_sweep(self):
+        name = self.lut_model.currentText()
+        if name not in self.state.models:
+            self.msg.setText(tr("先在建模页拟合模型"))
+            return
+        entry = self.state.models[name]
+        model = entry["model"]
+        if not hasattr(model, "gain_curve"):
+            self.msg.setText(
+                tr("该模型不支持 LUT 提取(需要样条/MP 增益曲线)"))
+            return
+        # snapshot on the GUI thread; the closure runs in a worker thread
+        src = self._src_for(entry)
+        self.lut_btn.setEnabled(False)
+        self.msg.setText(tr("LUT 深度扫描中…"))
+
+        def job(on_progress=None):
+            return services.lut_sweep(model, src)
+
+        self._lut_worker = FnWorker(job)
+        self._lut_worker.done.connect(self._lut_finish)
+        self._lut_worker.failed.connect(
+            lambda e: (self.msg.setText(f"❌ {e}"),
+                       self.lut_btn.setEnabled(True)))
+        self._lut_worker.start()
+
+    def _lut_finish(self, res):
+        self.lut_btn.setEnabled(True)
+        rows = [("float", res["float"])] + \
+            [(str(n), v) for n, v in res["entries"].items()]
+        self.lut_table.setHorizontalHeaderLabels(
+            [tr("LUT 深度 (点数)"), "NMSE (dB)"])
+        self.lut_table.setRowCount(0)
+        for label, v in rows:
+            r = self.lut_table.rowCount()
+            self.lut_table.insertRow(r)
+            self.lut_table.setItem(r, 0, QTableWidgetItem(label))
+            self.lut_table.setItem(r, 1, QTableWidgetItem(f"{v:.2f}"))
+        self.lut_table.show()
+        self.msg.setText(tr("LUT MAC/样本") + ": "
+                         + str(res["macs"]["real_macs_per_sample_lut"]))
 
     def export(self):
         name = self.exp_model.currentText()

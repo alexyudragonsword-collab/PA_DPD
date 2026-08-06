@@ -67,6 +67,35 @@ def export_linear_coeffs(model, w_bits: int, path: str) -> dict:
     return payload
 
 
+def export_lut(lut: dict, w_bits: int, path: str) -> dict:
+    """Write per-branch integer LUT entry codes to JSON.
+
+    ``lut`` comes from :func:`padpd.deploy.lut.lut_from_model`. Each
+    branch gets its own scale exponent (per-tap hardware formats).
+    Hardware reconstructs ``gain = code * 2**scale_exp`` and linearly
+    interpolates between adjacent entries.
+    """
+    branches = []
+    for g, (mc, me) in zip(lut["gains"], lut["delays"]):
+        cr, ci, e = _int_codes(np.asarray(g), w_bits)
+        branches.append({"carrier_delay": int(mc), "envelope_delay": int(me),
+                         "scale_exp": e, "gains_real": cr.tolist(),
+                         "gains_imag": ci.tolist()})
+    payload = {
+        "n_branches": len(branches),
+        "n_entries": int(len(lut["r_grid"])),
+        "r_max": float(lut["r_max"]),
+        "w_bits": w_bits,
+        "note": "gain_value = code * 2**scale_exp; uniform amplitude grid "
+                "0..r_max; linear interpolation between entries, clamp "
+                "beyond r_max",
+        "branches": branches,
+    }
+    with open(path, "w") as f:
+        json.dump(payload, f, indent=1)
+    return payload
+
+
 def export_reference_vectors(model, x: np.ndarray, path: str,
                              n: int = 4096) -> None:
     """Run ``model`` on the first ``n`` samples of ``x`` and dump the

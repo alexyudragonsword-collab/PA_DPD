@@ -2,7 +2,7 @@ import ast
 
 import numpy as np
 
-from .base import PAModel, nmse_db
+from .base import PAModel, basis_cond, nmse_db
 from .saleh import SalehPA
 from .memory_polynomial import MemoryPolynomialModel
 from .gmp import GMPModel
@@ -11,11 +11,17 @@ from .reference_pa import ReferencePA
 from .drift import DriftingReferencePA
 from .hb_import import (WienerHammersteinPA, load_amam_table, load_hb_pa,
                         s21_to_fir)
+from .spline import (SplineGMP, SplineMemoryPolynomial,
+                     bspline_design_matrix, place_knots)
+from .spline_state import CoefficientScheduler, StateConditionedSpline
+from .thermal import ThermalReferencePA, burst_stimulus
 from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
 
 _MODEL_CLASSES = {cls.__name__: cls
                   for cls in (SalehPA, MemoryPolynomialModel, GMPModel,
-                              DDRVolterraModel, WienerHammersteinPA)}
+                              DDRVolterraModel, WienerHammersteinPA,
+                              SplineMemoryPolynomial, SplineGMP,
+                              StateConditionedSpline)}
 
 
 def load_model(path: str) -> PAModel:
@@ -37,6 +43,7 @@ __all__ = [
     "PAModel",
     "load_model",
     "nmse_db",
+    "basis_cond",
     "SalehPA",
     "MemoryPolynomialModel",
     "GMPModel",
@@ -44,6 +51,14 @@ __all__ = [
     "ReferencePA",
     "DriftingReferencePA",
     "WienerHammersteinPA",
+    "SplineMemoryPolynomial",
+    "SplineGMP",
+    "StateConditionedSpline",
+    "CoefficientScheduler",
+    "ThermalReferencePA",
+    "burst_stimulus",
+    "bspline_design_matrix",
+    "place_knots",
     "load_amam_table",
     "load_hb_pa",
     "s21_to_fir",

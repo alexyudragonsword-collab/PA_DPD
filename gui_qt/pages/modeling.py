@@ -33,6 +33,7 @@ class ModelingPage(QWidget):
         self.order = QSpinBox()
         self.order.setRange(3, 9)
         self.order.setValue(5)
+        self.order.setToolTip(tr("Spline-MP:阶数滑条 = 节点数"))
         self.memory = QSpinBox()
         self.memory.setRange(1, 30)
         self.memory.setValue(4)

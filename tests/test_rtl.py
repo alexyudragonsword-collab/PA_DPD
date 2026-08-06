@@ -85,3 +85,102 @@ def test_bit_true_under_iverilog(tmp_path):
     assert res["available"]
     assert res["passed"], res["output"]
     assert res["errors"] == 0 and res["n_vectors"] == 64
+
+
+# ---- LUT + interpolation datapath -----------------------------------
+
+def _fitted_smp():
+    from padpd.pa import SplineMemoryPolynomial
+    wf = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                  n_symbols=4, seed=0))
+    y = ReferencePA(drive=0.14)(wf.x)
+    return SplineMemoryPolynomial.from_signal(wf.x, n_knots=6,
+                                              memory_depth=3).fit(wf.x, y)
+
+
+def test_emit_lut_rtl_writes_files(tmp_path):
+    from padpd.deploy.rtl import emit_lut_rtl
+    info = emit_lut_rtl(_fitted_smp(), str(tmp_path), addr_bits=5,
+                        frac_bits=6, n_vectors=64)
+    for f in ("dpd_lut.v", "tb_lut.v", "lut_x_re.mem", "lut_x_im.mem",
+              "lut_r.mem", "lut_exp_re.mem", "lut_exp_im.mem"):
+        assert (tmp_path / f).exists(), f
+    assert info["n_entries"] == 33 and info["n_branches"] == 3
+    v = (tmp_path / "dpd_lut.v").read_text()
+    assert "rom_re" in v and ">>> FB" in v
+
+
+def test_lut_fixed_eval_tracks_float_model(tmp_path):
+    """The integer golden model, dequantized, matches the float LUTDPD
+    within quantization error."""
+    from padpd.deploy import LUTDPD, lut_from_model
+    from padpd.deploy.rtl import emit_lut_rtl, lut_fixed_eval, \
+        quantize_to_int
+    import numpy as np
+    smp = _fitted_smp()
+    addr_bits, frac_bits, entry_bits, data_bits = 6, 8, 14, 14
+    nent = (1 << addr_bits) + 1
+    lut = lut_from_model(smp, n_entries=nent)
+    g_re_i, g_im_i, step_g = quantize_to_int(np.asarray(lut["gains"]),
+                                             entry_bits)
+    rng = np.random.default_rng(1)
+    r_max = lut["r_max"]
+    x = (rng.uniform(0, r_max, 512)
+         * np.exp(1j * rng.uniform(0, 2 * np.pi, 512)))
+    from padpd.deploy.rtl import _pow2_step
+    step_x = _pow2_step(max(np.abs(x.real).max(), np.abs(x.imag).max()),
+                        data_bits)
+    xr = np.round(x.real / step_x).astype(np.int64)
+    xi = np.round(x.imag / step_x).astype(np.int64)
+    rw = addr_bits + frac_bits
+    step_r = r_max / (1 << rw)
+    r_i = np.clip(np.round(np.abs(x) / step_r), 0,
+                  (1 << rw) - 1).astype(np.int64)
+    got_re, got_im = lut_fixed_eval(g_re_i, g_im_i, r_i, xr, xi,
+                                    smp.branch_delays(), addr_bits,
+                                    frac_bits)
+    got = (got_re + 1j * got_im) * step_g * step_x
+    ref = LUTDPD.from_table(lut)(x)
+    scale = np.sqrt(np.mean(np.abs(ref) ** 2))
+    assert np.max(np.abs(got - ref)) / scale < 0.02
+
+
+def test_emit_lut_rtl_rejects_lead_branches(tmp_path):
+    from padpd.deploy.rtl import emit_lut_rtl
+    from padpd.pa import SplineGMP
+    wf = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                  n_symbols=4, seed=0))
+    y = ReferencePA(drive=0.14)(wf.x)
+    sgmp = SplineGMP.from_signal(wf.x, n_knots=5, memory_depth=2,
+                                 lead_memory=1, lead_span=1).fit(wf.x, y)
+    with pytest.raises(ValueError):
+        emit_lut_rtl(sgmp, str(tmp_path))
+
+
+@pytest.mark.skipif(not HAVE_IVERILOG, reason="iverilog not installed")
+def test_lut_rtl_bit_true_under_iverilog(tmp_path):
+    from padpd.deploy.rtl import emit_lut_rtl
+    emit_lut_rtl(_fitted_smp(), str(tmp_path), addr_bits=6, frac_bits=8,
+                 n_vectors=256)
+    res = verify_with_iverilog(str(tmp_path),
+                               sources=("dpd_lut.v", "tb_lut.v"))
+    assert res["available"] and res["passed"], res["output"]
+    assert res["errors"] == 0 and res["n_vectors"] == 256
+
+
+@pytest.mark.skipif(not HAVE_IVERILOG, reason="iverilog not installed")
+def test_lut_rtl_lag_only_sgmp_bit_true(tmp_path):
+    """Lag branches (envelope delayed beyond carrier) also verify."""
+    from padpd.deploy.rtl import emit_lut_rtl
+    from padpd.pa import SplineGMP
+    wf = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                  n_symbols=4, seed=0))
+    y = ReferencePA(drive=0.14)(wf.x)
+    sgmp = SplineGMP.from_signal(wf.x, n_knots=5, memory_depth=2,
+                                 lag_memory=1, lag_span=2, lead_memory=0,
+                                 lead_span=0).fit(wf.x, y)
+    emit_lut_rtl(sgmp, str(tmp_path), addr_bits=5, frac_bits=7,
+                 n_vectors=128)
+    res = verify_with_iverilog(str(tmp_path),
+                               sources=("dpd_lut.v", "tb_lut.v"))
+    assert res["available"] and res["passed"], res["output"]

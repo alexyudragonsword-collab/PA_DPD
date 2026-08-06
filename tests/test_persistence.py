@@ -3,7 +3,7 @@ import pytest
 
 from padpd.dpd import ILAPredistorter
 from padpd.pa import (GMPModel, MemoryPolynomialModel, ReferencePA, SalehPA,
-                      load_model)
+                      SplineGMP, SplineMemoryPolynomial, load_model)
 
 
 @pytest.fixture(scope="module")
@@ -17,6 +17,11 @@ def signal():
     lambda: MemoryPolynomialModel(order=5, memory_depth=3),
     lambda: GMPModel(order=5, memory_depth=4, lag_order=2, lag_memory=2,
                      lag_span=1, lead_order=2, lead_memory=2, lead_span=1),
+    lambda: SplineMemoryPolynomial(knots=[0.0, 0.2, 0.45, 0.7, 1.1],
+                                   degree=3, memory_depth=3),
+    lambda: SplineGMP(knots=[0.0, 0.25, 0.55, 1.1], degree=2,
+                      memory_depth=3, lag_memory=2, lag_span=1,
+                      lead_memory=1, lead_span=1),
 ])
 def test_fitted_model_roundtrip(factory, signal, tmp_path):
     x = signal

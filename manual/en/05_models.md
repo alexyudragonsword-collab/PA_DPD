@@ -255,3 +255,63 @@ exactly at the two-tone-predicted depth 3: a memoryless DPD reaches only
 (depth 4/6 -> -39.9/-41.5) yields diminishing returns. So the **cheap
 two-tone sizes DPD memory before tapeout**, with the coefficients left to
 measured-data training.
+
+## 5.9 Piecewise Spline Models and LUT DPD: From Fit to Hardware Tables
+
+MP/GMP describe the envelope nonlinearity with global powers |x|^k,
+whose columns are strongly collinear (condition numbers of 1e7+ on
+measured data): high orders go numerically ill-conditioned and
+extrapolate wildly in the peak region. The spline family instead uses a
+**locally-supported B-spline basis**: each basis function covers only a
+few adjacent knot spans, and at any amplitude only degree+1 bases (4
+for cubic) are non-zero.
+
+![Knot placement and spline vs polynomial basis](../assets/spline_knots.png)
+
+**The model family** (all linear in coefficients — one LS solve;
+`from_signal()` places knots from data and then they are fixed, so the
+models persist and serve as AdaptiveDPD templates):
+
+| Model | Structure | Use case |
+|---|---|---|
+| `SplineMemoryPolynomial` | x(n-m)·B_j(\|x(n-m)\|) | default spline basis, SMP |
+| `SplineGMP` | + lag/lead cross-envelope branches | PAs with asymmetric memory |
+| `StateConditionedSpline` | + slow power states q_k and an (r,q) surface | thermal transients / long-term memory |
+| `CoefficientScheduler` | coefficients interpolated across temperature/bias/power | scheduling across operating points |
+
+**Knot placement**: `place_knots` supports uniform / quantile / hybrid
+(default: quantiles for the bulk + a uniform tail above the 95th
+percentile) — resolution where the data lives, with guaranteed knots at
+the compression knee and peak region. **Estimation upgrades**:
+`fit(x, y, regularization=..., smoothness=... (P-spline second-
+difference penalty), weights=... (WLS))`; `basis_cond()` compares
+conditioning directly (splines beat an order-7 MP by 100x or more).
+
+**Runtime and deployment** — the spline's core selling point is that it
+IS the hardware LUT:
+
+1. `lut_from_model(model, n_entries)` samples each branch's complex
+   gain into a uniform interpolation table; `LUTDPD` is the floating-
+   point twin of that datapath (per-branch `np.interp` + endpoint
+   clamping);
+2. per sample and branch: one linear interpolation + one complex
+   multiply (about 6 real MACs), independent of the knot count —
+   compare `spline_mac_cost` with the coefficient-level `mac_cost` of
+   a GMP;
+3. `export_lut` writes integer table entries as JSON; `emit_lut_rtl`
+   generates the **Verilog for LUT addressing + linear interpolation +
+   delay lines + complex MAC**, with a self-checking testbench and an
+   integer golden model; `verify_with_iverilog` proves it bit-true
+   (errors=0 or it does not ship);
+4. the bit-width axis (`bitwidth_sweep`) and the table-depth axis
+   (`lut_sweep`) are orthogonal; the deploy page has one panel for
+   each.
+
+**Thermal / long-term memory**: `ThermalReferencePA` is a self-heating
+virtual DUT — dissipated power drives the drift state through a
+two-pole RC network, so cold and hot gains differ visibly under burst
+stimuli (`burst_stimulus`). A plain SMP can only fit the average curve;
+`StateConditionedSpline` adds the slow power states and improves NMSE
+by about 8-11 dB (on both training and held-out bursts). The two-tone
+budget (section 5.8) now also emits a spline recipe alongside the GMP
+one (`spline_config` / `spline_runtime_macs`).

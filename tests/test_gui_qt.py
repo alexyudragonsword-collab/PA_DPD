@@ -133,6 +133,52 @@ def test_deploy_refresh_sees_model(app, window):
     page = window._pages["deploy"]
     page.refresh()
     assert page.model_list.count() >= 1
+    assert page.lut_model.count() >= 1
+
+
+def test_deploy_lut_sweep_needs_gain_curve(app, window):
+    """A model without gain_curve (plain GMP) shows the info text and
+    starts no worker."""
+    _seed_model_and_run(window)
+    page = window._pages["deploy"]
+    page.refresh()
+    page.lut_model.setCurrentText("GMP @ seed")
+    page.lut_sweep()
+    assert "LUT" in page.msg.text()
+    assert page.lut_table.isHidden()
+
+
+def test_deploy_lut_sweep_spline(app, window):
+    from gui_core import services
+    from gui_qt.common import get_state
+    state = get_state()
+    if "Spline-MP @ seed" not in state.models:
+        src = services.make_synthetic_source(bandwidth_hz=20e6, qam=256,
+                                             symbols=4, drive=0.14)
+        res = services.fit_classical(src, "Spline-MP",
+                                     {"order": 6, "memory": 2})
+        state.models["Spline-MP @ seed"] = {
+            "model": res["model"],
+            "meta": {"config": {"family": "classical"},
+                     "source": src["name"], "metrics": res["metrics"]}}
+    page = window._pages["deploy"]
+    page.refresh()
+    page.lut_model.setCurrentText("Spline-MP @ seed")
+    page.lut_sweep()
+    _wait_worker(app, page)
+    assert page.lut_table.rowCount() >= 2      # float + LUT depths
+    assert "LUT MAC" in page.msg.text()
+
+
+def test_dpd_adaptive_basis_dut_combos(app, window):
+    from gui_core import services
+    page = window._pages["dpd"]
+    assert [page.ad_basis.itemText(i) for i in range(page.ad_basis.count())] \
+        == list(services.ADAPTIVE_BASES)
+    assert [page.ad_dut.itemText(i) for i in range(page.ad_dut.count())] \
+        == list(services.ADAPTIVE_DUTS)
+    assert page.basis.findText("Spline-MP") >= 0
+    assert page.basis.findText("Spline-GMP (K8)") >= 0
 
 
 def test_language_switch_rebuilds_in_english(app, window, no_prefs_io):

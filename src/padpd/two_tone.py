@@ -204,6 +204,11 @@ def recommend_dpd_budget(result, order: int = 5) -> dict:
       terms are worth carrying (from the IM3 asymmetry), and a ready
       ``GMPModel(**gmp_config)`` recipe,
     - ``est_coeffs`` : that recipe's coefficient count,
+    - ``spline_config`` / ``spline_est_coeffs`` / ``spline_runtime_macs``:
+      the equivalent spline recipe (``SplineMemoryPolynomial.from_signal``
+      or ``SplineGMP.from_signal`` kwargs) — same memory reservation, but
+      only ``degree+1 = 4`` active MACs per branch at runtime regardless
+      of knot count, the hardware-LUT-friendly alternative,
     - ``rationale`` : one-line justification.
 
     This sizes hardware from a *cheap* characterization; the coefficients
@@ -248,6 +253,22 @@ def recommend_dpd_budget(result, order: int = 5) -> dict:
                   + cross_order * lag_memory * span
                   + cross_order * lead_memory * span)
 
+    # spline (SMP/SplineGMP) recipe carrying the same memory reservation:
+    # more knots where compression is strong (deep memory usually rides on
+    # a strongly driven PA), thermal -> extra knot resolution too
+    n_knots = 10 if (thermal or depth >= 4) else 8
+    n_basis = n_knots - 1 + 3                       # cubic: J = K + degree
+    spline_branches = (depth + lag_memory * span + lead_memory * span)
+    spline_config = {"n_knots": n_knots, "degree": 3,
+                     "memory_depth": depth, "placement": "hybrid"}
+    if use_cross:
+        spline_config.update({"lag_memory": lag_memory, "lag_span": span,
+                              "lead_memory": lead_memory,
+                              "lead_span": span})
+    cross_branches = spline_branches - depth
+    spline_est_coeffs = n_basis * depth + (n_basis - 1) * cross_branches
+    spline_runtime_macs = 4 * spline_branches       # 4 active cubic bases
+
     bits = [f"IM3 varies {spread:.1f} dB across spacing -> "
             f"memory_depth {depth}"]
     if use_cross:
@@ -260,7 +281,13 @@ def recommend_dpd_budget(result, order: int = 5) -> dict:
         bits.append(f"IM3 asymmetry {asym:.1f} dB -> memoryless-ish, no "
                     "cross terms")
 
+    bits.append(f"spline alternative: {n_knots} hybrid knots, "
+                f"{spline_runtime_macs} MACs/sample at runtime")
+
     return {"memory_strength_db": strength, "memory_depth": depth,
             "use_cross_terms": use_cross, "thermal_suspected": thermal,
             "gmp_config": gmp_config, "est_coeffs": est_coeffs,
+            "spline_config": spline_config,
+            "spline_est_coeffs": spline_est_coeffs,
+            "spline_runtime_macs": spline_runtime_macs,
             "rationale": "; ".join(bits)}

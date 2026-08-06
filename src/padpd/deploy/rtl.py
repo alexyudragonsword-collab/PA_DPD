@@ -193,11 +193,16 @@ def emit_rtl(model, out_dir: str, w_bits: int = 12, data_bits: int = 12,
             "coeff_step": step_w, "data_step": step_p}
 
 
-def verify_with_iverilog(out_dir: str) -> dict:
-    """Compile+run the testbench under Icarus Verilog; parse pass/fail.
+def verify_with_iverilog(out_dir: str,
+                         sources: tuple = ("dpd_mac.v", "tb.v")) -> dict:
+    """Compile+run a testbench under Icarus Verilog; parse pass/fail.
 
-    Returns ``{"available", "passed", "errors", "n_vectors", "output"}``.
-    ``available`` is False (and the rest None) if iverilog is not on PATH.
+    ``sources`` are the Verilog files (module + testbench) inside
+    ``out_dir`` — the default verifies the coefficient MAC from
+    :func:`emit_rtl`; pass ``("dpd_lut.v", "tb_lut.v")`` for the LUT
+    datapath from :func:`emit_lut_rtl`. Returns ``{"available",
+    "passed", "errors", "n_vectors", "output"}``; ``available`` is False
+    (and the rest None) if iverilog is not on PATH.
     """
     if shutil.which("iverilog") is None or shutil.which("vvp") is None:
         return {"available": False, "passed": None, "errors": None,
@@ -205,8 +210,8 @@ def verify_with_iverilog(out_dir: str) -> dict:
     out = Path(out_dir)
     vvp = out / "sim.vvp"
     comp = subprocess.run(
-        ["iverilog", "-g2012", "-o", str(vvp), str(out / "dpd_mac.v"),
-         str(out / "tb.v")], capture_output=True, text=True)
+        ["iverilog", "-g2012", "-o", str(vvp)]
+        + [str(out / s) for s in sources], capture_output=True, text=True)
     if comp.returncode != 0:
         return {"available": True, "passed": False, "errors": None,
                 "n_vectors": None, "output": comp.stderr.strip()}
@@ -220,3 +225,295 @@ def verify_with_iverilog(out_dir: str) -> dict:
             errors, n_vec = int(parts[1]), int(parts[2])
     return {"available": True, "passed": errors == 0 and errors is not None,
             "errors": errors, "n_vectors": n_vec, "output": text}
+
+
+# ---------------------------------------------------------------------------
+# LUT + linear-interpolation datapath (spline/LUT DPD)
+# ---------------------------------------------------------------------------
+#
+# The coefficient MAC above serves polynomial bases, where the basis
+# generator is the hard part left off-chip. A spline/LUT DPD inverts that
+# split: the per-branch gain lives in a small ROM addressed by the envelope,
+#
+#     addr = r >> FRAC_BITS ,  frac = r & (2**FRAC_BITS - 1)
+#     g    = rom[addr] + ((rom[addr+1] - rom[addr]) * frac >> FRAC_BITS)
+#     y    = sum_b  x(n - mc_b) * g_b(r(n - me_b))
+#
+# so LUT addressing, the linear interpolator and the branch delay lines ARE
+# the datapath, and this generator makes them real and checkable. The
+# envelope word r is unsigned ADDR_BITS+FRAC_BITS wide with full scale at
+# r_max (the LUT's top entry); magnitude extraction |x| stays in the
+# front-end, as for the MAC engine.
+
+
+def lut_fixed_eval(rom_re, rom_im, r_int, x_re_int, x_im_int, delays,
+                   addr_bits: int, frac_bits: int):
+    """Bit-exact integer reference of the LUT datapath (golden model).
+
+    Mirrors the generated Verilog operation-for-operation, including the
+    zero-initialized delay lines and the arithmetic (floor) shift of the
+    interpolation product. All arrays are integer; python ints avoid any
+    overflow concern.
+    """
+    n = len(r_int)
+    mask = (1 << frac_bits) - 1
+    y_re = [0] * n
+    y_im = [0] * n
+    for k in range(n):
+        acc_re = 0
+        acc_im = 0
+        for b, (mc, me) in enumerate(delays):
+            rd = int(r_int[k - me]) if k >= me else 0
+            xr = int(x_re_int[k - mc]) if k >= mc else 0
+            xi = int(x_im_int[k - mc]) if k >= mc else 0
+            addr = rd >> frac_bits
+            frac = rd & mask
+            g0r, g0i = int(rom_re[b][addr]), int(rom_im[b][addr])
+            dr = int(rom_re[b][addr + 1]) - g0r
+            di = int(rom_im[b][addr + 1]) - g0i
+            gr = g0r + ((dr * frac) >> frac_bits)   # >> == Verilog >>>
+            gi = g0i + ((di * frac) >> frac_bits)
+            acc_re += gr * xr - gi * xi
+            acc_im += gr * xi + gi * xr
+        y_re[k] = acc_re
+        y_im[k] = acc_im
+    return np.array(y_re, dtype=np.int64), np.array(y_im, dtype=np.int64)
+
+
+def _rom_init_lines(rom_re, rom_im) -> str:
+    lines = []
+    nent = len(rom_re[0])
+    for name, rom in (("rom_re", rom_re), ("rom_im", rom_im)):
+        for b, branch in enumerate(rom):
+            for k, v in enumerate(branch):
+                v = int(v)
+                lit = f"-'sd{-v}" if v < 0 else f"'sd{v}"
+                lines.append(f"    {name}[{b * nent + k}] = {lit};")
+    return "\n".join(lines)
+
+
+def generate_lut_verilog(rom_re, rom_im, delays, addr_bits: int,
+                         frac_bits: int, entry_bits: int, data_bits: int,
+                         acc_bits: int, module: str = "dpd_lut") -> str:
+    """Emit the LUT + interpolation + delay-line + complex-MAC module.
+
+    Delay lines are clocked; LUT fetch, interpolation and the branch sum
+    are combinational from the delayed registers (pipeline for timing
+    closure as needed). ROM entries are baked in (``initial`` block, as
+    for the MAC engine); registers self-initialize for simulation.
+    """
+    nb = len(delays)
+    nent = (1 << addr_bits) + 1
+    dmax = max(max(mc, me) for mc, me in delays)
+    rw = addr_bits + frac_bits
+
+    def xsel(m, part):
+        return f"x_{part}" if m == 0 else f"x{part}_d[{m - 1}]"
+
+    def rsel(m):
+        return "r" if m == 0 else f"r_d[{m - 1}]"
+
+    branch_blocks = []
+    for b, (mc, me) in enumerate(delays):
+        branch_blocks.append(f"""        // branch {b}: carrier z^-{mc}, envelope z^-{me}
+        addr = {rsel(me)}[RW-1:FB];
+        frac = {rsel(me)}[FB-1:0];
+        d_re = rom_re[{b}*NENT + addr + 1] - rom_re[{b}*NENT + addr];
+        d_im = rom_im[{b}*NENT + addr + 1] - rom_im[{b}*NENT + addr];
+        p_re = d_re * $signed({{1'b0, frac}});
+        p_im = d_im * $signed({{1'b0, frac}});
+        g_re = rom_re[{b}*NENT + addr] + (p_re >>> FB);
+        g_im = rom_im[{b}*NENT + addr] + (p_im >>> FB);
+        acc_re = acc_re + g_re * {xsel(mc, 're')} - g_im * {xsel(mc, 'im')};
+        acc_im = acc_im + g_re * {xsel(mc, 'im')} + g_im * {xsel(mc, 're')};""")
+    blocks = "\n".join(branch_blocks)
+
+    return f"""// Auto-generated by padpd.deploy.rtl -- spline/LUT DPD datapath.
+// y(n) = sum_b x(n-mc_b) * lut_b(r(n-me_b)),  {nb} branches,
+// {1 << addr_bits} spans x 2^{frac_bits} interpolation steps.
+// r is the unsigned envelope word (full scale = LUT r_max); |x| extraction
+// stays in the front-end, as for the coefficient MAC engine.
+`timescale 1ns/1ps
+module {module} #(
+    parameter integer NB   = {nb},
+    parameter integer AB   = {addr_bits},   // LUT address bits
+    parameter integer FB   = {frac_bits},   // interpolation fraction bits
+    parameter integer RW   = {rw},          // envelope word width
+    parameter integer DW   = {data_bits},   // x sample width
+    parameter integer GW   = {entry_bits},  // LUT entry width
+    parameter integer AW   = {acc_bits},    // accumulator width
+    parameter integer NENT = {nent}
+) (
+    input  wire                 clk,
+    input  wire signed [DW-1:0] x_re,
+    input  wire signed [DW-1:0] x_im,
+    input  wire        [RW-1:0] r,
+    output reg  signed [AW-1:0] y_re,
+    output reg  signed [AW-1:0] y_im
+);
+    localparam integer DMAX = {max(dmax, 1)};
+    reg signed [GW-1:0] rom_re [0:NB*NENT-1];
+    reg signed [GW-1:0] rom_im [0:NB*NENT-1];
+    reg signed [DW-1:0] xre_d [0:DMAX-1];
+    reg signed [DW-1:0] xim_d [0:DMAX-1];
+    reg        [RW-1:0] r_d   [0:DMAX-1];
+    integer i;
+    initial begin
+        for (i = 0; i < DMAX; i = i + 1) begin
+            xre_d[i] = 0; xim_d[i] = 0; r_d[i] = 0;
+        end
+{_rom_init_lines(rom_re, rom_im)}
+    end
+    always @(posedge clk) begin
+        xre_d[0] <= x_re; xim_d[0] <= x_im; r_d[0] <= r;
+        for (i = DMAX - 1; i > 0; i = i - 1) begin
+            xre_d[i] <= xre_d[i-1];
+            xim_d[i] <= xim_d[i-1];
+            r_d[i]   <= r_d[i-1];
+        end
+    end
+    reg        [AB-1:0]      addr;
+    reg        [FB-1:0]      frac;
+    reg signed [GW:0]        d_re, d_im;
+    reg signed [GW+FB+1:0]   p_re, p_im;
+    reg signed [GW+1:0]      g_re, g_im;
+    reg signed [AW-1:0]      acc_re, acc_im;
+    always @* begin
+        acc_re = 0;
+        acc_im = 0;
+{blocks}
+        y_re = acc_re;
+        y_im = acc_im;
+    end
+endmodule
+"""
+
+
+def generate_lut_testbench(n_vectors: int, addr_bits: int, frac_bits: int,
+                           data_bits: int, acc_bits: int,
+                           module: str = "dpd_lut") -> str:
+    rw = addr_bits + frac_bits
+    return f"""`timescale 1ns/1ps
+module tb_lut;
+    localparam integer NV = {n_vectors};
+    localparam integer RW = {rw};
+    localparam integer DW = {data_bits};
+    localparam integer AW = {acc_bits};
+    reg clk;
+    reg signed [DW-1:0] x_re, x_im;
+    reg [RW-1:0] r;
+    wire signed [AW-1:0] y_re, y_im;
+    {module} dut(.clk(clk), .x_re(x_re), .x_im(x_im), .r(r),
+                 .y_re(y_re), .y_im(y_im));
+    reg signed [DW-1:0] vin_re [0:NV-1];
+    reg signed [DW-1:0] vin_im [0:NV-1];
+    reg [RW-1:0]        vin_r  [0:NV-1];
+    reg signed [AW-1:0] exp_re [0:NV-1];
+    reg signed [AW-1:0] exp_im [0:NV-1];
+    integer v, errors;
+    initial begin
+        $readmemh("lut_x_re.mem", vin_re);
+        $readmemh("lut_x_im.mem", vin_im);
+        $readmemh("lut_r.mem",    vin_r);
+        $readmemh("lut_exp_re.mem", exp_re);
+        $readmemh("lut_exp_im.mem", exp_im);
+        clk = 0;
+        errors = 0;
+        for (v = 0; v < NV; v = v + 1) begin
+            x_re = vin_re[v]; x_im = vin_im[v]; r = vin_r[v];
+            #1;
+            if (y_re !== exp_re[v] || y_im !== exp_im[v]) begin
+                errors = errors + 1;
+                $display("MISMATCH v=%0d got(%0d,%0d) exp(%0d,%0d)",
+                         v, y_re, y_im, exp_re[v], exp_im[v]);
+            end
+            clk = 1; #1; clk = 0; #1;
+        end
+        $display("RESULT errors=%0d of %0d", errors, NV);
+        $finish;
+    end
+endmodule
+"""
+
+
+def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
+                 frac_bits: int = 8, entry_bits: int = 12,
+                 data_bits: int = 12, n_vectors: int = 256,
+                 seed: int = 0) -> dict:
+    """Generate LUT-DPD Verilog + testbench + bit-true reference vectors.
+
+    ``model`` is a fitted branch-gain model (SplineMemoryPolynomial /
+    SplineGMP / MP — anything :func:`padpd.deploy.lut.lut_from_model`
+    accepts) or a prebuilt LUT dict. Lead branches (negative envelope
+    delay) are rejected: they need a latency-compensated front-end;
+    extract from an SMP or lag-only SplineGMP for hardware.
+    """
+    from .lut import lut_from_model
+    nent = (1 << addr_bits) + 1
+    lut = model if isinstance(model, dict) else lut_from_model(
+        model, n_entries=nent)
+    if len(lut["r_grid"]) != nent:
+        raise ValueError(f"LUT needs {nent} entries "
+                         f"(2**addr_bits + 1), got {len(lut['r_grid'])}")
+    delays = [tuple(d) for d in lut["delays"]]
+    if any(mc < 0 or me < 0 for mc, me in delays):
+        raise ValueError("lead branches (negative delay) are not "
+                         "synthesizable without a latency-compensated "
+                         "front-end; use an SMP or lag-only SplineGMP")
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+
+    # one shared entry scale across branches so branch products sum directly
+    gains = np.asarray(lut["gains"])
+    g_re_i, g_im_i, step_g = quantize_to_int(gains, entry_bits)
+
+    # stimulus: reproducible complex samples spanning the LUT range and the
+    # clamp region (envelope up to ~1.2 r_max)
+    rng = np.random.default_rng(seed)
+    r_max = float(lut["r_max"])
+    amps = rng.uniform(0.0, 1.2 * r_max, n_vectors)
+    phases = rng.uniform(0, 2 * np.pi, n_vectors)
+    x = amps * np.exp(1j * phases)
+    qmax = 2 ** (data_bits - 1) - 1
+    step_x = _pow2_step(max(np.abs(x.real).max(), np.abs(x.imag).max()),
+                        data_bits)
+    xr_i = np.clip(np.round(x.real / step_x), -qmax - 1, qmax).astype(
+        np.int64)
+    xi_i = np.clip(np.round(x.imag / step_x), -qmax - 1, qmax).astype(
+        np.int64)
+    # envelope word: unsigned, full scale (2**rw) at r_max, clamped
+    rw = addr_bits + frac_bits
+    step_r = r_max / (1 << rw)
+    r_i = np.clip(np.round(np.abs(x) / step_r), 0,
+                  (1 << rw) - 1).astype(np.int64)
+
+    exp_re, exp_im = lut_fixed_eval(g_re_i, g_im_i, r_i, xr_i, xi_i,
+                                    delays, addr_bits, frac_bits)
+
+    prod_bits = (entry_bits + 2) + data_bits
+    acc_bits = prod_bits + math.ceil(math.log2(2 * len(delays))) + 2
+
+    (out / "dpd_lut.v").write_text(generate_lut_verilog(
+        g_re_i, g_im_i, delays, addr_bits, frac_bits, entry_bits,
+        data_bits, acc_bits))
+    (out / "tb_lut.v").write_text(generate_lut_testbench(
+        n_vectors, addr_bits, frac_bits, data_bits, acc_bits))
+    (out / "lut_x_re.mem").write_text(
+        "\n".join(_hex(int(v), data_bits) for v in xr_i) + "\n")
+    (out / "lut_x_im.mem").write_text(
+        "\n".join(_hex(int(v), data_bits) for v in xi_i) + "\n")
+    (out / "lut_r.mem").write_text(
+        "\n".join(_hex(int(v), rw) for v in r_i) + "\n")
+    (out / "lut_exp_re.mem").write_text(
+        "\n".join(_hex(int(v), acc_bits) for v in exp_re) + "\n")
+    (out / "lut_exp_im.mem").write_text(
+        "\n".join(_hex(int(v), acc_bits) for v in exp_im) + "\n")
+
+    return {"dir": str(out), "verilog": str(out / "dpd_lut.v"),
+            "testbench": str(out / "tb_lut.v"),
+            "n_branches": len(delays), "n_entries": nent,
+            "addr_bits": addr_bits, "frac_bits": frac_bits,
+            "entry_bits": entry_bits, "data_bits": data_bits,
+            "acc_bits": acc_bits, "n_vectors": n_vectors,
+            "entry_step": step_g, "data_step": step_x, "r_step": step_r,
+            "r_max": r_max}

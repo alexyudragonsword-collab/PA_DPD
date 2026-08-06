@@ -122,6 +122,38 @@ def test_middle_ground_freeze_and_save(method, tmp_path):
     assert (tmp_path / f"{method}.npz").exists()
 
 
+def test_spline_basis_adaptive_converges():
+    """A spline template plugs into RLS; init starts from the spline
+    identity (all-ones tap-0 block), not w[0]=1."""
+    from padpd.pa import SplineMemoryPolynomial
+    pa = ReferencePA(drive=0.14)
+    wf = _wf(0)
+    factory = lambda: SplineMemoryPolynomial.from_signal(
+        wf.x, n_knots=8, memory_depth=4)                   # noqa: E731
+    dpd = AdaptiveDPD(factory, forget=0.85)
+    e0 = _evm(pa, dpd, wf)
+    dpd.update(pa, wf.x)
+    # pass-through seed was the spline identity: after one block the
+    # solution is already finite and useful
+    assert np.all(np.isfinite(dpd.w))
+    for _ in range(5):
+        dpd.update(pa, wf.x)
+    e1 = _evm(pa, dpd, wf)
+    assert e1 < -45
+    assert e1 < e0 - 25
+    frozen = dpd.as_model()
+    assert np.allclose(frozen(wf.x), dpd(wf.x))
+
+
+def test_spline_passthrough_seed_used():
+    from padpd.pa import SplineMemoryPolynomial
+    tmpl = SplineMemoryPolynomial(n_knots=6, r_max=1.0, memory_depth=2)
+    dpd = AdaptiveDPD(lambda: SplineMemoryPolynomial(
+        knots=tmpl.knots, memory_depth=2))
+    dpd._init(tmpl.n_coeffs)
+    np.testing.assert_allclose(dpd.w, tmpl.passthrough_coeffs())
+
+
 def test_rejects_lms_and_nonlinear_model():
     from padpd.pa import SalehPA
     for bad in ("nlms", "lms", "diag"):
