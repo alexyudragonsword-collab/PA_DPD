@@ -18,6 +18,11 @@ output. With unit-power OFDM (PAPR ~10-11 dB) the peak envelope is
 ``drive`` <= ~0.15 so that peaks stay in the invertible region; around
 0.22 and above the ILA DPD diverges at the peaks (a realistic failure
 mode — real systems add crest factor reduction or more back-off).
+
+This class is a *virtual test article*, deliberately NOT persistable via
+``PAModel.save`` (no ``get_config``): it stands in for a transistor-level
+simulation, not for a fitted model worth serializing. The same applies
+to :class:`~padpd.pa.drift.DriftingReferencePA`.
 """
 
 from __future__ import annotations

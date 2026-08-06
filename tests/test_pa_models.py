@@ -84,3 +84,19 @@ def test_gmp_generalizes(pa_data):
 def test_unfitted_model_raises():
     with pytest.raises(RuntimeError):
         GMPModel()(np.zeros(10, dtype=complex))
+
+
+def test_gmp_constructor_validates():
+    import pytest
+    from padpd.pa import GMPModel
+    with pytest.raises(ValueError):
+        GMPModel(order=0)
+    with pytest.raises(ValueError):
+        GMPModel(memory_depth=0)
+    with pytest.raises(ValueError):
+        GMPModel(lag_span=-1)
+
+
+def test_mp_n_coeffs():
+    from padpd.pa import MemoryPolynomialModel
+    assert MemoryPolynomialModel(order=7, memory_depth=4).n_coeffs == 28

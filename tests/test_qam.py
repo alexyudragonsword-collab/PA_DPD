@@ -48,3 +48,13 @@ def test_gray_neighbors_differ_by_one_bit():
             if (ni, nq) in grid:
                 diff = k ^ grid[(ni, nq)]
                 assert bin(diff).count("1") == 1
+
+
+def test_qam_demodulate_rejects_unsupported_order():
+    import numpy as np
+    import pytest
+    from padpd.waveform.qam import qam_demodulate
+    pts = np.array([0.5 + 0.5j])
+    for bad in (8, 32, 2048):
+        with pytest.raises(ValueError):
+            qam_demodulate(pts, bad)

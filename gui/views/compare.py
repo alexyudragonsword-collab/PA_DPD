@@ -23,6 +23,9 @@ kind = st.radio(ui.tr("类型筛选"),
                 horizontal=True)
 if kind != ui.tr("全部"):
     runs = [r for r in runs if r.kind == kind]
+if not runs:
+    st.info(ui.tr("该类型下暂无 run。"))
+    st.stop()
 
 rows = []
 for r in runs:
@@ -33,8 +36,9 @@ for r in runs:
     row["_id"] = r.run_id
     rows.append(row)
 
+_all_cols = {c for row in rows for c in row}
 edited = st.data_editor(rows, use_container_width=True, hide_index=True,
-                        disabled=[c for c in rows[0]
+                        disabled=[c for c in _all_cols
                                   if c != ui.tr("选择")],
                         column_config={"_id": None})
 picked = [r for r, e in zip(runs, edited) if e[ui.tr("选择")]]

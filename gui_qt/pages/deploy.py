@@ -178,21 +178,32 @@ class DeployPage(QWidget):
             return
         entry = self.state.models[name]
         w_bits = int(self.exp_bits.currentText()[1:])
-        try:
-            paths = services.export_artifacts(
-                entry["model"], self._src_for(entry),
-                str(Path(out_dir) / name.split(" @")[0].replace(" ", "_")),
-                w_bits=w_bits)
-            lines = [f"{k}: {v}" for k, v in paths.items()
-                     if not k.endswith("verified")]
-            if "onnx_verified" in paths:
-                lines.append(tr("ONNX 数值验证") + " "
-                             + (tr("✅ 通过") if paths["onnx_verified"]
-                                else tr("跳过")))
-            if "rtl_verified" in paths:
-                lines.append(tr("RTL bit-true 验证") + " "
-                             + (tr("✅ 通过") if paths["rtl_verified"]
-                                else tr("跳过")))
-            self.msg.setText("📦 " + "\n".join(lines))
-        except Exception as e:
-            self.msg.setText(tr("❌ 导出失败:{e}").format(e=e))
+        dest = str(Path(out_dir) / name.split(" @")[0].replace(" ", "_"))
+        # ONNX export + RTL emission + an iverilog run — off the UI thread
+        self.exp_btn.setEnabled(False)
+        self.msg.setText(tr("导出中…"))
+
+        def job(on_progress=None):
+            return services.export_artifacts(
+                entry["model"], self._src_for(entry), dest, w_bits=w_bits)
+
+        self._exp_worker = FnWorker(job)
+        self._exp_worker.done.connect(self._export_done)
+        self._exp_worker.failed.connect(
+            lambda e: (self.msg.setText(tr("❌ 导出失败:{e}").format(e=e)),
+                       self.exp_btn.setEnabled(True)))
+        self._exp_worker.start()
+
+    def _export_done(self, paths):
+        self.exp_btn.setEnabled(True)
+        lines = [f"{k}: {v}" for k, v in paths.items()
+                 if not k.endswith("verified")]
+        if "onnx_verified" in paths:
+            lines.append(tr("ONNX 数值验证") + " "
+                         + (tr("✅ 通过") if paths["onnx_verified"]
+                            else tr("跳过")))
+        if "rtl_verified" in paths:
+            lines.append(tr("RTL bit-true 验证") + " "
+                         + (tr("✅ 通过") if paths["rtl_verified"]
+                            else tr("跳过")))
+        self.msg.setText("📦 " + "\n".join(lines))

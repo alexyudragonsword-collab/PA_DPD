@@ -122,17 +122,28 @@ class ModelingPage(QWidget):
     def fit(self):
         src = self._get_source()
         if self.family.currentIndex() == 0:  # classical (LS)
-            res = services.fit_classical(
-                src, self.mtype.currentText(),
-                {"order": self.order.value(), "memory": self.memory.value()})
+            # snapshot widget values on the GUI thread; run the LS fit in
+            # a worker so a 320 MHz source doesn't freeze the window
             label = self.mtype.currentText()
-            cfg = {"family": "classical", "type": label,
-                   "order": self.order.value(),
-                   "memory": self.memory.value()}
-            self._finish(res, label, cfg, src)
+            params = {"order": self.order.value(),
+                      "memory": self.memory.value()}
+            cfg = {"family": "classical", "type": label, **params}
+            self.fit_btn.setEnabled(False)
+
+            def job(on_progress=None):
+                return services.fit_classical(src, label, params)
+
+            self._worker = FnWorker(job)
+            self._worker.done.connect(
+                lambda res: self._finish(res, label, cfg, src))
+            self._worker.failed.connect(
+                lambda e: (self.msg.setText(f"❌ {e}"),
+                           self.fit_btn.setEnabled(True)))
+            self._worker.start()
         else:
             self.fit_btn.setEnabled(False)
-            self.prog.setRange(0, self.epochs.value())
+            epochs = self.epochs.value()      # snapshot on the GUI thread
+            self.prog.setRange(0, epochs)
             self.prog.show()
             backbone, hidden = (self.backbone.currentText(),
                                 self.hidden.value())
@@ -140,7 +151,7 @@ class ModelingPage(QWidget):
             def job(on_progress=None):
                 return services.fit_neural(
                     src, backbone=backbone, hidden=hidden,
-                    epochs=self.epochs.value(), on_epoch=on_progress)
+                    epochs=epochs, on_epoch=on_progress)
 
             self._worker = FnWorker(job)
             self._worker.progress.connect(
@@ -150,7 +161,7 @@ class ModelingPage(QWidget):
                                f"{h['val_nmse_db']:.2f} dB")))
             label = f"{backbone.upper()}-H{hidden}"
             cfg = {"family": "neural", "backbone": backbone,
-                   "hidden": hidden, "epochs": self.epochs.value()}
+                   "hidden": hidden, "epochs": epochs}
             self._worker.done.connect(
                 lambda res: self._finish(res, label, cfg, src))
             self._worker.failed.connect(self._fail)

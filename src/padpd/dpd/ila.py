@@ -86,21 +86,38 @@ class ILAPredistorter:
         return pa(self(x))
 
     def save(self, path: str) -> None:
-        """Persist the fitted predistorter (model + target gain) as .npz."""
+        """Persist the fitted predistorter (model + target gain) as .npz.
+
+        Only linear-in-parameters models (coeffs + get_config) persist
+        here; a neural predistorter saves through its own ``save()``.
+        """
         if self.dpd_model is None:
             raise RuntimeError("predistorter is not fitted; nothing to save")
+        if getattr(self.dpd_model, "coeffs", None) is None:
+            raise TypeError(
+                f"{type(self.dpd_model).__name__} is not a coefficients "
+                "model; persist it with its own save() instead")
         np.savez(path,
                  class_name=type(self.dpd_model).__name__,
                  config=repr(self.dpd_model.get_config()),
                  coeffs=self.dpd_model.coeffs,
-                 target_gain=np.complex128(self.target_gain))
+                 target_gain=np.complex128(self.target_gain),
+                 n_iterations=self.n_iterations)
 
     @classmethod
     def load(cls, path: str) -> "ILAPredistorter":
-        """Load a predistorter saved with :meth:`save`."""
+        """Load a predistorter saved with :meth:`save`.
+
+        Restores the model factory (same class/config as the saved
+        model) and iteration count, so a later ``fit()`` refits the same
+        structure instead of silently falling back to the defaults.
+        """
         from ..pa import load_model
-        dpd = cls()
-        dpd.dpd_model = load_model(path)
+        model = load_model(path)
         d = np.load(path, allow_pickle=False)
+        dpd = cls(model_factory=lambda m=model: type(m)(**m.get_config()),
+                  n_iterations=(int(d["n_iterations"])
+                                if "n_iterations" in d else 2))
+        dpd.dpd_model = model
         dpd.target_gain = complex(d["target_gain"])
         return dpd

@@ -6,6 +6,14 @@ pytest.importorskip("streamlit")
 
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
+
+@pytest.fixture(autouse=True)
+def _isolated_registry(tmp_path, monkeypatch):
+    """Redirect the app's run registry/prefs to a temp dir so tests never
+    write into (or depend on) the real repo gui_runs/."""
+    monkeypatch.setenv("PADPD_DATA_DIR", str(tmp_path))
+    yield tmp_path
+
 PAGES = ["home", "waveform", "data", "pa_modeling", "dpd_lab", "compare",
          "deploy", "codesign", "manual"]
 
@@ -17,7 +25,7 @@ def test_page_renders_without_exception(page):
     assert not at.exception, at.exception
 
 
-def test_pa_modeling_classical_fit_e2e():
+def test_pa_modeling_classical_fit_e2e(_isolated_registry):
     at = AppTest.from_file("gui/views/pa_modeling.py", default_timeout=300)
     at.run()
     # defaults: synthetic source, classical GMP; click the fit button
@@ -26,7 +34,7 @@ def test_pa_modeling_classical_fit_e2e():
     # a metric card with NMSE appears and a run is registered
     assert any("NMSE" in str(m.label) for m in at.metric)
     from gui_core import RunStore
-    runs = RunStore("gui_runs").list(kind="pa_model")
+    runs = RunStore(_isolated_registry / "gui_runs").list(kind="pa_model")
     assert runs, "fit should register a pa_model run"
 
 

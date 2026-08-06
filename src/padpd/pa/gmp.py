@@ -22,6 +22,12 @@ class GMPModel(PAModel):
     def __init__(self, order: int = 7, memory_depth: int = 4,
                  lag_order: int = 3, lag_memory: int = 2, lag_span: int = 2,
                  lead_order: int = 3, lead_memory: int = 2, lead_span: int = 2):
+        if order < 1 or memory_depth < 1:
+            raise ValueError("order and memory_depth must be >= 1")
+        if min(lag_order, lag_memory, lag_span,
+               lead_order, lead_memory, lead_span) < 0:
+            raise ValueError("lag/lead orders, memories and spans "
+                             "must be >= 0")
         self.order = order
         self.memory_depth = memory_depth
         self.lag_order = lag_order

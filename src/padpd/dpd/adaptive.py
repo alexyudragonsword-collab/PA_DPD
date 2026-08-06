@@ -191,3 +191,25 @@ class AdaptiveDPD:
                  config=repr(self.template.get_config()), coeffs=self.w,
                  target_gain=np.complex128(self.target_gain),
                  method=self.method)
+
+    @classmethod
+    def load(cls, path: str) -> "AdaptiveDPD":
+        """Load a predistorter saved with :meth:`save`.
+
+        ``predistort`` works immediately from the saved coefficients.
+        Adaptation *state* (covariance / whitening) is not persisted:
+        the first ``update()`` restarts identification from the current
+        loopback observation, which for ``rls`` re-derives the
+        coefficients from scratch.
+        """
+        from ..pa import load_model
+        m = load_model(path)
+        d = np.load(path, allow_pickle=False)
+        obj = cls(model_factory=lambda m=m: type(m)(**m.get_config()),
+                  target_gain=complex(d["target_gain"]),
+                  method=str(d["method"]))
+        obj.w = np.asarray(m.coeffs, dtype=complex)
+        n = obj.w.size
+        obj._R = np.zeros((n, n), dtype=complex)
+        obj._p = np.zeros(n, dtype=complex)
+        return obj

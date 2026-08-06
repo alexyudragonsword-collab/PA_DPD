@@ -166,32 +166,45 @@ class DpdPage(QWidget):
         sname = self.surrogate.currentText()
         try:
             if self.algo.currentIndex() == 0:  # ILA (classical)
+                # snapshot on the GUI thread; run in a worker so a
+                # 320 MHz closed-loop ILA doesn't freeze the window
                 surrogate = (models[sname]["model"] if sname in models
                              else None)
-                out = services.run_dpd_ila(src,
-                                           basis=self.basis.currentText(),
-                                           surrogate=surrogate)
-                label = f"ILA-{self.basis.currentText()}"
-                cfg = {"algo": "ILA", "basis": self.basis.currentText()}
-                self._finish(out, label, cfg, src)
+                basis = self.basis.currentText()
+                label = f"ILA-{basis}"
+                cfg = {"algo": "ILA", "basis": basis}
+                self.run_btn.setEnabled(False)
+
+                def job(on_progress=None):
+                    return services.run_dpd_ila(src, basis=basis,
+                                                surrogate=surrogate)
+
+                self._worker = FnWorker(job)
+                self._worker.done.connect(
+                    lambda out: self._finish(out, label, cfg, src))
+                self._worker.failed.connect(
+                    lambda e: (self.msg.setText(f"❌ {e}"),
+                               self.run_btn.setEnabled(True)))
+                self._worker.start()
             else:
                 if sname not in models:
                     self.msg.setText(tr("❌ DLA 需要先在建模页训练神经代理"))
                     return
                 self.run_btn.setEnabled(False)
-                self.prog.setRange(0, self.epochs.value())
+                epochs = self.epochs.value()  # snapshot on the GUI thread
+                self.prog.setRange(0, epochs)
                 self.prog.show()
 
                 def job(on_progress=None):
                     return services.run_dpd_dla(
                         src, models[sname]["model"],
-                        epochs=self.epochs.value(), on_epoch=on_progress)
+                        epochs=epochs, on_epoch=on_progress)
 
                 self._worker = FnWorker(job)
                 self._worker.progress.connect(
                     lambda h: self.prog.setValue(h["epoch"] + 1))
                 cfg = {"algo": "DLA", "surrogate": sname,
-                       "epochs": self.epochs.value()}
+                       "epochs": epochs}
                 self._worker.done.connect(
                     lambda out: self._finish(out, "DLA-DGRU", cfg, src))
                 self._worker.failed.connect(
@@ -205,15 +218,19 @@ class DpdPage(QWidget):
     def run_adaptive(self):
         self.ad_run.setEnabled(False)
         self.ad_msg.setText(tr("自适应跟踪中…"))
+        # snapshot ALL widget values on the GUI thread — the job closure
+        # runs in the worker thread where QWidget access is unsafe
         method = self.ad_method.currentText()
         bw = float(self.ad_bw.currentText()) * 1e6
+        n_blocks = self.ad_blocks.value()
+        drift_span = self.ad_span.value()
+        forget = self.ad_forget.value()
+        apa_k = self.ad_k.value()
 
         def job(on_progress=None):
             return services.run_adaptive_dpd(
-                method=method, n_blocks=self.ad_blocks.value(),
-                drift_span=self.ad_span.value(),
-                forget=self.ad_forget.value(), apa_k=self.ad_k.value(),
-                bw=bw)
+                method=method, n_blocks=n_blocks, drift_span=drift_span,
+                forget=forget, apa_k=apa_k, bw=bw)
 
         self._ad_worker = FnWorker(job)
         self._ad_worker.done.connect(self._finish_adaptive)

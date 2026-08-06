@@ -57,6 +57,9 @@ def qam_demodulate(points: np.ndarray, order: int) -> np.ndarray:
     Uses per-axis PAM slicing (O(N) instead of an O(N*order) full search),
     which matters for 4096-QAM.
     """
+    if order not in _SUPPORTED:
+        raise ValueError(f"unsupported QAM order {order}; "
+                         f"choose from {_SUPPORTED}")
     m_side = int(np.sqrt(order))
     levels = _pam_levels(m_side)
     # gray label -> amplitude is `levels`; build amplitude-sorted lookup

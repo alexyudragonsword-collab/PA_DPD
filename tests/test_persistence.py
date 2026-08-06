@@ -51,3 +51,46 @@ def test_ila_roundtrip(signal, tmp_path):
 def test_unfitted_ila_save_raises(tmp_path):
     with pytest.raises(RuntimeError):
         ILAPredistorter().save(str(tmp_path / "x.npz"))
+
+
+def test_ila_load_restores_factory_and_iterations(tmp_path):
+    """A loaded predistorter refit must keep the saved structure, not
+    silently fall back to the default GMP factory / 2 iterations."""
+    from padpd.dpd import ILAPredistorter
+    from padpd.pa import DDRVolterraModel, ReferencePA
+    from padpd.waveform import OFDMConfig, generate_ofdm
+    x = generate_ofdm(OFDMConfig(bandwidth_hz=20e6, qam_order=256,
+                                 n_symbols=4, seed=0)).x
+    pa = ReferencePA(drive=0.12)
+    dpd = ILAPredistorter(
+        model_factory=lambda: DDRVolterraModel(order=5, memory_depth=3,
+                                               dynamic_order=1),
+        n_iterations=3)
+    dpd.fit(pa, x)
+    p = tmp_path / "dpd.npz"
+    dpd.save(str(p))
+    loaded = ILAPredistorter.load(str(p))
+    assert loaded.n_iterations == 3
+    assert type(loaded.model_factory()).__name__ == "DDRVolterraModel"
+    import numpy as np
+    assert np.allclose(loaded(x[:2048]), dpd(x[:2048]))
+
+
+def test_adaptive_dpd_save_load_roundtrip(tmp_path):
+    from padpd.dpd import AdaptiveDPD
+    from padpd.pa import GMPModel, ReferencePA
+    from padpd.waveform import OFDMConfig, generate_ofdm
+    import numpy as np
+    x = generate_ofdm(OFDMConfig(bandwidth_hz=20e6, qam_order=256,
+                                 n_symbols=4, seed=0)).x
+    pa = ReferencePA(drive=0.14)
+    dpd = AdaptiveDPD(lambda: GMPModel(order=5, memory_depth=3),
+                      method="apa", forget=0.9)
+    dpd.warm_start(pa, x, blocks=3)
+    p = tmp_path / "adpd.npz"
+    dpd.save(str(p))
+    loaded = AdaptiveDPD.load(str(p))
+    assert loaded.method == "apa"
+    assert np.allclose(loaded(x[:2048]), dpd(x[:2048]))
+    loaded.update(pa, x)                     # adaptation still works
+    assert np.all(np.isfinite(loaded.w))

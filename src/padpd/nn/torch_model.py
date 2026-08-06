@@ -130,6 +130,10 @@ class NeuralPAModel(PAModel):
         return self.net
 
     # -- persistence --------------------------------------------------------
+    def get_config(self) -> dict:
+        """Constructor kwargs (PAModel contract); same dict as .config."""
+        return dict(self.config)
+
     def save(self, path: str) -> None:
         torch.save({"config": repr(self.config),
                     "state_dict": self.net.state_dict()}, path)

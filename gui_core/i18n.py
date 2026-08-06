@@ -275,6 +275,7 @@ _EN = {
     "APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS(仅 method=apa 生效)":
         "APA projection order: K=1 is NLMS, larger K approaches RLS "
         "(only affects method=apa)",
+    "该类型下暂无 run。": "No runs of this kind yet.",
     "有任务正在运行,请等待完成后再切换语言/主题。":
         "A task is still running; wait for it to finish before switching "
         "language/theme.",

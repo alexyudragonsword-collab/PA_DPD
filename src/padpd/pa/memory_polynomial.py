@@ -34,6 +34,10 @@ class MemoryPolynomialModel(PAModel):
     def get_config(self) -> dict:
         return {"order": self.order, "memory_depth": self.memory_depth}
 
+    @property
+    def n_coeffs(self) -> int:
+        return self.order * self.memory_depth
+
     def basis_matrix(self, x: np.ndarray) -> np.ndarray:
         cols = []
         for m in range(self.memory_depth):

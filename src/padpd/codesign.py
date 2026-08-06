@@ -63,7 +63,7 @@ def drain_efficiency(pa, x: np.ndarray, pa_class: str = "B",
 
 def pae_proxy(pa: ReferencePA, x: np.ndarray, eta_max: float = 0.70) -> float:
     """Deprecated alias kept for compatibility; see :func:`drain_efficiency`."""
-    return drain_efficiency(pa, x, pa_class="B")
+    return drain_efficiency(pa, x, pa_class="B", eta_peak=eta_max)
 
 
 def _dpd_cost_options():

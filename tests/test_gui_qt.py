@@ -64,27 +64,72 @@ def test_waveform_generate(app, window):
     assert page.export.isEnabled()
 
 
+def _wait_worker(app, page, timeout_ms=120000):
+    """Classical fits now run through FnWorker; pump events until done."""
+    import time
+    w = getattr(page, "_worker", None)
+    if w is not None:
+        assert w.wait(timeout_ms)
+    deadline = time.time() + 10
+    while time.time() < deadline:
+        app.processEvents()
+        from gui_qt import common as C
+        if C.live_worker_count() == 0:
+            break
+        time.sleep(0.02)
+    app.processEvents()
+
+
+def _seed_model_and_run(window):
+    """Give the shared state one model + one run without depending on a
+    sibling test having run first (node-level selection must work)."""
+    from gui_core import Run, services
+    from gui_qt.common import get_state
+    state = get_state()
+    if not state.models:
+        src = services.make_synthetic_source(bandwidth_hz=20e6, qam=256,
+                                             symbols=4, drive=0.14)
+        res = services.fit_classical(src, "GMP",
+                                     {"order": 5, "memory": 3})
+        state.models["GMP @ seed"] = {
+            "model": res["model"],
+            "meta": {"config": {"family": "classical"},
+                     "source": src["name"], "metrics": res["metrics"]}}
+        state.runstore.add(Run(name="GMP @ seed", kind="pa_model",
+                               config={"family": "classical"},
+                               metrics=res["metrics"]))
+    return state
+
+
 def test_modeling_classical_fit_registers_model_and_run(app, window):
     page = window._pages["modeling"]
     page.family.setCurrentText("经典 (LS)")
     page.mtype.setCurrentText("GMP")
+    n_before = len(get_state_models(window))
     page.fit()
-    app.processEvents()
+    _wait_worker(app, page)
     from gui_qt.common import get_state
     state = get_state()
-    assert len(state.models) == 1
+    assert len(state.models) == n_before + 1
     assert "dB" in page.c_nmse.val.text()
     runs = state.runstore.list()
     assert any(r.kind == "pa_model" for r in runs)
 
 
+def get_state_models(window):
+    from gui_qt.common import get_state
+    return get_state().models
+
+
 def test_compare_lists_runs(app, window):
+    _seed_model_and_run(window)
     page = window._pages["compare"]
     page.refresh()
     assert page.table.rowCount() >= 1
 
 
 def test_deploy_refresh_sees_model(app, window):
+    _seed_model_and_run(window)
     page = window._pages["deploy"]
     page.refresh()
     assert page.model_list.count() >= 1
