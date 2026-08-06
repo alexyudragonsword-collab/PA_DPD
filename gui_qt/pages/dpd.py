@@ -25,6 +25,9 @@ class DpdPage(QWidget):
         grp = QGroupBox(tr("配置"))
         gl = QHBoxLayout(grp)
         self.src = QComboBox()
+        self.bw = QComboBox()
+        self.bw.addItems(["20", "40", "80", "160", "320"])
+        self.bw.setCurrentText("160")
         self.drive = QDoubleSpinBox()
         self.drive.setRange(0.08, 0.24)
         self.drive.setSingleStep(0.01)
@@ -44,7 +47,8 @@ class DpdPage(QWidget):
         self.epochs.setValue(20)
         self.run_btn = QPushButton(tr("运行 DPD"))
         self.run_btn.setObjectName("primary")
-        for lbl, w in [(tr("数据源"), self.src), ("drive", self.drive)]:
+        for lbl, w in [(tr("数据源"), self.src),
+                       (tr("带宽 (MHz)"), self.bw), ("drive", self.drive)]:
             gl.addWidget(QLabel(lbl))
             gl.addWidget(w)
         gl.addWidget(self.cfr_on)
@@ -82,6 +86,11 @@ class DpdPage(QWidget):
         al = QHBoxLayout(agrp)
         self.ad_method = QComboBox()
         self.ad_method.addItems(list(services.ADAPTIVE_METHODS))
+        self.ad_bw = QComboBox()
+        self.ad_bw.addItems(["20", "40", "80", "160", "320"])
+        self.ad_bw.setCurrentText("80")
+        self.ad_bw.setToolTip(tr("带宽越大采样率越高,自适应每块的计算"
+                                 "越慢(80 MHz 为演示默认)"))
         self.ad_blocks = QSpinBox()
         self.ad_blocks.setRange(4, 16)
         self.ad_blocks.setValue(10)
@@ -101,6 +110,7 @@ class DpdPage(QWidget):
         self.ad_run = QPushButton(tr("运行自适应 DPD"))
         self.ad_run.setObjectName("primary")
         for lbl, w in [(tr("方法"), self.ad_method),
+                       (tr("带宽 (MHz)"), self.ad_bw),
                        (tr("块数"), self.ad_blocks),
                        (tr("漂移"), self.ad_span),
                        ("forget", self.ad_forget),
@@ -141,10 +151,11 @@ class DpdPage(QWidget):
         name = self.src.currentText()
         if name == tr("合成 ReferencePA"):
             cfr = self.cfr.value() if self.cfr_on.isChecked() else None
-            key = f"_dpdsynth_{self.drive.value():.2f}_{cfr}"
+            bw = float(self.bw.currentText()) * 1e6
+            key = f"_dpdsynth_{bw:.0f}_{self.drive.value():.2f}_{cfr}"
             if not hasattr(self.state, key):
                 setattr(self.state, key, services.make_synthetic_source(
-                    bandwidth_hz=160e6, drive=self.drive.value(),
+                    bandwidth_hz=bw, drive=self.drive.value(),
                     cfr_papr_db=cfr))
             return getattr(self.state, key)
         return self.state.sources[name]
@@ -195,12 +206,14 @@ class DpdPage(QWidget):
         self.ad_run.setEnabled(False)
         self.ad_msg.setText(tr("自适应跟踪中…"))
         method = self.ad_method.currentText()
+        bw = float(self.ad_bw.currentText()) * 1e6
 
         def job(on_progress=None):
             return services.run_adaptive_dpd(
                 method=method, n_blocks=self.ad_blocks.value(),
                 drift_span=self.ad_span.value(),
-                forget=self.ad_forget.value(), apa_k=self.ad_k.value())
+                forget=self.ad_forget.value(), apa_k=self.ad_k.value(),
+                bw=bw)
 
         self._ad_worker = FnWorker(job)
         self._ad_worker.done.connect(self._finish_adaptive)

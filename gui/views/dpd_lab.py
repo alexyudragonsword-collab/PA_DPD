@@ -164,20 +164,23 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
     st.caption(ui.tr("在会漂移(温度/供电/老化)的合成 PA 上跑在线自适应 "
                      "DPD,与一次性冻结的批处理 DPD 逐块比较 EVM,演示现场"
                      "跟踪价值。三种方法(rls/whitened/apa)见手册 5.7。"))
-    ac1, ac2, ac3, ac4, ac5 = st.columns(5)
+    ac1, ac2, ac3, ac4, ac5, ac6 = st.columns(6)
     method = ac1.selectbox(ui.tr("自适应方法"),
                            list(services.ADAPTIVE_METHODS))
-    n_blocks = ac2.slider(ui.tr("块数(冷 → 热)"), 4, 16, 10)
-    drift_span = ac3.slider(ui.tr("漂移强度"), 0.01, 0.05, 0.02, 0.005)
-    forget = ac4.slider("forget (RLS)", 0.50, 0.99, 0.60, 0.01)
-    apa_k = ac5.slider("APA K", 1, 8, 4, 1,
+    ad_bw = ac2.select_slider(ui.tr("带宽 (MHz)"), [20, 40, 80, 160, 320],
+                              80, help=ui.tr("带宽越大采样率越高,自适应每块"
+                                             "的计算越慢(80 MHz 为演示默认)"))
+    n_blocks = ac3.slider(ui.tr("块数(冷 → 热)"), 4, 16, 10)
+    drift_span = ac4.slider(ui.tr("漂移强度"), 0.01, 0.05, 0.02, 0.005)
+    forget = ac5.slider("forget (RLS)", 0.50, 0.99, 0.60, 0.01)
+    apa_k = ac6.slider("APA K", 1, 8, 4, 1,
                        help=ui.tr("APA 投影阶:K=1 即 NLMS,K 越大越接近 "
                                   "RLS(仅 method=apa 生效)"))
     if st.button(ui.tr("运行自适应 DPD"), type="primary"):
         with st.spinner(ui.tr("自适应跟踪中…")):
             res = services.run_adaptive_dpd(
                 method=method, n_blocks=n_blocks, drift_span=drift_span,
-                forget=forget, apa_k=apa_k)
+                forget=forget, apa_k=apa_k, bw=ad_bw * 1e6)
         st.session_state["last_adaptive"] = res
         a_name, a_cfg, a_metrics = services.adaptive_run_record(res)
         state.runstore.add(Run(name=a_name, kind="dpd", config=a_cfg,

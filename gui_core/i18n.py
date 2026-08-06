@@ -275,6 +275,9 @@ _EN = {
     "APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS(仅 method=apa 生效)":
         "APA projection order: K=1 is NLMS, larger K approaches RLS "
         "(only affects method=apa)",
+    "带宽越大采样率越高,自适应每块的计算越慢(80 MHz 为演示默认)":
+        "Wider bandwidth means a higher sample rate, so each adaptation "
+        "block computes more slowly (80 MHz is the demo default)",
     "块数(冷 → 热)": "Blocks (cold → hot)",
     "块数": "Blocks",
     "漂移强度": "Drift span",

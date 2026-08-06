@@ -178,8 +178,9 @@ the adaptive one holds **-38.8 dB** (a 10.4 dB gap at full drift) —
 the answer to "will DPD hold up in the field".
 
 **GUI entry**: the DPD Lab's "🔁 Adaptive / online DPD (drift tracking)"
-panel picks the method (rls / whitened / apa), block count, drift span,
-forget, and the **APA projection order K**, and plots the
+panel picks the method (rls / whitened / apa), **bandwidth (20–320 MHz)**,
+block count, drift span, forget, and the **APA projection order K**, and
+plots the
 adaptive-vs-frozen per-block EVM in one click; sweeping K (1→8) shows APA
 converging from NLMS toward RLS live.
 

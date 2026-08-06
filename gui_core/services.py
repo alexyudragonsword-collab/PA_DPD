@@ -453,7 +453,7 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
             "drive_cold": drive0, "drive_hot": drive0 + drift_span,
             # echo the run parameters so callers can register a run
             "n_blocks": n_blocks, "drift_span": drift_span,
-            "forget": forget, "apa_k": apa_k}
+            "forget": forget, "apa_k": apa_k, "bw": bw}
 
 
 def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
@@ -466,7 +466,8 @@ def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
     name = f"Adapt-{tag} @ drift"
     config = {"algo": "adaptive", "method": res["method"],
               "apa_k": res["apa_k"], "n_blocks": res["n_blocks"],
-              "drift_span": res["drift_span"], "forget": res["forget"]}
+              "drift_span": res["drift_span"], "forget": res["forget"],
+              "bw_mhz": res.get("bw", 80e6) / 1e6}
     metrics = {"evm_db": res["final_adaptive"],
                "evm_before_db": res["final_frozen"],
                "gap_db": res["gap_db"], "n_coeffs": res["n_coeffs"]}

@@ -126,3 +126,12 @@ def test_adaptive_run_record_shape():
     r = services.adaptive_run_record(
         services.run_adaptive_dpd(method="rls", n_blocks=6, warm_blocks=4))
     assert r[0] == "Adapt-RLS @ drift"            # no K suffix for non-apa
+
+
+def test_run_adaptive_dpd_honours_bandwidth():
+    res = services.run_adaptive_dpd(method="rls", n_blocks=5, warm_blocks=4,
+                                    bw=40e6)
+    assert res["bw"] == 40e6
+    assert res["gap_db"] > 1.0                    # still tracks drift
+    _, cfg, _ = services.adaptive_run_record(res)
+    assert cfg["bw_mhz"] == 40.0

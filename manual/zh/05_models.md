@@ -145,7 +145,8 @@ DPD 退化到 **-28.4 dB EVM**,自适应保持 **-38.8 dB**(满漂移领先
 10.4 dB)。这回答了"DPD 在现场能不能扛住"。
 
 **GUI 入口**:DPD 实验室页底部「🔁 自适应 / 在线 DPD(漂移跟踪)」可选
-方法(rls / whitened / apa)、块数、漂移强度、forget 与 **APA 投影阶 K**,
+方法(rls / whitened / apa)、**带宽(20–320 MHz)**、块数、漂移强度、
+forget 与 **APA 投影阶 K**,
 一键跑出自适应 vs 冻结批处理的逐块 EVM 曲线;扫 K(1→8)即可现场看到
 APA 从 NLMS 向 RLS 收敛。
 
