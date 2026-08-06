@@ -161,8 +161,9 @@ def badge(text: str, kind: str = "info") -> str:
 def get_state():
     """Central session objects (created lazily)."""
     from gui_core import RunStore
+    from gui_core.paths import user_data_dir
     if "runstore" not in st.session_state:
-        st.session_state.runstore = RunStore(ROOT / "gui_runs")
+        st.session_state.runstore = RunStore(user_data_dir() / "gui_runs")
     st.session_state.setdefault("sources", {})   # name -> source dict
     st.session_state.setdefault("models", {})    # name -> {"model", "meta"}
     return st.session_state

@@ -90,6 +90,15 @@ def aclr_opendpd(y: np.ndarray, fs: float, bw_main_ch: float,
     index_right = int(np.max(np.where(freq <= bw_main_ch / 2)))
     ch_len = int((index_right - index_left) / n_sub_ch)
 
+    # each adjacent channel is one sub-channel wide; if the guard band is
+    # narrower than that, the slice below would wrap around (negative
+    # index) and silently return -inf/garbage
+    if index_left - ch_len < 0 or index_right + ch_len > psd.size:
+        raise ValueError(
+            "sample rate too low to observe adjacent sub-channels: need "
+            "fs >= bw_main_ch * (1 + 2/n_sub_ch), got "
+            f"fs={fs:.3g}, bw_main_ch={bw_main_ch:.3g}, n_sub_ch={n_sub_ch}")
+
     sub_power = np.array([
         psd[index_left + c * ch_len: index_left + (c + 1) * ch_len].sum()
         for c in range(n_sub_ch)])

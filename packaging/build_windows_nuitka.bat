@@ -18,6 +18,7 @@ python -m nuitka --standalone --onefile --assume-yes-for-downloads ^
   --include-module=matplotlib.backends.backend_qtagg ^
   --include-data-dir=manual=manual ^
   --include-data-dir=gui_qt/assets=gui_qt/assets ^
+  --include-data-dir=examples=examples ^
   --include-data-files=gui_qt/style_template.qss=gui_qt/style_template.qss ^
   --nofollow-import-to=streamlit,plotly,playwright,IPython,pytest,tkinter,PyQt5,PyQt6,torch,onnx,onnxscript,onnxruntime,nvidia,triton ^
   --windows-icon-from-ico=packaging/icon/padpd.ico ^

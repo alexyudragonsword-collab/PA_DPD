@@ -88,8 +88,9 @@ def get_state():
         return _STATE
     except NameError:
         from gui_core import RunStore
+        from gui_core.paths import user_data_dir
         _STATE = type("S", (), {})()
-        _STATE.runstore = RunStore(ROOT / "gui_runs")
+        _STATE.runstore = RunStore(user_data_dir() / "gui_runs")
         _STATE.sources = {}
         _STATE.models = {}
         return _STATE
@@ -149,6 +150,16 @@ class FigurePane(QScrollArea):
         self._canvas.draw()
 
 
+# live FnWorker registry: pages get destroyed on language/theme switches,
+# and destroying a running QThread aborts the process — the main window
+# consults this to refuse a rebuild/close while work is in flight
+_LIVE_WORKERS: set = set()
+
+
+def live_worker_count() -> int:
+    return len(_LIVE_WORKERS)
+
+
 class FnWorker(QThread):
     """Run a callable in a thread; forward progress dicts + result."""
 
@@ -159,6 +170,11 @@ class FnWorker(QThread):
     def __init__(self, fn, *args, **kwargs):
         super().__init__()
         self._fn, self._args, self._kwargs = fn, args, kwargs
+        self.finished.connect(lambda: _LIVE_WORKERS.discard(self))
+
+    def start(self, *a, **kw):
+        _LIVE_WORKERS.add(self)
+        super().start(*a, **kw)
 
     def run(self):
         try:

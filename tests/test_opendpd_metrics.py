@@ -114,3 +114,14 @@ def test_target_gain_matches_opendpd_reference():
     theirs = mod.set_target_gain(np.stack([x.real, x.imag], axis=-1),
                                  np.stack([y.real, y.imag], axis=-1))
     assert ours == pytest.approx(theirs, rel=1e-12)
+
+
+def test_aclr_opendpd_rejects_too_narrow_guard_band():
+    import numpy as np
+    import pytest
+    from padpd.metrics import aclr_opendpd
+    y = (np.random.default_rng(0).standard_normal(65536)
+         + 1j * np.random.default_rng(1).standard_normal(65536))
+    # guard band narrower than one sub-channel used to return -inf silently
+    with pytest.raises(ValueError):
+        aclr_opendpd(y, fs=180e6, bw_main_ch=160e6, n_sub_ch=8, nperseg=1024)

@@ -9,8 +9,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-PREFS_PATH = ROOT / "gui_prefs.json"
+from .paths import user_data_dir
+
+PREFS_PATH = user_data_dir() / "gui_prefs.json"
 
 DEFAULTS = {"lang": "zh", "theme": "dark"}
 

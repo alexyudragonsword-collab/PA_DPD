@@ -135,3 +135,16 @@ def test_run_adaptive_dpd_honours_bandwidth():
     assert res["gap_db"] > 1.0                    # still tracks drift
     _, cfg, _ = services.adaptive_run_record(res)
     assert cfg["bw_mhz"] == 40.0
+
+
+def test_eval_source_for_rebuilds_exact_synthetic_source():
+    # a model fitted on 160 MHz / 4096-QAM / CFR must NOT be evaluated on
+    # the default 80 MHz / 1024-QAM waveform
+    src = services.make_synthetic_source(bandwidth_hz=40e6, qam=256,
+                                         symbols=4, drive=0.15,
+                                         cfr_papr_db=8.0)
+    rebuilt = services.eval_source_for({"source": src["name"]}, {})
+    assert rebuilt["bw"] == 40e6
+    assert rebuilt["cfr_papr"] == 8.0
+    assert rebuilt["drive"] == 0.15
+    assert rebuilt["name"].endswith("CFR8.0")

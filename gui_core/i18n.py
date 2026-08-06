@@ -275,6 +275,11 @@ _EN = {
     "APA 投影阶:K=1 即 NLMS,K 越大越接近 RLS(仅 method=apa 生效)":
         "APA projection order: K=1 is NLMS, larger K approaches RLS "
         "(only affects method=apa)",
+    "有任务正在运行,请等待完成后再切换语言/主题。":
+        "A task is still running; wait for it to finish before switching "
+        "language/theme.",
+    "有任务正在运行,确定要退出吗?":
+        "A task is still running. Quit anyway?",
     "带宽越大采样率越高,自适应每块的计算越慢(80 MHz 为演示默认)":
         "Wider bandwidth means a higher sample rate, so each adaptation "
         "block computes more slowly (80 MHz is the demo default)",

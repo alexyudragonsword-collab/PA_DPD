@@ -15,7 +15,8 @@ from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtGui import QIcon  # noqa: E402
 from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,  # noqa: E402
                                QLabel, QListWidget, QMainWindow,
-                               QStackedWidget, QVBoxLayout, QWidget)
+                               QMessageBox, QStackedWidget, QVBoxLayout,
+                               QWidget)
 
 from gui_qt import common  # noqa: E402
 from gui_qt.common import apply_theme, set_pref, tr  # noqa: E402
@@ -93,17 +94,48 @@ class MainWindow(QMainWindow):
         self._rebuild()
 
     # ---- language / theme switching --------------------------------
+    def _busy_guard(self, cmb, items, pref_key) -> bool:
+        """Refuse a page rebuild while worker threads run (rebuilding
+        deletes the pages owning them -> hard crash); revert the combo."""
+        if common.live_worker_count() == 0:
+            return False
+        cmb.blockSignals(True)
+        cmb.setCurrentIndex(
+            [c for c, _ in items].index(common.PREFS[pref_key]))
+        cmb.blockSignals(False)
+        QMessageBox.information(
+            self, "padpd",
+            tr("有任务正在运行,请等待完成后再切换语言/主题。"))
+        return True
+
     def _on_lang(self, idx: int):
         code = LANG_ITEMS[idx][0]
         if code != common.PREFS["lang"]:
+            if self._busy_guard(self.cmb_lang, LANG_ITEMS, "lang"):
+                return
             set_pref("lang", code)
             self._rebuild()
 
     def _on_theme(self, idx: int):
         code = THEME_ITEMS[idx][0]
         if code != common.PREFS["theme"]:
+            if self._busy_guard(self.cmb_theme, THEME_ITEMS, "theme"):
+                return
             set_pref("theme", code)
             self._rebuild()
+
+    def closeEvent(self, event):
+        if common.live_worker_count() > 0:
+            ans = QMessageBox.question(
+                self, "padpd",
+                tr("有任务正在运行,确定要退出吗?"))
+            if ans != QMessageBox.StandardButton.Yes:
+                event.ignore()
+                return
+            for w in list(common._LIVE_WORKERS):
+                w.terminate()          # app is exiting; abort is worse
+                w.wait(2000)
+        super().closeEvent(event)
 
     def _rebuild(self):
         """(Re)build all pages and chrome for the current lang/theme.

@@ -131,6 +131,16 @@ def eval_source_for(meta: dict, sources: dict) -> dict:
     name = (meta or {}).get("source", "")
     if name in sources:
         return sources[name]
+    # full form: "ReferencePA d=0.14 160MHz/4096QAM CFR8.0" — rebuild the
+    # EXACT source; matching only drive would silently evaluate the model
+    # on a different waveform (default 80 MHz / 1024-QAM)
+    m = re.search(r"ReferencePA d=([0-9.]+) ([0-9]+)MHz/([0-9]+)QAM"
+                  r"(?: CFR([0-9.]+))?", name)
+    if m:
+        return make_synthetic_source(
+            bandwidth_hz=float(m.group(2)) * 1e6, qam=int(m.group(3)),
+            drive=float(m.group(1)),
+            cfr_papr_db=float(m.group(4)) if m.group(4) else None)
     m = re.search(r"ReferencePA d=([0-9.]+)", name)
     if m:
         return make_synthetic_source(drive=float(m.group(1)))

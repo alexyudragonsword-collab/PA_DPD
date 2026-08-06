@@ -45,6 +45,7 @@ a = Analysis(  # noqa: F821
         (os.path.join(ROOT, "gui_qt", "assets"), os.path.join("gui_qt",
                                                               "assets")),
         (os.path.join(ROOT, "manual"), "manual"),
+        (os.path.join(ROOT, "examples"), "examples"),
     ],
     hiddenimports=hiddenimports,
     excludes=excludes,

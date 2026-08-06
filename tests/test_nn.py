@@ -112,3 +112,15 @@ def test_neural_pa_works_with_classical_ila(pa_data, trained_pa):
     e_raw = nmse_db(g * x, trained_pa(x))
     e_dpd = nmse_db(g * x, ila.linearize(trained_pa, x))
     assert e_dpd < e_raw
+
+
+def test_iq_features_zero_sample_produces_no_nan():
+    from padpd.nn.features import iq_features
+    x = torch.tensor([[0.0, 0.0], [0.3, -0.4]])
+    f = iq_features(x)
+    assert torch.isfinite(f).all()
+    # sin/cos of the zero sample are 0, not NaN
+    assert f[0, 4] == 0.0 and f[0, 5] == 0.0
+    # nonzero sample unchanged: cos = i/|x| = 0.6, sin = q/|x| = -0.8
+    assert torch.allclose(f[1, 5], torch.tensor(0.6), atol=1e-6)
+    assert torch.allclose(f[1, 4], torch.tensor(-0.8), atol=1e-6)

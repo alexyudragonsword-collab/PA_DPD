@@ -127,3 +127,21 @@ def test_grab_screenshots(app, window, tmp_path):
     out = tmp_path / "home.png"
     assert pix.save(str(out))
     assert out.stat().st_size > 10_000
+
+
+def test_fnworker_live_registry(window):
+    """Language/theme switches consult this registry to avoid destroying
+    pages that own running QThreads."""
+    import time
+    from gui_qt import common as C
+    assert C.live_worker_count() == 0
+    w = C.FnWorker(lambda on_progress=None: time.sleep(0.3) or 42)
+    w.start()
+    assert C.live_worker_count() == 1
+    assert w.wait(5000)
+    for _ in range(50):                      # finished signal is queued
+        QtWidgets.QApplication.processEvents()
+        if C.live_worker_count() == 0:
+            break
+        time.sleep(0.02)
+    assert C.live_worker_count() == 0

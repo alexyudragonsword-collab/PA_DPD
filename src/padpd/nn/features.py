@@ -31,6 +31,10 @@ def iq_features(x: torch.Tensor) -> torch.Tensor:
     amp2 = i_x.pow(2) + q_x.pow(2)
     amp = torch.sqrt(amp2)
     amp3 = amp.pow(3)
-    cos = i_x / amp
-    sin = q_x / amp
+    # an exactly-zero sample (common after input quantization) must not
+    # divide to NaN — one NaN poisons the RNN hidden state for the rest
+    # of the frame
+    safe = amp.clamp_min(1e-12)
+    cos = i_x / safe
+    sin = q_x / safe
     return torch.cat((i_x, q_x, amp, amp3, sin, cos), dim=-1)
