@@ -20,6 +20,16 @@ QtWidgets = pytest.importorskip(
 def app():
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     yield app
+    # Destroy all Qt garbage NOW, on this thread, while the QApplication
+    # is still alive. If a QWidget destructor instead runs later inside a
+    # GC pass on a non-Qt thread (observed: streamlit's ScriptRunner
+    # thread during the web tests), it blocks forever in
+    # QWindow::close -> flushWindowSystemEvents and freezes the whole
+    # pytest process while holding the GIL.
+    import gc
+    gc.collect()
+    app.processEvents()
+    gc.collect()
 
 
 @pytest.fixture(scope="module")
@@ -35,6 +45,11 @@ def window(app, tmp_path_factory):
     win = MainWindow()
     win.show()
     yield win
+    # Tear the C++ side down deterministically (deleteLater skips
+    # closeEvent's confirm dialog); the surviving Python wrapper is then
+    # harmless to collect from any thread.
+    win.deleteLater()
+    app.processEvents()
 
 
 @pytest.fixture()

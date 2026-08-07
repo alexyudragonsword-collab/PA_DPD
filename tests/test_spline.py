@@ -341,3 +341,84 @@ def test_wls_weights_downweight_corrupted_segment(pa_data):
     e_u = nmse_db(y[clean], unweighted(x)[clean])
     e_w = nmse_db(y[clean], weighted(x)[clean])
     assert e_w < e_u - 3
+
+
+# ---- widely-linear (conjugate image) branches -----------------------
+
+def _iq_pa():
+    from padpd.pa import IQImbalancePA
+    return IQImbalancePA(ReferencePA(drive=0.14), gain_db=0.3,
+                         phase_deg=3.0)
+
+
+def test_iq_imbalance_pa_irr():
+    from padpd.pa import IQImbalancePA, iq_imbalance_coeffs
+    pa = _iq_pa()
+    assert 28 < pa.irr_db < 33            # 0.3 dB / 3 deg -> ~30 dB IRR
+    a, b = iq_imbalance_coeffs(0.0, 0.0)  # perfect modulator
+    assert a == 1.0 and b == 0.0
+
+
+def test_conjugate_counts_config_and_passthrough():
+    m = SplineMemoryPolynomial(n_knots=6, r_max=1.0, memory_depth=3,
+                               conjugate=True)
+    assert m.n_branches == 6 and m.n_coeffs == 6 * m.n_basis
+    assert m.branch_conjugate() == [False] * 3 + [True] * 3
+    assert m.branch_delays() == [(0, 0), (1, 1), (2, 2)] * 2
+    assert m.get_config()["conjugate"] is True
+    rng = np.random.default_rng(8)
+    x = (rng.standard_normal(2000) + 1j * rng.standard_normal(2000)) * 0.2
+    m.coeffs = m.passthrough_coeffs()     # conj blocks zero -> identity
+    np.testing.assert_allclose(m(x), x, atol=1e-12)
+
+
+def test_conjugate_exact_recovery():
+    rng = np.random.default_rng(9)
+    x = (rng.standard_normal(20_000) + 1j * rng.standard_normal(20_000))
+    x /= np.sqrt(2) * 2
+    truth = SplineMemoryPolynomial(n_knots=5, r_max=1.5, memory_depth=2,
+                                   conjugate=True)
+    n = truth.n_coeffs
+    truth.coeffs = (rng.standard_normal(n)
+                    + 1j * rng.standard_normal(n)) * 0.1
+    truth.coeffs[:truth.n_basis] += 1.0
+    y = truth(x)
+    fitted = SplineMemoryPolynomial(knots=truth.knots, memory_depth=2,
+                                    conjugate=True).fit(x, y)
+    assert nmse_db(y, fitted(x)) < -100
+
+
+def test_conjugate_branch_lifts_image_floor():
+    """Nested-model ablation (report's M0 -> M1/M2): on a TX-IQ-imbalanced
+    PA the phase-equivariant model floors at the image level (~IRR);
+    widely-linear branches recover >10 dB of both modeling NMSE and
+    post-DPD EVM."""
+    from padpd.dpd import ILAPredistorter
+    from padpd.metrics import evm_of_signal
+    pa = _iq_pa()
+    wf_t = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                    n_symbols=8, seed=0))
+    wf_v = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                    n_symbols=8, seed=1))
+    x, xv = wf_t.x, wf_v.x
+    y, yv = pa(x), pa(xv)
+
+    plain = SplineMemoryPolynomial.from_signal(
+        x, n_knots=8, memory_depth=4).fit(x, y, regularization=1e-9)
+    wl = SplineMemoryPolynomial.from_signal(
+        x, n_knots=8, memory_depth=4, conjugate=True
+    ).fit(x, y, regularization=1e-9)
+    e_plain = nmse_db(yv, plain(xv))
+    e_wl = nmse_db(yv, wl(xv))
+    assert -34 < e_plain < -26            # pinned near the ~30 dB IRR
+    assert e_wl < e_plain - 10
+
+    def dpd_evm(conj):
+        dpd = ILAPredistorter(
+            lambda: SplineMemoryPolynomial.from_signal(
+                x, n_knots=8, memory_depth=4, conjugate=conj),
+            n_iterations=2, fit_kwargs={"regularization": 1e-9})
+        dpd.fit(pa, x)
+        return evm_of_signal(pa(dpd(xv)), wf_v).db
+
+    assert dpd_evm(True) < dpd_evm(False) - 10

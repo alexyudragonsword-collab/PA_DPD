@@ -96,3 +96,18 @@ def test_spline_mac_cost_structure():
     from padpd.deploy import mac_cost
     assert (c["real_macs_per_sample_lut"]
             < mac_cost(28, 320e6)["real_macs_per_sample"])
+
+
+def test_lut_conjugate_branches_roundtrip(fitted_smp, tmp_path):
+    """A widely-linear SMP extracts to a LUT whose evaluator applies
+    conj() on image branches and matches the model."""
+    x, y, _ = fitted_smp
+    wl = SplineMemoryPolynomial.from_signal(
+        x, n_knots=8, memory_depth=3, conjugate=True).fit(x, y)
+    lut = lut_from_model(wl, n_entries=1024)
+    assert lut["conjugate"] == [False] * 3 + [True] * 3
+    ev = LUTDPD.from_table(lut)
+    assert ev.conjugate == lut["conjugate"]
+    assert nmse_db(wl(x), ev(x)) < -60
+    payload = export_lut(lut, w_bits=12, path=str(tmp_path / "wl.json"))
+    assert [b["conjugate"] for b in payload["branches"]] == lut["conjugate"]

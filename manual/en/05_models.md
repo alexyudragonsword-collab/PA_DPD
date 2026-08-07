@@ -315,3 +315,18 @@ stimuli (`burst_stimulus`). A plain SMP can only fit the average curve;
 by about 8-11 dB (on both training and held-out bursts). The two-tone
 budget (section 5.8) now also emits a spline recipe alongside the GMP
 one (`spline_config` / `spline_runtime_macs`).
+
+**Image distortion (widely-linear branches)**: TX I/Q imbalance turns
+the transmit signal into `a*x + b*conj(x)`; through the PA the image
+term both passes linearly and intermodulates with the main signal — a
+phase-equivariant x-only basis is *structurally* unable to represent
+an image, so modeling/DPD floors get pinned near the image rejection
+ratio (IRR). `SplineMemoryPolynomial(conjugate=True)` appends
+`conj(x(n-m))*B_j(|x(n-m)|)` branches (still linear in coefficients,
+linearly independent of the direct branches, no identifiability fix
+needed); `IQImbalancePA` is the matching TX-imbalance virtual DUT.
+Measured at 0.3 dB / 3 deg (IRR about 30 dB): x-only DPD EVM stops at
+-30.5 dB, widely-linear reaches **-52.8 dB (+22 dB)**. LUT extraction,
+JSON export and the interpolation RTL all carry the conjugate flag
+(hardware cost: one sign flip on the imaginary carrier), verified
+bit-true under iverilog.

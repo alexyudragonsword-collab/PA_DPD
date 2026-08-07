@@ -184,3 +184,23 @@ def test_lut_rtl_lag_only_sgmp_bit_true(tmp_path):
     res = verify_with_iverilog(str(tmp_path),
                                sources=("dpd_lut.v", "tb_lut.v"))
     assert res["available"] and res["passed"], res["output"]
+
+
+@pytest.mark.skipif(not HAVE_IVERILOG, reason="iverilog not installed")
+def test_lut_rtl_conjugate_branches_bit_true(tmp_path):
+    """Widely-linear (image) branches verify bit-true: the conj is one
+    sign flip on the imaginary carrier in both golden and Verilog."""
+    from padpd.deploy.rtl import emit_lut_rtl
+    from padpd.pa import SplineMemoryPolynomial
+    wf = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                  n_symbols=4, seed=0))
+    y = ReferencePA(drive=0.14)(wf.x)
+    wl = SplineMemoryPolynomial.from_signal(
+        wf.x, n_knots=5, memory_depth=2, conjugate=True).fit(wf.x, y)
+    emit_lut_rtl(wl, str(tmp_path), addr_bits=5, frac_bits=7,
+                 n_vectors=128)
+    assert ", conj" in (tmp_path / "dpd_lut.v").read_text()
+    res = verify_with_iverilog(str(tmp_path),
+                               sources=("dpd_lut.v", "tb_lut.v"))
+    assert res["available"] and res["passed"], res["output"]
+    assert res["errors"] == 0

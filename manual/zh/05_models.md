@@ -250,3 +250,13 @@ smoothness=...(P 样条二阶差分惩罚), weights=...(WLS))`;
 慢功率状态后 NMSE 改善约 8-11 dB(训练与留出突发都成立)。双音诊断
 (§5.8)的预算输出现在同时给出 GMP 与样条两套配方
 (`spline_config` / `spline_runtime_macs`)。
+
+**镜像失真(widely-linear 分支)**:TX IQ 失衡把发送信号变成
+`a·x + b·x*`,b 项(镜像)经 PA 后既线性通过又与主信号互调——**相位
+等变的纯 x 基在结构上无法表示镜像**,建模/DPD 地板被钉死在镜像抑制比
+(IRR)附近。`SplineMemoryPolynomial(conjugate=True)` 追加
+`conj(x(n-m))·B_j(|x(n-m)|)` 共轭分支(仍线性于系数,与直通分支线性
+无关,无需可辨识性修正);`IQImbalancePA` 是配套的 TX 失衡虚拟 DUT。
+实测 0.3 dB/3°(IRR≈30 dB):纯 x 基 DPD EVM 只到 -30.5 dB,加共轭
+分支后 **-52.8 dB(+22 dB)**。LUT 提取、JSON 导出与插值 RTL 均已带
+共轭标记(硬件代价只是虚部一次取反),iverilog 位真验证通过。

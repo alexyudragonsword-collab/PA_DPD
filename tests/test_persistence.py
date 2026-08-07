@@ -19,6 +19,8 @@ def signal():
                      lag_span=1, lead_order=2, lead_memory=2, lead_span=1),
     lambda: SplineMemoryPolynomial(knots=[0.0, 0.2, 0.45, 0.7, 1.1],
                                    degree=3, memory_depth=3),
+    lambda: SplineMemoryPolynomial(knots=[0.0, 0.3, 0.7, 1.1], degree=2,
+                                   memory_depth=2, conjugate=True),
     lambda: SplineGMP(knots=[0.0, 0.25, 0.55, 1.1], degree=2,
                       memory_depth=3, lag_memory=2, lag_span=1,
                       lead_memory=1, lead_span=1),

@@ -167,10 +167,19 @@ class SplineMemoryPolynomial(PAModel):
     spline static nonlinearity (the trainable generalization of the
     ``WienerHammersteinPA`` read-only LUT). ``degree=1`` yields a
     linearly-interpolated LUT model directly.
+
+    ``conjugate=True`` appends widely-linear image branches
+    ``conj(x(n-m)) * B_j(|x(n-m)|)`` — the spline generalization of the
+    x* and x*|x|^2 terms that model image-frequency distortion from TX
+    I/Q imbalance (a phase-equivariant basis cannot represent an image,
+    which rotates opposite to the carrier). The conjugate blocks are
+    linearly independent of the direct ones (x and x* are independent
+    complex directions), so no identifiability correction is needed.
     """
 
     def __init__(self, knots: Sequence[float] | None = None,
                  degree: int = 3, memory_depth: int = 4,
+                 conjugate: bool = False,
                  n_knots: int | None = None, r_max: float = 1.0):
         if degree not in (1, 2, 3):
             raise ValueError("degree must be 1, 2 or 3")
@@ -184,11 +193,13 @@ class SplineMemoryPolynomial(PAModel):
         self.knots = _validate_knots(knots)
         self.degree = int(degree)
         self.memory_depth = int(memory_depth)
+        self.conjugate = bool(conjugate)
         self.coeffs: np.ndarray | None = None
 
     @classmethod
     def from_signal(cls, x: np.ndarray, n_knots: int = 8, degree: int = 3,
-                    memory_depth: int = 4, placement: str = "hybrid",
+                    memory_depth: int = 4, conjugate: bool = False,
+                    placement: str = "hybrid",
                     headroom: float = 1.05) -> "SplineMemoryPolynomial":
         """Resolve data-driven knots from a calibration signal, then build.
 
@@ -199,11 +210,13 @@ class SplineMemoryPolynomial(PAModel):
         r_max = float(headroom * amps.max())
         ks = place_knots(amps, n_knots=n_knots, placement=placement,
                          r_max=r_max)
-        return cls(knots=ks, degree=degree, memory_depth=memory_depth)
+        return cls(knots=ks, degree=degree, memory_depth=memory_depth,
+                   conjugate=conjugate)
 
     def get_config(self) -> dict:
         return {"knots": [float(k) for k in self.knots],
-                "degree": self.degree, "memory_depth": self.memory_depth}
+                "degree": self.degree, "memory_depth": self.memory_depth,
+                "conjugate": self.conjugate}
 
     @property
     def n_basis(self) -> int:
@@ -211,8 +224,12 @@ class SplineMemoryPolynomial(PAModel):
         return len(self.knots) - 1 + self.degree
 
     @property
+    def n_branches(self) -> int:
+        return self.memory_depth * (2 if self.conjugate else 1)
+
+    @property
     def n_coeffs(self) -> int:
-        return self.memory_depth * self.n_basis
+        return self.n_branches * self.n_basis
 
     def basis_matrix(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=complex)
@@ -221,6 +238,12 @@ class SplineMemoryPolynomial(PAModel):
             xm = delayed(x, m)
             b = bspline_design_matrix(np.abs(xm), self.knots, self.degree)
             blocks.append(xm[:, None] * b)
+        if self.conjugate:
+            for m in range(self.memory_depth):
+                xm = delayed(x, m)
+                b = bspline_design_matrix(np.abs(xm), self.knots,
+                                          self.degree)
+                blocks.append(np.conj(xm)[:, None] * b)
         return np.concatenate(blocks, axis=1)
 
     def passthrough_coeffs(self) -> np.ndarray:
@@ -235,28 +258,35 @@ class SplineMemoryPolynomial(PAModel):
         return w
 
     def smoothness_penalty(self) -> np.ndarray:
-        """Block-diagonal P-spline roughness operator (one D2 per tap)."""
-        return np.kron(np.eye(self.memory_depth),
+        """Block-diagonal P-spline roughness operator (one D2 per branch)."""
+        return np.kron(np.eye(self.n_branches),
                        _second_difference(self.n_basis))
 
     def branch_delays(self) -> list[tuple[int, int]]:
         """(carrier delay, envelope delay) per branch — LUT metadata."""
-        return [(m, m) for m in range(self.memory_depth)]
+        taps = [(m, m) for m in range(self.memory_depth)]
+        return taps * 2 if self.conjugate else taps
+
+    def branch_conjugate(self) -> list[bool]:
+        """Whether each branch multiplies conj(x) instead of x."""
+        return ([False] * self.memory_depth
+                + [True] * self.memory_depth * self.conjugate)
 
     def gain_curve(self, r: np.ndarray) -> np.ndarray:
         """Complex gain of each branch vs envelope: (n_branches, len(r)).
 
         Branch ``b`` contributes ``x(n-m_b) * gain_b(|x(n-e_b)|)`` to the
-        output; this is the curve a hardware LUT stores (see
-        :mod:`padpd.deploy.lut`).
+        output (``conj(x)`` for image branches; see
+        :meth:`branch_conjugate`); this is the curve a hardware LUT
+        stores (see :mod:`padpd.deploy.lut`).
         """
         if self.coeffs is None:
             raise RuntimeError("model is not fitted; call fit(x, y) first")
         b = bspline_design_matrix(np.asarray(r, dtype=float), self.knots,
                                   self.degree)
         j = self.n_basis
-        return np.stack([b @ self.coeffs[m * j:(m + 1) * j]
-                         for m in range(self.memory_depth)])
+        return np.stack([b @ self.coeffs[k * j:(k + 1) * j]
+                         for k in range(self.n_branches)])
 
     def fit(self, x: np.ndarray, y: np.ndarray,
             regularization: float = 0.0, smoothness: float = 0.0,

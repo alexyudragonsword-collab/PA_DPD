@@ -142,7 +142,11 @@ drive 0.24)**不可逆**,149 系数 DPD 只到 -20.7;联合设计 drive 0.17、
   SplineGMP 交叉分支去首基列修复了单位分解秩亏(修复前 2.6e16);
 - **热场景**(自热 ThermalReferencePA,突发激励):纯 SMP -24.6 dB →
   状态条件化样条 -34.8 dB(**+10.2 dB**);LUT 插值 RTL 经 iverilog
-  逐位验证 0 错误。
+  逐位验证 0 错误;
+- **镜像场景**(IQImbalancePA,0.3 dB/3° → IRR≈30 dB):相位等变纯 x
+  基 DPD EVM 被镜像钉死在 -30.5 dB,widely-linear 共轭分支
+  (`conjugate=True`)后 **-52.8 dB(+22.3 dB)**,硬件代价仅为镜像
+  分支虚部一次取反(RTL 位真验证通过)。
 
 ## 4. 关键工程结论(已实证)
 

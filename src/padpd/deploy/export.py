@@ -76,9 +76,11 @@ def export_lut(lut: dict, w_bits: int, path: str) -> dict:
     interpolates between adjacent entries.
     """
     branches = []
-    for g, (mc, me) in zip(lut["gains"], lut["delays"]):
+    conj = lut.get("conjugate", [False] * len(lut["delays"]))
+    for g, (mc, me), cj in zip(lut["gains"], lut["delays"], conj):
         cr, ci, e = _int_codes(np.asarray(g), w_bits)
         branches.append({"carrier_delay": int(mc), "envelope_delay": int(me),
+                         "conjugate": bool(cj),
                          "scale_exp": e, "gains_real": cr.tolist(),
                          "gains_imag": ci.tolist()})
     payload = {
