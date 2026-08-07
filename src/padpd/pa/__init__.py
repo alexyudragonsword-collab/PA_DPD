@@ -15,7 +15,7 @@ from .spline import (SplineGMP, SplineMemoryPolynomial,
                      bspline_design_matrix, place_knots)
 from .spline_state import CoefficientScheduler, StateConditionedSpline
 from .thermal import ThermalReferencePA, burst_stimulus
-from .iq import IQImbalancePA, iq_imbalance_coeffs
+from .iq import IQImbalancePA, TxFrontEndPA, iq_imbalance_coeffs
 from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
 
 _MODEL_CLASSES = {cls.__name__: cls
@@ -59,6 +59,7 @@ __all__ = [
     "ThermalReferencePA",
     "burst_stimulus",
     "IQImbalancePA",
+    "TxFrontEndPA",
     "iq_imbalance_coeffs",
     "bspline_design_matrix",
     "place_knots",

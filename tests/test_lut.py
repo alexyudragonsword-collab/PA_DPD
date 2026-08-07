@@ -111,3 +111,21 @@ def test_lut_conjugate_branches_roundtrip(fitted_smp, tmp_path):
     assert nmse_db(wl(x), ev(x)) < -60
     payload = export_lut(lut, w_bits=12, path=str(tmp_path / "wl.json"))
     assert [b["conjugate"] for b in payload["branches"]] == lut["conjugate"]
+
+
+def test_lut_cim3_and_dc_roundtrip(fitted_smp, tmp_path):
+    """conj^3 branches and the DC term survive LUT extraction, the
+    evaluator applies them, and the JSON export carries the metadata."""
+    x, y, _ = fitted_smp
+    m = SplineMemoryPolynomial.from_signal(
+        x, n_knots=6, memory_depth=2, conjugate=True, cim3=True,
+        dc_term=True).fit(x, y)
+    lut = lut_from_model(m, n_entries=1024)
+    assert lut["phase_orders"] == [1, 1, -1, -1, -3, -3]
+    assert lut["dc"] == m.dc_coefficient()
+    ev = LUTDPD.from_table(lut)
+    assert nmse_db(m(x), ev(x)) < -60
+    payload = export_lut(lut, w_bits=12, path=str(tmp_path / "c3.json"))
+    assert [b["phase_order"] for b in payload["branches"]] \
+        == lut["phase_orders"]
+    assert payload["dc_real"] == m.dc_coefficient().real

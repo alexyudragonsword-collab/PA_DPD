@@ -146,7 +146,13 @@ drive 0.24)**不可逆**,149 系数 DPD 只到 -20.7;联合设计 drive 0.17、
 - **镜像场景**(IQImbalancePA,0.3 dB/3° → IRR≈30 dB):相位等变纯 x
   基 DPD EVM 被镜像钉死在 -30.5 dB,widely-linear 共轭分支
   (`conjugate=True`)后 **-52.8 dB(+22.3 dB)**,硬件代价仅为镜像
-  分支虚部一次取反(RTL 位真验证通过)。
+  分支虚部一次取反(RTL 位真验证通过);
+- **C-IM3 场景**(TxFrontEndPA,-32 dBc conj³ 注入 + -35 dBc LO 泄漏):
+  x+共轭+DC 建模钉在 -31.6 dB,`cim3=True`(conj³ 相位谐波分支)后
+  **-46.1 dB(+14.5 dB)**;RTL 支持 conj³ 载波(复数立方 + 分支标度
+  左移对齐 + DC 种子,iverilog 位真 0 错误)。注:conj³ 分支服务建模/
+  观测方向;ILA 复制式预失真实测无法抵消 PA 后 C-IM3,独立抵消环路
+  留作后续。
 
 ## 4. 关键工程结论(已实证)
 

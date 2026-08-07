@@ -246,31 +246,52 @@ def verify_with_iverilog(out_dir: str,
 # front-end, as for the MAC engine.
 
 
+def _int_carrier(xr: int, xi: int, order: int) -> tuple:
+    """Integer carrier of a phase-harmonic order (see pa.spline).
+
+    order +1 -> (xr, xi); -1 -> conj; -3 -> conj^3 via
+    (r - ji)^3 = (r^3 - 3 r i^2) + j (i^3 - 3 r^2 i).
+    """
+    if order == 1:
+        return xr, xi
+    if order == -1:
+        return xr, -xi
+    if order == -3:
+        return (xr * xr * xr - 3 * xr * xi * xi,
+                xi * xi * xi - 3 * xr * xr * xi)
+    raise ValueError(f"unsupported phase order {order}")
+
+
 def lut_fixed_eval(rom_re, rom_im, r_int, x_re_int, x_im_int, delays,
-                   addr_bits: int, frac_bits: int, conjugate=None):
+                   addr_bits: int, frac_bits: int, phase_orders=None,
+                   shifts=None, dc_int=(0, 0)):
     """Bit-exact integer reference of the LUT datapath (golden model).
 
     Mirrors the generated Verilog operation-for-operation, including the
     zero-initialized delay lines and the arithmetic (floor) shift of the
     interpolation product. All arrays are integer; python ints avoid any
-    overflow concern. ``conjugate[b]`` negates branch b's imaginary
-    carrier component (widely-linear image branches).
+    overflow concern. ``phase_orders[b]`` selects the carrier (x /
+    conj(x) / conj(x)^3); ``shifts[b]`` left-aligns branch b's product
+    to the common output scale (branches carry per-branch power-of-two
+    scales, exact — no precision loss); ``dc_int`` seeds the
+    accumulators (LO-leakage constant at the output scale).
     """
-    if conjugate is None:
-        conjugate = [False] * len(delays)
+    if phase_orders is None:
+        phase_orders = [1] * len(delays)
+    if shifts is None:
+        shifts = [0] * len(delays)
     n = len(r_int)
     mask = (1 << frac_bits) - 1
     y_re = [0] * n
     y_im = [0] * n
     for k in range(n):
-        acc_re = 0
-        acc_im = 0
+        acc_re = int(dc_int[0])
+        acc_im = int(dc_int[1])
         for b, (mc, me) in enumerate(delays):
             rd = int(r_int[k - me]) if k >= me else 0
             xr = int(x_re_int[k - mc]) if k >= mc else 0
             xi = int(x_im_int[k - mc]) if k >= mc else 0
-            if conjugate[b]:
-                xi = -xi
+            cr, ci = _int_carrier(xr, xi, phase_orders[b])
             addr = rd >> frac_bits
             frac = rd & mask
             g0r, g0i = int(rom_re[b][addr]), int(rom_im[b][addr])
@@ -278,8 +299,8 @@ def lut_fixed_eval(rom_re, rom_im, r_int, x_re_int, x_im_int, delays,
             di = int(rom_im[b][addr + 1]) - g0i
             gr = g0r + ((dr * frac) >> frac_bits)   # >> == Verilog >>>
             gi = g0i + ((di * frac) >> frac_bits)
-            acc_re += gr * xr - gi * xi
-            acc_im += gr * xi + gi * xr
+            acc_re += (gr * cr - gi * ci) << shifts[b]
+            acc_im += (gr * ci + gi * cr) << shifts[b]
         y_re[k] = acc_re
         y_im[k] = acc_im
     return np.array(y_re, dtype=np.int64), np.array(y_im, dtype=np.int64)
@@ -300,22 +321,28 @@ def _rom_init_lines(rom_re, rom_im) -> str:
 def generate_lut_verilog(rom_re, rom_im, delays, addr_bits: int,
                          frac_bits: int, entry_bits: int, data_bits: int,
                          acc_bits: int, module: str = "dpd_lut",
-                         conjugate=None) -> str:
+                         phase_orders=None, shifts=None,
+                         dc_int=(0, 0)) -> str:
     """Emit the LUT + interpolation + delay-line + complex-MAC module.
 
     Delay lines are clocked; LUT fetch, interpolation and the branch sum
     are combinational from the delayed registers (pipeline for timing
     closure as needed). ROM entries are baked in (``initial`` block, as
     for the MAC engine); registers self-initialize for simulation.
-    ``conjugate[b]`` negates branch b's imaginary carrier component
-    (widely-linear image branches — hardware cost: one sign flip).
+    Per-branch carriers follow ``phase_orders``: -1 costs one sign flip
+    on the imaginary part, -3 (counter-IM3) one complex cube;
+    ``shifts[b]`` left-aligns each branch's power-of-two scale to the
+    common accumulator scale, and ``dc_int`` seeds the accumulators
+    (LO-leakage constant).
     """
     nb = len(delays)
     nent = (1 << addr_bits) + 1
     dmax = max(max(mc, me) for mc, me in delays)
     rw = addr_bits + frac_bits
-    if conjugate is None:
-        conjugate = [False] * nb
+    if phase_orders is None:
+        phase_orders = [1] * nb
+    if shifts is None:
+        shifts = [0] * nb
 
     def xsel(m, part):
         return f"x_{part}" if m == 0 else f"x{part}_d[{m - 1}]"
@@ -323,12 +350,27 @@ def generate_lut_verilog(rom_re, rom_im, delays, addr_bits: int,
     def rsel(m):
         return "r" if m == 0 else f"r_d[{m - 1}]"
 
+    def slit(v):
+        v = int(v)
+        return f"-'sd{-v}" if v < 0 else f"'sd{v}"
+
     branch_blocks = []
     for b, (mc, me) in enumerate(delays):
-        xim = (f"(-{xsel(mc, 'im')})" if conjugate[b]
-               else xsel(mc, 'im'))
-        tag = ", conj" if conjugate[b] else ""
-        branch_blocks.append(f"""        // branch {b}: carrier z^-{mc}, envelope z^-{me}{tag}
+        xr, xi = xsel(mc, 're'), xsel(mc, 'im')
+        order = phase_orders[b]
+        if order == 1:
+            carrier = (f"        c_re = {xr};\n"
+                       f"        c_im = {xi};")
+        elif order == -1:
+            carrier = (f"        c_re = {xr};\n"
+                       f"        c_im = -{xi};")
+        elif order == -3:                      # (r - ji)^3
+            carrier = (
+                f"        c_re = {xr}*{xr}*{xr} - 3*{xr}*{xi}*{xi};\n"
+                f"        c_im = {xi}*{xi}*{xi} - 3*{xr}*{xr}*{xi};")
+        else:
+            raise ValueError(f"unsupported phase order {order}")
+        branch_blocks.append(f"""        // branch {b}: carrier x^{order} z^-{mc}, envelope z^-{me}, shift {shifts[b]}
         addr = {rsel(me)}[RW-1:FB];
         frac = {rsel(me)}[FB-1:0];
         d_re = rom_re[{b}*NENT + addr + 1] - rom_re[{b}*NENT + addr];
@@ -337,9 +379,12 @@ def generate_lut_verilog(rom_re, rom_im, delays, addr_bits: int,
         p_im = d_im * $signed({{1'b0, frac}});
         g_re = rom_re[{b}*NENT + addr] + (p_re >>> FB);
         g_im = rom_im[{b}*NENT + addr] + (p_im >>> FB);
-        acc_re = acc_re + g_re * {xsel(mc, 're')} - g_im * {xim};
-        acc_im = acc_im + g_re * {xim} + g_im * {xsel(mc, 're')};""")
+{carrier}
+        acc_re = acc_re + ((g_re * c_re - g_im * c_im) <<< {shifts[b]});
+        acc_im = acc_im + ((g_re * c_im + g_im * c_re) <<< {shifts[b]});""")
     blocks = "\n".join(branch_blocks)
+    dc_decl = (f"    localparam signed [AW-1:0] DC_RE = {slit(dc_int[0])};\n"
+               f"    localparam signed [AW-1:0] DC_IM = {slit(dc_int[1])};")
 
     return f"""// Auto-generated by padpd.deploy.rtl -- spline/LUT DPD datapath.
 // y(n) = sum_b x(n-mc_b) * lut_b(r(n-me_b)),  {nb} branches,
@@ -390,10 +435,12 @@ module {module} #(
     reg signed [GW:0]        d_re, d_im;
     reg signed [GW+FB+1:0]   p_re, p_im;
     reg signed [GW+1:0]      g_re, g_im;
+    reg signed [3*DW+1:0]    c_re, c_im;    // widest carrier: conj(x)^3
     reg signed [AW-1:0]      acc_re, acc_im;
+{dc_decl}
     always @* begin
-        acc_re = 0;
-        acc_im = 0;
+        acc_re = DC_RE;
+        acc_im = DC_IM;
 {blocks}
         y_re = acc_re;
         y_im = acc_im;
@@ -469,17 +516,14 @@ def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
         raise ValueError(f"LUT needs {nent} entries "
                          f"(2**addr_bits + 1), got {len(lut['r_grid'])}")
     delays = [tuple(d) for d in lut["delays"]]
-    conjugate = list(lut.get("conjugate", [False] * len(delays)))
+    orders = list(lut.get("phase_orders", [1] * len(delays)))
+    dc = complex(lut.get("dc", 0j))
     if any(mc < 0 or me < 0 for mc, me in delays):
         raise ValueError("lead branches (negative delay) are not "
                          "synthesizable without a latency-compensated "
                          "front-end; use an SMP or lag-only SplineGMP")
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-
-    # one shared entry scale across branches so branch products sum directly
-    gains = np.asarray(lut["gains"])
-    g_re_i, g_im_i, step_g = quantize_to_int(gains, entry_bits)
 
     # stimulus: reproducible complex samples spanning the LUT range and the
     # clamp region (envelope up to ~1.2 r_max)
@@ -501,16 +545,39 @@ def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
     r_i = np.clip(np.round(np.abs(x) / step_r), 0,
                   (1 << rw) - 1).astype(np.int64)
 
+    # Per-branch entry quantization + power-of-two scale alignment: a
+    # branch's integer product carries scale step_g[b] * step_x^|order|,
+    # so each branch left-shifts by log2(scale_b / min scale) before the
+    # sum — exact (shifts only add zero LSBs), hence still bit-true.
+    gains = np.asarray(lut["gains"])
+    g_re_i, g_im_i, steps_g, scales = [], [], [], []
+    for g, order in zip(gains, orders):
+        gr, gi, sg = quantize_to_int(np.asarray(g), entry_bits)
+        g_re_i.append(gr)
+        g_im_i.append(gi)
+        steps_g.append(sg)
+        scales.append(sg * step_x ** abs(order))
+    s_out = min(scales)
+    shifts = [int(round(math.log2(s / s_out))) for s in scales]
+    dc_int = (int(round(dc.real / s_out)), int(round(dc.imag / s_out)))
+
     exp_re, exp_im = lut_fixed_eval(g_re_i, g_im_i, r_i, xr_i, xi_i,
                                     delays, addr_bits, frac_bits,
-                                    conjugate=conjugate)
+                                    phase_orders=orders, shifts=shifts,
+                                    dc_int=dc_int)
 
-    prod_bits = (entry_bits + 2) + data_bits
+    carrier_bits = [3 * data_bits + 2 if o == -3 else data_bits + 1
+                    for o in orders]
+    prod_bits = max((entry_bits + 2) + cb + sh
+                    for cb, sh in zip(carrier_bits, shifts))
     acc_bits = prod_bits + math.ceil(math.log2(2 * len(delays))) + 2
+    acc_bits = max(acc_bits,
+                   max(abs(v) for v in dc_int).bit_length() + 2)
 
     (out / "dpd_lut.v").write_text(generate_lut_verilog(
         g_re_i, g_im_i, delays, addr_bits, frac_bits, entry_bits,
-        data_bits, acc_bits, conjugate=conjugate))
+        data_bits, acc_bits, phase_orders=orders, shifts=shifts,
+        dc_int=dc_int))
     (out / "tb_lut.v").write_text(generate_lut_testbench(
         n_vectors, addr_bits, frac_bits, data_bits, acc_bits))
     (out / "lut_x_re.mem").write_text(
@@ -530,5 +597,7 @@ def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
             "addr_bits": addr_bits, "frac_bits": frac_bits,
             "entry_bits": entry_bits, "data_bits": data_bits,
             "acc_bits": acc_bits, "n_vectors": n_vectors,
-            "entry_step": step_g, "data_step": step_x, "r_step": step_r,
+            "entry_steps": steps_g, "shifts": shifts,
+            "phase_orders": orders, "dc_int": dc_int,
+            "out_step": s_out, "data_step": step_x, "r_step": step_r,
             "r_max": r_max}

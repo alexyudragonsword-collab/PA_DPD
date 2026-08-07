@@ -199,7 +199,32 @@ def test_lut_rtl_conjugate_branches_bit_true(tmp_path):
         wf.x, n_knots=5, memory_depth=2, conjugate=True).fit(wf.x, y)
     emit_lut_rtl(wl, str(tmp_path), addr_bits=5, frac_bits=7,
                  n_vectors=128)
-    assert ", conj" in (tmp_path / "dpd_lut.v").read_text()
+    assert "carrier x^-1" in (tmp_path / "dpd_lut.v").read_text()
+    res = verify_with_iverilog(str(tmp_path),
+                               sources=("dpd_lut.v", "tb_lut.v"))
+    assert res["available"] and res["passed"], res["output"]
+    assert res["errors"] == 0
+
+
+@pytest.mark.skipif(not HAVE_IVERILOG, reason="iverilog not installed")
+def test_lut_rtl_cim3_dc_bit_true(tmp_path):
+    """conj^3 carrier (complex cube), per-branch scale-alignment shifts
+    and the DC seed all verify bit-true under iverilog."""
+    from padpd.deploy.rtl import emit_lut_rtl
+    from padpd.pa import ReferencePA, SplineMemoryPolynomial, TxFrontEndPA
+    wf = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                  n_symbols=4, seed=0))
+    pa = TxFrontEndPA(ReferencePA(drive=0.14), lo_leakage_dbc=-35.0,
+                      cim3_dbc=-32.0)
+    y = pa(wf.x)
+    m = SplineMemoryPolynomial.from_signal(
+        wf.x, n_knots=5, memory_depth=2, conjugate=True, cim3=True,
+        dc_term=True).fit(wf.x, y, regularization=1e-9)
+    info = emit_lut_rtl(m, str(tmp_path), addr_bits=5, frac_bits=7,
+                        n_vectors=128)
+    v = (tmp_path / "dpd_lut.v").read_text()
+    assert "carrier x^-3" in v and "DC_RE" in v
+    assert any(s > 0 for s in info["shifts"])  # scale alignment engaged
     res = verify_with_iverilog(str(tmp_path),
                                sources=("dpd_lut.v", "tb_lut.v"))
     assert res["available"] and res["passed"], res["output"]

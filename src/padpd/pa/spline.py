@@ -148,6 +148,20 @@ def _second_difference(j: int) -> np.ndarray:
     return d
 
 
+def _phase_carrier(x: np.ndarray, order: int) -> np.ndarray:
+    """Carrier of a given phase-harmonic order: +1 -> x, -1 -> conj(x)
+    (image), -3 -> conj(x)^3 (counter-IM3). Each order rotates the
+    envelope phase differently (exp(j*order*phi)), so the classes are
+    mutually irreplaceable basis families."""
+    if order == 1:
+        return x
+    if order == -1:
+        return np.conj(x)
+    if order == -3:
+        return np.conj(x) ** 3
+    raise ValueError(f"unsupported phase order {order}")
+
+
 def _validate_knots(knots: Sequence[float]) -> list[float]:
     ks = [float(k) for k in knots]
     if len(ks) < 2:
@@ -175,11 +189,20 @@ class SplineMemoryPolynomial(PAModel):
     which rotates opposite to the carrier). The conjugate blocks are
     linearly independent of the direct ones (x and x* are independent
     complex directions), so no identifiability correction is needed.
+
+    ``cim3=True`` appends counter-IM3 branches
+    ``conj(x(n-m))^3 * B_j(|x(n-m)|)`` for the LO-3BB product of a
+    direct-conversion TX (mixer 3rd-LO-harmonic path, and PA IM3 of
+    image x wanted — both land on the same conj^3 term). This is the
+    exp(-j3*phi) phase-harmonic class: conj(x)*f(|x|) rotates exp(-j*phi)
+    only, so no conjugate-branch gain function can absorb it.
+    ``dc_term=True`` adds one constant column for LO leakage.
     """
 
     def __init__(self, knots: Sequence[float] | None = None,
                  degree: int = 3, memory_depth: int = 4,
-                 conjugate: bool = False,
+                 conjugate: bool = False, cim3: bool = False,
+                 dc_term: bool = False,
                  n_knots: int | None = None, r_max: float = 1.0):
         if degree not in (1, 2, 3):
             raise ValueError("degree must be 1, 2 or 3")
@@ -194,11 +217,14 @@ class SplineMemoryPolynomial(PAModel):
         self.degree = int(degree)
         self.memory_depth = int(memory_depth)
         self.conjugate = bool(conjugate)
+        self.cim3 = bool(cim3)
+        self.dc_term = bool(dc_term)
         self.coeffs: np.ndarray | None = None
 
     @classmethod
     def from_signal(cls, x: np.ndarray, n_knots: int = 8, degree: int = 3,
                     memory_depth: int = 4, conjugate: bool = False,
+                    cim3: bool = False, dc_term: bool = False,
                     placement: str = "hybrid",
                     headroom: float = 1.05) -> "SplineMemoryPolynomial":
         """Resolve data-driven knots from a calibration signal, then build.
@@ -211,12 +237,13 @@ class SplineMemoryPolynomial(PAModel):
         ks = place_knots(amps, n_knots=n_knots, placement=placement,
                          r_max=r_max)
         return cls(knots=ks, degree=degree, memory_depth=memory_depth,
-                   conjugate=conjugate)
+                   conjugate=conjugate, cim3=cim3, dc_term=dc_term)
 
     def get_config(self) -> dict:
         return {"knots": [float(k) for k in self.knots],
                 "degree": self.degree, "memory_depth": self.memory_depth,
-                "conjugate": self.conjugate}
+                "conjugate": self.conjugate, "cim3": self.cim3,
+                "dc_term": self.dc_term}
 
     @property
     def n_basis(self) -> int:
@@ -225,25 +252,23 @@ class SplineMemoryPolynomial(PAModel):
 
     @property
     def n_branches(self) -> int:
-        return self.memory_depth * (2 if self.conjugate else 1)
+        return self.memory_depth * (1 + self.conjugate + self.cim3)
 
     @property
     def n_coeffs(self) -> int:
-        return self.n_branches * self.n_basis
+        return self.n_branches * self.n_basis + (1 if self.dc_term else 0)
 
     def basis_matrix(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=complex)
         blocks = []
-        for m in range(self.memory_depth):
-            xm = delayed(x, m)
-            b = bspline_design_matrix(np.abs(xm), self.knots, self.degree)
-            blocks.append(xm[:, None] * b)
-        if self.conjugate:
+        for order in self.branch_phase_orders()[::self.memory_depth]:
             for m in range(self.memory_depth):
                 xm = delayed(x, m)
                 b = bspline_design_matrix(np.abs(xm), self.knots,
                                           self.degree)
-                blocks.append(np.conj(xm)[:, None] * b)
+                blocks.append(_phase_carrier(xm, order)[:, None] * b)
+        if self.dc_term:
+            blocks.append(np.ones((len(x), 1), dtype=complex))
         return np.concatenate(blocks, axis=1)
 
     def passthrough_coeffs(self) -> np.ndarray:
@@ -258,27 +283,47 @@ class SplineMemoryPolynomial(PAModel):
         return w
 
     def smoothness_penalty(self) -> np.ndarray:
-        """Block-diagonal P-spline roughness operator (one D2 per branch)."""
-        return np.kron(np.eye(self.n_branches),
-                       _second_difference(self.n_basis))
+        """Block-diagonal P-spline roughness operator (one D2 per branch;
+        the DC column, if any, carries no roughness)."""
+        p = np.kron(np.eye(self.n_branches),
+                    _second_difference(self.n_basis))
+        if self.dc_term:
+            p = np.hstack([p, np.zeros((p.shape[0], 1))])
+        return p
 
     def branch_delays(self) -> list[tuple[int, int]]:
         """(carrier delay, envelope delay) per branch — LUT metadata."""
         taps = [(m, m) for m in range(self.memory_depth)]
-        return taps * 2 if self.conjugate else taps
+        return taps * (1 + self.conjugate + self.cim3)
+
+    def branch_phase_orders(self) -> list[int]:
+        """Phase-harmonic order of each branch's carrier: +1 for x, -1
+        for conj(x) (image), -3 for conj(x)^3 (counter-IM3)."""
+        orders = [1] * self.memory_depth
+        if self.conjugate:
+            orders += [-1] * self.memory_depth
+        if self.cim3:
+            orders += [-3] * self.memory_depth
+        return orders
 
     def branch_conjugate(self) -> list[bool]:
-        """Whether each branch multiplies conj(x) instead of x."""
-        return ([False] * self.memory_depth
-                + [True] * self.memory_depth * self.conjugate)
+        """Whether each branch's carrier is phase-conjugated (order < 0)."""
+        return [o < 0 for o in self.branch_phase_orders()]
+
+    def dc_coefficient(self) -> complex | None:
+        """Fitted constant (LO-leakage) term, if the model carries one."""
+        if not self.dc_term or self.coeffs is None:
+            return None
+        return complex(self.coeffs[-1])
 
     def gain_curve(self, r: np.ndarray) -> np.ndarray:
         """Complex gain of each branch vs envelope: (n_branches, len(r)).
 
-        Branch ``b`` contributes ``x(n-m_b) * gain_b(|x(n-e_b)|)`` to the
-        output (``conj(x)`` for image branches; see
-        :meth:`branch_conjugate`); this is the curve a hardware LUT
-        stores (see :mod:`padpd.deploy.lut`).
+        Branch ``b`` contributes ``carrier_b(n) * gain_b(|x(n-e_b)|)``
+        with carrier x, conj(x) or conj(x)^3 per
+        :meth:`branch_phase_orders`; this is the curve a hardware LUT
+        stores (see :mod:`padpd.deploy.lut`). The DC term, if any, is
+        not a branch — read it via :meth:`dc_coefficient`.
         """
         if self.coeffs is None:
             raise RuntimeError("model is not fitted; call fit(x, y) first")

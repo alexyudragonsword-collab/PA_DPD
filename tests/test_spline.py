@@ -422,3 +422,90 @@ def test_conjugate_branch_lifts_image_floor():
         return evm_of_signal(pa(dpd(xv)), wf_v).db
 
     assert dpd_evm(True) < dpd_evm(False) - 10
+
+
+# ---- counter-IM3 (conj^3) branches + DC term ------------------------
+
+def test_txfrontend_pa_products():
+    from padpd.pa import ReferencePA, TxFrontEndPA
+    pa = TxFrontEndPA(ReferencePA(drive=0.14), lo_leakage_dbc=-35.0,
+                      cim3_dbc=-32.0)
+    rng = np.random.default_rng(3)
+    x = (rng.standard_normal(20_000) + 1j * rng.standard_normal(20_000))
+    x /= np.sqrt(2)
+    y = pa(x)
+    # injected C-IM3 sits at the calibrated level vs output rms
+    d = np.conj(x) ** 3
+    c = np.vdot(d, y) / np.vdot(d, d)
+    lvl = 10 * np.log10(np.mean(np.abs(c * d) ** 2)
+                        / np.mean(np.abs(y) ** 2))
+    assert -35 < lvl < -29
+    # defaults degrade gracefully to the plain IQ-imbalance wrapper
+    from padpd.pa import IQImbalancePA
+    ref = IQImbalancePA(ReferencePA(drive=0.14))
+    np.testing.assert_allclose(TxFrontEndPA(ReferencePA(drive=0.14))(x),
+                               ref(x))
+
+
+def test_cim3_counts_config_passthrough():
+    m = SplineMemoryPolynomial(n_knots=6, r_max=1.0, memory_depth=2,
+                               conjugate=True, cim3=True, dc_term=True)
+    j = m.n_basis
+    assert m.n_branches == 6 and m.n_coeffs == 6 * j + 1
+    assert m.branch_phase_orders() == [1, 1, -1, -1, -3, -3]
+    assert m.branch_conjugate() == [False, False, True, True, True, True]
+    assert m.branch_delays() == [(0, 0), (1, 1)] * 3
+    cfg = m.get_config()
+    assert cfg["cim3"] is True and cfg["dc_term"] is True
+    rng = np.random.default_rng(5)
+    x = (rng.standard_normal(2000) + 1j * rng.standard_normal(2000)) * 0.2
+    m.coeffs = m.passthrough_coeffs()
+    np.testing.assert_allclose(m(x), x, atol=1e-12)
+    # smoothness penalty covers branches, spares the DC column
+    p = m.smoothness_penalty()
+    assert p.shape == (6 * (j - 2), 6 * j + 1)
+    assert np.all(p[:, -1] == 0)
+
+
+def test_cim3_exact_recovery():
+    rng = np.random.default_rng(6)
+    x = (rng.standard_normal(20_000) + 1j * rng.standard_normal(20_000))
+    x /= np.sqrt(2) * 2
+    truth = SplineMemoryPolynomial(n_knots=5, r_max=1.5, memory_depth=2,
+                                   cim3=True, dc_term=True)
+    n = truth.n_coeffs
+    truth.coeffs = (rng.standard_normal(n)
+                    + 1j * rng.standard_normal(n)) * 0.05
+    truth.coeffs[:truth.n_basis] += 1.0
+    y = truth(x)
+    fitted = SplineMemoryPolynomial(knots=truth.knots, memory_depth=2,
+                                    cim3=True, dc_term=True).fit(x, y)
+    assert nmse_db(y, fitted(x)) < -100
+    assert abs(fitted.dc_coefficient() - truth.coeffs[-1]) < 1e-6
+
+
+def test_cim3_branch_lifts_observation_floor():
+    """Nested ablation on the TX front-end DUT: conj/dc branches stall
+    near the injected C-IM3 level (phase harmonic exp(-j3 phi) is
+    unrepresentable below order 3); conj^3 branches recover it."""
+    from padpd.pa import ReferencePA, TxFrontEndPA
+    pa = TxFrontEndPA(ReferencePA(drive=0.14), lo_leakage_dbc=-35.0,
+                      cim3_dbc=-32.0)
+    wf_t = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                    n_symbols=8, seed=0))
+    wf_v = generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=1024,
+                                    n_symbols=8, seed=1))
+    x, xv = wf_t.x, wf_v.x
+    y, yv = pa(x), pa(xv)
+
+    def nmse(**kw):
+        m = SplineMemoryPolynomial.from_signal(x, n_knots=8,
+                                               memory_depth=4, **kw)
+        return nmse_db(yv, m.fit(x, y, regularization=1e-9)(xv))
+
+    e_m0 = nmse()
+    e_m1 = nmse(conjugate=True, dc_term=True)
+    e_m2 = nmse(conjugate=True, cim3=True, dc_term=True)
+    assert e_m1 < e_m0                      # image + leakage help first
+    assert -35 < e_m1 < -28                 # then pinned near cim3 level
+    assert e_m2 < e_m1 - 10                 # conj^3 unlocks the floor

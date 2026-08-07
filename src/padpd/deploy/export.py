@@ -76,21 +76,30 @@ def export_lut(lut: dict, w_bits: int, path: str) -> dict:
     interpolates between adjacent entries.
     """
     branches = []
-    conj = lut.get("conjugate", [False] * len(lut["delays"]))
-    for g, (mc, me), cj in zip(lut["gains"], lut["delays"], conj):
+    orders = lut.get("phase_orders")
+    if orders is None:
+        orders = [-1 if c else 1
+                  for c in lut.get("conjugate",
+                                   [False] * len(lut["delays"]))]
+    for g, (mc, me), order in zip(lut["gains"], lut["delays"], orders):
         cr, ci, e = _int_codes(np.asarray(g), w_bits)
         branches.append({"carrier_delay": int(mc), "envelope_delay": int(me),
-                         "conjugate": bool(cj),
+                         "phase_order": int(order),
+                         "conjugate": bool(order < 0),
                          "scale_exp": e, "gains_real": cr.tolist(),
                          "gains_imag": ci.tolist()})
+    dc = complex(lut.get("dc", 0j))
     payload = {
         "n_branches": len(branches),
         "n_entries": int(len(lut["r_grid"])),
         "r_max": float(lut["r_max"]),
         "w_bits": w_bits,
+        "dc_real": dc.real,
+        "dc_imag": dc.imag,
         "note": "gain_value = code * 2**scale_exp; uniform amplitude grid "
                 "0..r_max; linear interpolation between entries, clamp "
-                "beyond r_max",
+                "beyond r_max; carrier = x^phase_order (negative order = "
+                "conjugated power); dc adds as a constant output offset",
         "branches": branches,
     }
     with open(path, "w") as f:

@@ -49,12 +49,20 @@ def lut_from_model(model, n_entries: int = 256,
         r_max = float(knots[-1])
     r_grid = np.linspace(0.0, float(r_max), int(n_entries))
     gains = np.asarray(gain_curve(r_grid))
-    conj_fn = getattr(model, "branch_conjugate", None)
-    conjugate = ([bool(c) for c in conj_fn()] if conj_fn is not None
-                 else [False] * gains.shape[0])
+    orders_fn = getattr(model, "branch_phase_orders", None)
+    if orders_fn is not None:
+        orders = [int(o) for o in orders_fn()]
+    else:
+        conj_fn = getattr(model, "branch_conjugate", None)
+        orders = ([-1 if c else 1 for c in conj_fn()]
+                  if conj_fn is not None else [1] * gains.shape[0])
+    dc_fn = getattr(model, "dc_coefficient", None)
+    dc = dc_fn() if dc_fn is not None else None
     return {"r_grid": r_grid, "gains": gains, "r_max": float(r_max),
             "delays": [tuple(d) for d in model.branch_delays()],
-            "conjugate": conjugate}
+            "phase_orders": orders,
+            "conjugate": [o < 0 for o in orders],
+            "dc": complex(dc) if dc is not None else 0j}
 
 
 def quantize_lut(lut: dict, entry_bits: int) -> dict:
@@ -74,7 +82,8 @@ class LUTDPD:
 
     def __init__(self, r_grid: np.ndarray, gains: np.ndarray,
                  delays: list[tuple[int, int]] | None = None,
-                 conjugate: list[bool] | None = None):
+                 phase_orders: list[int] | None = None,
+                 dc: complex = 0j):
         self.r_grid = np.asarray(r_grid, dtype=float)
         self.gains = np.asarray(gains, dtype=complex)
         if self.gains.ndim != 2 or len(self.r_grid) != self.gains.shape[1]:
@@ -84,16 +93,29 @@ class LUTDPD:
         if len(delays) != self.gains.shape[0]:
             raise ValueError("one (carrier, envelope) delay pair per branch")
         self.delays = [tuple(d) for d in delays]
-        if conjugate is None:
-            conjugate = [False] * self.gains.shape[0]
-        if len(conjugate) != self.gains.shape[0]:
-            raise ValueError("one conjugate flag per branch")
-        self.conjugate = [bool(c) for c in conjugate]
+        if phase_orders is None:
+            phase_orders = [1] * self.gains.shape[0]
+        if len(phase_orders) != self.gains.shape[0]:
+            raise ValueError("one phase order per branch")
+        if any(o not in (1, -1, -3) for o in phase_orders):
+            raise ValueError("phase orders must be +1, -1 or -3")
+        self.phase_orders = [int(o) for o in phase_orders]
+        self.dc = complex(dc)
+
+    @property
+    def conjugate(self) -> list[bool]:
+        """Back-compat view: phase-conjugated branches (order < 0)."""
+        return [o < 0 for o in self.phase_orders]
 
     @classmethod
     def from_table(cls, lut: dict) -> "LUTDPD":
+        orders = lut.get("phase_orders")
+        if orders is None:
+            orders = [-1 if c else 1
+                      for c in lut.get("conjugate",
+                                       [False] * len(lut["delays"]))]
         return cls(lut["r_grid"], lut["gains"], lut["delays"],
-                   lut.get("conjugate"))
+                   orders, lut.get("dc", 0j))
 
     @property
     def n_entries(self) -> int:
@@ -104,14 +126,14 @@ class LUTDPD:
         return self.gains.shape[0]
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
+        from ..pa.spline import _phase_carrier
         x = np.asarray(x, dtype=complex)
         a = np.abs(x)
-        out = np.zeros_like(x)
-        for (mc, me), g, cj in zip(self.delays, self.gains,
-                                   self.conjugate):
+        out = np.full_like(x, self.dc)
+        for (mc, me), g, order in zip(self.delays, self.gains,
+                                      self.phase_orders):
             env = np.clip(delayed(a, me), self.r_grid[0], self.r_grid[-1])
             gain = (np.interp(env, self.r_grid, g.real)
                     + 1j * np.interp(env, self.r_grid, g.imag))
-            carrier = delayed(x, mc)
-            out += (np.conj(carrier) if cj else carrier) * gain
+            out += _phase_carrier(delayed(x, mc), order) * gain
         return out

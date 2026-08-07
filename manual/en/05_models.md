@@ -349,3 +349,25 @@ the identified alphas lands within 1 dB of the truth-configured one.
 The probe amplitude must sit in the compression region (default
 a_hi=1.5 for unit-RMS baseband) — a small-signal probe is nearly blind
 to gain modulation.
+
+**C-IM3 (counter-IM3) and phase-harmonic branches**: in a
+direct-conversion TX, the mixer's 3rd LO harmonic converts the baseband
+to 3LO-BB (sideband reversed -> conjugated); PA 3rd-order intermod
+brings it back to LO-3BB. The PA intermod of image x wanted
+(2(LO-BB)-(LO+BB)) lands on the same spot. Both mechanisms share the
+baseband equivalent **conj(x)^3** — the phase harmonic exp(-j3 phi),
+structurally unrepresentable by any x*f(|x|) or conj(x)*f(|x|) basis.
+`SplineMemoryPolynomial(cim3=True)` appends conj(x)^3*B_j(|x|)
+branches, `dc_term=True` adds the LO-leakage constant column;
+`TxFrontEndPA` is the matching DUT (image + LO leakage + C-IM3
+injection at a calibrated dBc). Nested ablation (-32 dBc C-IM3): the
+x+conjugate+DC model pins at -31.6 dB, conj^3 unlocks **-46.1 dB
+(+14.5 dB)**. The deployment chain carries phase orders and DC
+throughout (LUT evaluator, JSON, RTL: conj^3 = one complex cube,
+per-branch power-of-two scales aligned by left shifts, iverilog
+bit-true with 0 errors). **Honest boundary**: conj^3 branches serve
+the *modeling/observation* direction (evaluation surrogates, the
+estimator side of a digital canceller); measured, a classic ILA-copied
+predistorter does NOT cancel post-PA-injected C-IM3 (no linearization
+NMSE change) — in practice mixer spurs get a dedicated calibration/
+cancellation loop, not ILA, which remains future work.
