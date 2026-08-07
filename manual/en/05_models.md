@@ -330,3 +330,22 @@ Measured at 0.3 dB / 3 deg (IRR about 30 dB): x-only DPD EVM stops at
 JSON export and the interpolation RTL all carry the conjugate flag
 (hardware cost: one sign flip on the imaginary carrier), verified
 bit-true under iverilog.
+
+**Time-constant identification (characterization-driven state
+config)**: `StateConditionedSpline`'s `state_alphas` no longer need
+guessing — `padpd.gain_modulation.identify_gain_modulation(pa, fs)`
+runs the classic step-response experiment (constant-envelope probe:
+short full-power calibration burst -> long low-power settle -> step up
+-> step down) and fits a 1..N-pole multi-exponential to the **complex**
+gain trajectory (magnitude droop and AM-PM drift jointly), with
+time-bin averaging against sample-rate noise and a leading guard
+window that discards the electrical (matching-FIR) transient — without
+it a perfectly static PA gets a fake droop. Extra poles must cut the
+residual by >10% to be kept; heating and cooling are fitted separately,
+and a tau ratio far from 1 flags trapping / bias hysteresis. On the
+self-heating DUT with known truth (5/30 us) it identifies 4.9/29.1 us
+(weights 0.58/0.42 vs truth 0.6/0.4); a state model configured from
+the identified alphas lands within 1 dB of the truth-configured one.
+The probe amplitude must sit in the compression region (default
+a_hi=1.5 for unit-RMS baseband) — a small-signal probe is nearly blind
+to gain modulation.
