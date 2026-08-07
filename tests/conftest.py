@@ -13,3 +13,13 @@ ROOT = Path(__file__).resolve().parent.parent
 for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
+
+# Pre-import pandas on the main thread. Streamlit's AppTest otherwise
+# performs pandas' heavy first import inside its ScriptRunner worker
+# thread, which has been observed to deadlock (futex wait mid-import)
+# when the gui_web tests run after the Qt suite under load. Importing it
+# here removes that window entirely; skip silently if not installed.
+try:
+    import pandas  # noqa: F401
+except ImportError:
+    pass
