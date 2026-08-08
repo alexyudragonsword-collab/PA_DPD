@@ -24,8 +24,14 @@ with st.sidebar:
         bw = st.select_slider(ui.tr("带宽 (MHz)"), [20, 40, 80, 160], 80) * 1e6
         qam = st.select_slider("QAM", [256, 1024, 4096], 1024)
         drive = st.slider(ui.tr("PA 工作点 drive"), 0.06, 0.24, 0.14, 0.01)
+        frontend = st.selectbox(
+            ui.tr("TX 前端损伤"), list(services.FRONTEND_DUTS),
+            help=ui.tr("iq=镜像(0.3 dB/3°,IRR≈30 dB),+lo=LO 泄漏 "
+                       "-35 dBc,+cim3=counter-IM3 -32 dBc;配套模型选 "
+                       "Spline-MP-WL / Spline-MP-CIM3(手册 5.9)"))
         src = services.cached_synthetic_source(bw, qam, symbols=8,
-                                               drive=drive)
+                                               drive=drive,
+                                               frontend=frontend)
     else:
         src = state.sources[src_name]
 

@@ -196,3 +196,39 @@ def test_two_tone_csv_includes_spline_recipe():
     out = services.analyze_two_tone_csv(services.EXAMPLE_TWO_TONE_CSV)
     assert out["spline_config"]["memory_depth"] == out["memory_depth"]
     assert out["spline_runtime_macs"] >= 4 * out["memory_depth"]
+
+
+def test_frontend_source_and_wl_model():
+    """A front-end-impaired synthetic DUT needs the widely-linear model
+    entries; the plain phase-equivariant spline pins near the IRR."""
+    src = services.make_synthetic_source(bandwidth_hz=20e6, qam=256,
+                                         symbols=4, drive=0.14,
+                                         frontend="iq+lo")
+    assert "FE(iq+lo)" in src["name"] and src["frontend"] == "iq+lo"
+    plain = services.fit_classical(src, "Spline-MP (K8,M4)")
+    wl = services.fit_classical(src, "Spline-MP-WL (conj+dc)")
+    assert wl["metrics"]["nmse_db"] < plain["metrics"]["nmse_db"] - 5.0
+
+
+def test_frontend_rejects_unknown():
+    with pytest.raises(ValueError):
+        services.make_synthetic_source(bandwidth_hz=20e6, qam=256,
+                                       symbols=2, frontend="magic")
+
+
+def test_eval_source_for_rebuilds_frontend_source():
+    meta = {"source": "ReferencePA d=0.14 20MHz/256QAM FE(iq+lo)"}
+    src = services.eval_source_for(meta, {})
+    assert src["frontend"] == "iq+lo"
+    assert src["bw"] == 20e6
+
+
+def test_run_three_loop_demo_service():
+    res = services.run_three_loop_demo(n_blocks=4, n_symbols=2)
+    assert res["final_raw"] > -10.0                 # broken without loops
+    assert res["final_full"] < res["final_deembed"] - 2.0
+    name, config, metrics = services.three_loop_run_record(res)
+    assert "3Loop" in name
+    assert config["algo"] == "three_loop"
+    assert metrics["evm_db"] == res["final_full"]
+    assert np.isfinite(metrics["image_dbc"])

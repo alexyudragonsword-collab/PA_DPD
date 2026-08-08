@@ -88,7 +88,34 @@ CLASSICAL_MODELS = {
     "Spline-MP (K8,M4)": lambda p, x: SplineMemoryPolynomial.from_signal(
         x, n_knots=8, memory_depth=4),
     "Spline-GMP (K8)": lambda p, x: SplineGMP.from_signal(x, n_knots=8),
+    # widely-linear / phase-harmonic variants for front-end-impaired DUTs
+    # (image -> conj branches, LO leakage -> dc column, C-IM3 -> conj^3)
+    "Spline-MP-WL (conj+dc)": lambda p, x: SplineMemoryPolynomial.from_signal(
+        x, n_knots=p.get("order", 8), memory_depth=p.get("memory", 4),
+        conjugate=True, dc_term=True),
+    "Spline-MP-CIM3 (conj3+dc)": lambda p, x:
+        SplineMemoryPolynomial.from_signal(
+            x, n_knots=p.get("order", 8), memory_depth=p.get("memory", 4),
+            conjugate=True, cim3=True, dc_term=True),
 }
+
+# TX front-end impairment presets for the synthetic DUT (manual 5.9):
+# levels are the validated demo settings — IQ 0.3 dB/3 deg (IRR ~30 dB),
+# LO leakage -35 dBc, counter-IM3 -32 dBc.
+FRONTEND_DUTS = ("none", "iq", "iq+lo", "iq+lo+cim3")
+
+
+def _wrap_frontend(pa, frontend: str):
+    from padpd.pa import TxFrontEndPA
+    if frontend == "none":
+        return pa
+    if frontend == "iq":
+        return TxFrontEndPA(pa)
+    if frontend == "iq+lo":
+        return TxFrontEndPA(pa, lo_leakage_dbc=-35.0)
+    if frontend == "iq+lo+cim3":
+        return TxFrontEndPA(pa, lo_leakage_dbc=-35.0, cim3_dbc=-32.0)
+    raise ValueError(f"frontend must be one of {FRONTEND_DUTS}")
 
 
 # -- waveform ------------------------------------------------------------
@@ -114,17 +141,18 @@ def make_waveform(bandwidth_hz: float, qam: int, symbols: int, seed: int,
 def make_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
                           symbols: int = 8, drive: float = 0.14,
                           cfr_papr_db: float | None = None,
-                          seed: int = 0) -> dict:
-    pa = ReferencePA(drive=drive)
+                          seed: int = 0, frontend: str = "none") -> dict:
+    pa = _wrap_frontend(ReferencePA(drive=drive), frontend)
     tr = make_waveform(bandwidth_hz, qam, symbols, seed, cfr_papr_db)
     va = make_waveform(bandwidth_hz, qam, symbols, seed + 1, cfr_papr_db)
     xt = tr["x_cfr"] if tr["x_cfr"] is not None else tr["x"]
     xv = va["x_cfr"] if va["x_cfr"] is not None else va["x"]
     return {"kind": "synthetic",
             "name": f"ReferencePA d={drive} {bandwidth_hz/1e6:.0f}MHz/"
-                    f"{qam}QAM" + (f" CFR{cfr_papr_db}" if cfr_papr_db else ""),
+                    f"{qam}QAM" + (f" CFR{cfr_papr_db}" if cfr_papr_db else "")
+                    + (f" FE({frontend})" if frontend != "none" else ""),
             "fs": tr["fs"], "bw": bandwidth_hz, "drive": drive,
-            "cfr_papr": cfr_papr_db, "pa": pa,
+            "cfr_papr": cfr_papr_db, "pa": pa, "frontend": frontend,
             "x_train": xt, "y_train": pa(xt),
             "x_val": xv, "y_val": pa(xv), "wf_val": va["wf"]}
 
@@ -136,7 +164,7 @@ from functools import lru_cache  # noqa: E402
 def cached_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
                             symbols: int = 8, drive: float = 0.14,
                             cfr_papr_db: float | None = None,
-                            seed: int = 0) -> dict:
+                            seed: int = 0, frontend: str = "none") -> dict:
     """Bounded shared cache for synthetic sources.
 
     Both GUIs previously kept their own unbounded per-parameter caches
@@ -145,7 +173,7 @@ def cached_synthetic_source(bandwidth_hz: float = 80e6, qam: int = 1024,
     common flip-back-and-forth without hoarding.
     """
     return make_synthetic_source(bandwidth_hz, qam, symbols, drive,
-                                 cfr_papr_db, seed)
+                                 cfr_papr_db, seed, frontend)
 
 
 def eval_source_for(meta: dict, sources: dict) -> dict:
@@ -159,16 +187,18 @@ def eval_source_for(meta: dict, sources: dict) -> dict:
     name = (meta or {}).get("source", "")
     if name in sources:
         return sources[name]
-    # full form: "ReferencePA d=0.14 160MHz/4096QAM CFR8.0" — rebuild the
-    # EXACT source; matching only drive would silently evaluate the model
-    # on a different waveform (default 80 MHz / 1024-QAM)
+    # full form: "ReferencePA d=0.14 160MHz/4096QAM CFR8.0 FE(iq+lo)" —
+    # rebuild the EXACT source; matching only drive would silently
+    # evaluate the model on a different waveform (default 80 MHz /
+    # 1024-QAM, no front end)
     m = re.search(r"ReferencePA d=([0-9.]+) ([0-9]+)MHz/([0-9]+)QAM"
-                  r"(?: CFR([0-9.]+))?", name)
+                  r"(?: CFR([0-9.]+))?(?: FE\(([^)]+)\))?", name)
     if m:
         return make_synthetic_source(
             bandwidth_hz=float(m.group(2)) * 1e6, qam=int(m.group(3)),
             drive=float(m.group(1)),
-            cfr_papr_db=float(m.group(4)) if m.group(4) else None)
+            cfr_papr_db=float(m.group(4)) if m.group(4) else None,
+            frontend=m.group(5) or "none")
     m = re.search(r"ReferencePA d=([0-9.]+)", name)
     if m:
         return make_synthetic_source(drive=float(m.group(1)))
@@ -570,6 +600,42 @@ def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
     metrics = {"evm_db": res["final_adaptive"],
                "evm_before_db": res["final_frozen"],
                "gap_db": res["gap_db"], "n_coeffs": res["n_coeffs"]}
+    return name, config, metrics
+
+
+# -- three-loop joint demo (QMC + de-embed + adaptive DPD) ---------------
+def run_three_loop_demo(n_blocks: int = 10, drift_span: float = 0.02,
+                        gain_db: float = 0.3, phase_deg: float = 3.0,
+                        lo_leakage_dbc: float = -35.0, bw: float = 80e6,
+                        forget: float = 0.6, n_symbols: int = 4,
+                        on_block=None) -> dict:
+    """System demo: QMC + observation de-embedding + adaptive RLS DPD
+    running simultaneously on a drifting PA behind a TX front end,
+    observed through a corrupted loopback (padpd.three_loop, manual
+    5.9). Returns per-block on-air EVM for the raw / de-embed-only /
+    three-loop configurations plus the QMC residual traces."""
+    from padpd.three_loop import run_three_loop
+    return run_three_loop(n_blocks=n_blocks, drift_span=drift_span,
+                          gain_db=gain_db, phase_deg=phase_deg,
+                          lo_leakage_dbc=lo_leakage_dbc, bw=bw,
+                          forget=forget, n_symbols=n_symbols,
+                          on_block=on_block)
+
+
+def three_loop_run_record(res: dict) -> tuple[str, dict, dict]:
+    """Build (name, config, metrics) to register a three-loop run
+    (evm_db = three loops, evm_before_db = de-embed-only pin)."""
+    name = "3Loop QMC+Deembed+RLS @ drift"
+    config = {"algo": "three_loop", "n_blocks": res["n_blocks"],
+              "drift_span": res["drift_span"], "gain_db": res["gain_db"],
+              "phase_deg": res["phase_deg"],
+              "lo_leakage_dbc": res["lo_leakage_dbc"],
+              "forget": res["forget"], "bw_mhz": res["bw"] / 1e6}
+    metrics = {"evm_db": res["final_full"],
+               "evm_before_db": res["final_deembed"],
+               "evm_raw_db": res["final_raw"],
+               "image_dbc": res["final_image_dbc"],
+               "n_coeffs": res["n_coeffs"]}
     return name, config, metrics
 
 

@@ -201,3 +201,39 @@ with st.expander(ui.tr("🔁 自适应 / 在线 DPD(漂移跟踪)"), expanded=Fa
                         use_container_width=True)
         st.caption(ui.tr("已注册为 run(kind=dpd),可在结果比较页与批处理 "
                          "DPD 并排对比。"))
+
+with st.expander(ui.tr("🧲 前端三环:QMC + 观测去嵌 + 自适应 DPD"),
+                 expanded=False):
+    st.caption(ui.tr("漂移 PA + TX 前端(镜像/LO 泄漏)+ 污染环回(时延/"
+                     "CFO/相噪/RX IQ/纹波/噪声):对比原始环回自适应"
+                     "(失效)、仅去嵌(钉在 IRR)与三环联合(QMC 收编"
+                     "镜像/DC,DPD 保持纯相位等变基)。见手册 5.9。"))
+    tc1, tc2, tc3, tc4 = st.columns(4)
+    tl_blocks = tc1.slider(ui.tr("块数(冷 → 热)"), 4, 16, 10,
+                           key="tl_blocks")
+    tl_span = tc2.slider(ui.tr("漂移强度"), 0.0, 0.05, 0.02, 0.005,
+                         key="tl_span")
+    tl_lo = tc3.slider(ui.tr("LO 泄漏 (dBc)"), -60.0, -20.0, -35.0, 1.0)
+    tl_iq = tc4.slider(ui.tr("IQ 失衡 (dB)"), 0.0, 1.0, 0.3, 0.1,
+                       help=ui.tr("相位失衡按 10x 联动(0.3 dB ≈ 3°,"
+                                  "IRR ≈ 30 dB)"))
+    if st.button(ui.tr("运行三环演示"), type="primary"):
+        with st.spinner(ui.tr("三环联合运行中…")):
+            res3 = services.run_three_loop_demo(
+                n_blocks=tl_blocks, drift_span=tl_span, gain_db=tl_iq,
+                phase_deg=10.0 * tl_iq, lo_leakage_dbc=tl_lo)
+        st.session_state["last_three_loop"] = res3
+        t_name, t_cfg, t_metrics = services.three_loop_run_record(res3)
+        state.runstore.add(Run(name=t_name, kind="dpd", config=t_cfg,
+                               metrics=t_metrics))
+    tres = st.session_state.get("last_three_loop")
+    if tres:
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric(ui.tr("EVM(原始环回)"), f"{tres['final_raw']:.1f} dB")
+        m2.metric(ui.tr("EVM(仅去嵌)"), f"{tres['final_deembed']:.1f} dB")
+        m3.metric(ui.tr("EVM(三环)"), f"{tres['final_full']:.1f} dB",
+                  f"{tres['final_full'] - tres['final_deembed']:+.1f} dB")
+        m4.metric(ui.tr("镜像残差"), f"{tres['final_image_dbc']:.1f} dBc")
+        st.plotly_chart(charts.fig_three_loop(tres),
+                        use_container_width=True)
+        st.caption(ui.tr("已注册为 run(kind=dpd)。"))

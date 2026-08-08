@@ -60,6 +60,30 @@ def adaptive_evm_fig(res: dict) -> Figure:
     return fig
 
 
+def three_loop_fig(res: dict) -> Figure:
+    """Per-block on-air EVM for the three loopback configurations plus
+    the QMC image residual (right axis). ``res`` is
+    ``services.run_three_loop_demo`` output."""
+    fig, ax = _fig()
+    b = res["blocks"]
+    ax.plot(b, res["evm_raw"], "o-", lw=1.3, label=tr("原始环回(无环)"))
+    ax.plot(b, res["evm_deembed"], "s-", lw=1.4,
+            label=tr("仅去嵌(无 QMC)"))
+    ax.plot(b, res["evm_full"], "d-", lw=1.6,
+            label=tr("三环(去嵌+QMC+DPD)"))
+    ax.set_xlabel(tr("块(冷 → 热)"))
+    ax.set_ylabel(tr("在空口 EVM (dB)"))
+    ax2 = ax.twinx()
+    ax2.plot(b, res["image_dbc"], ":", lw=1.2, color="#9aa4bd",
+             label=tr("镜像残差 (dBc)"))
+    ax2.set_ylabel(tr("镜像残差 (dBc)"))
+    ax2.grid(False)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=8, loc="center right")
+    return fig
+
+
 def two_tone_fig(res: dict) -> Figure:
     """IM3 lower/upper (dBc) vs tone spacing (log-x). ``res`` is the dict
     from ``services.analyze_two_tone_csv``."""

@@ -49,9 +49,16 @@ class ModelingPage(QWidget):
         self.drive.setRange(0.06, 0.24)
         self.drive.setSingleStep(0.01)
         self.drive.setValue(0.14)
+        self.frontend = QComboBox()
+        self.frontend.addItems(list(services.FRONTEND_DUTS))
+        self.frontend.setToolTip(
+            tr("合成 DUT 的 TX 前端损伤:iq=镜像(0.3 dB/3°,IRR≈30 dB),"
+               "+lo=LO 泄漏 -35 dBc,+cim3=counter-IM3 -32 dBc;"
+               "配套模型选 Spline-MP-WL / Spline-MP-CIM3"))
         self.fit_btn = QPushButton(tr("拟合模型"))
         self.fit_btn.setObjectName("primary")
         for lbl, w in [(tr("数据源"), self.src), ("drive", self.drive),
+                       (tr("前端"), self.frontend),
                        (tr("模型族"), self.family), (tr("类型"), self.mtype),
                        (tr("阶数"), self.order), (tr("记忆"), self.memory),
                        ("backbone", self.backbone), ("hidden", self.hidden),
@@ -113,7 +120,9 @@ class ModelingPage(QWidget):
     def _get_source(self):
         name = self.src.currentText()
         if name == tr("合成 ReferencePA"):
-            return services.cached_synthetic_source(drive=self.drive.value())
+            return services.cached_synthetic_source(
+                drive=self.drive.value(),
+                frontend=self.frontend.currentText())
         return self.state.sources[name]
 
     def fit(self):

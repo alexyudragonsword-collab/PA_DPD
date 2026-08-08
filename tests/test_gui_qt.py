@@ -251,3 +251,33 @@ def test_fnworker_live_registry(window):
             break
         time.sleep(0.02)
     assert C.live_worker_count() == 0
+
+
+def test_modeling_frontend_combo(app, window):
+    from gui_core import services
+    page = window._pages["modeling"]
+    assert [page.frontend.itemText(i)
+            for i in range(page.frontend.count())] \
+        == list(services.FRONTEND_DUTS)
+
+
+def test_dpd_three_loop_panel_runs(app, window):
+    """End-to-end: the front-end three-loop demo runs from the panel,
+    draws the figure and registers a run."""
+    import time
+    from gui_qt import common as C
+    from gui_qt.common import get_state
+    page = window._pages["dpd"]
+    page.tl_blocks.setValue(4)
+    page.run_three_loop()
+    assert page._tl_worker.wait(300000)
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        app.processEvents()
+        if C.live_worker_count() == 0:
+            break
+        time.sleep(0.02)
+    app.processEvents()
+    assert "dB" in page.tl_msg.text()
+    runs = get_state().runstore.list()
+    assert any(r.config.get("algo") == "three_loop" for r in runs)

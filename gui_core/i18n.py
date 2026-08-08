@@ -635,6 +635,68 @@ _EN = {
         "AI-native flow: jointly optimize the PA operating point and DPD complexity, rather than \"design the PA first, then patch up linearity\". Left: discrete Pareto sweep (robust); right: differentiable gradient search (fast to locate, may oscillate near the invertibility barrier).",
     "drive {drive} · {cost} 系数 · EVM {evm}":
         "drive {drive} · {cost} coeffs · EVM {evm}",
+    # -- Phase 6.5: front-end DUTs + three-loop panel --------------------
+    "原始环回(无环)": "raw loopback (no loops)",
+    "仅去嵌(无 QMC)": "de-embed only (no QMC)",
+    "三环(去嵌+QMC+DPD)": "three loops (de-embed+QMC+DPD)",
+    "在空口 EVM (dB)": "on-air EVM (dB)",
+    "镜像残差 (dBc)": "image residual (dBc)",
+    "前端三环": "Front-end 3-loop",
+    "前端三环(QMC + 观测去嵌 + 自适应 DPD)":
+        "Front-end three loops (QMC + observation de-embedding + "
+        "adaptive DPD)",
+    "LO 泄漏 (dBc)": "LO leakage (dBc)",
+    "IQ 失衡 (dB)": "IQ imbalance (dB)",
+    "TX IQ 增益失衡 (dB);相位失衡按 10x 联动(0.3 dB ≈ 3°,IRR ≈ 30 dB)":
+        "TX IQ gain imbalance (dB); phase imbalance tracks at 10x "
+        "(0.3 dB ~ 3 deg, IRR ~ 30 dB)",
+    "运行三环演示": "Run three-loop demo",
+    "漂移 PA + TX 前端(镜像/LO 泄漏)+ 污染环回:对比原始环回自适应(失效)、"
+    "仅去嵌(钉在 IRR)与三环联合。见手册 5.9。":
+        "Drifting PA + TX front end (image / LO leakage) + corrupted "
+        "loopback: compares adapting from the raw loopback (broken), "
+        "de-embed only (pinned at the IRR) and all three loops. "
+        "See manual 5.9.",
+    "三环联合运行中…": "Running the three coupled loops…",
+    "满漂移在空口 EVM:原始环回 {r:.1f} dB(失效)→ 仅去嵌 {d:.1f} dB"
+    "(钉在 IRR)→ 三环 {f:.1f} dB;镜像残差 {i:.1f} dBc;已注册为 run。":
+        "On-air EVM at full drift: raw loopback {r:.1f} dB (broken) -> "
+        "de-embed only {d:.1f} dB (pinned at the IRR) -> three loops "
+        "{f:.1f} dB; image residual {i:.1f} dBc; registered as a run.",
+    "前端": "Front end",
+    "合成 DUT 的 TX 前端损伤:iq=镜像(0.3 dB/3°,IRR≈30 dB),+lo=LO 泄漏 "
+    "-35 dBc,+cim3=counter-IM3 -32 dBc;配套模型选 Spline-MP-WL / "
+    "Spline-MP-CIM3":
+        "TX front-end impairments of the synthetic DUT: iq = image "
+        "(0.3 dB/3 deg, IRR ~30 dB), +lo = LO leakage -35 dBc, +cim3 = "
+        "counter-IM3 -32 dBc; pair with the Spline-MP-WL / "
+        "Spline-MP-CIM3 models",
+    "前端三环:每块在空口 EVM": "Front-end three loops: per-block on-air EVM",
+    "🧲 前端三环:QMC + 观测去嵌 + 自适应 DPD":
+        "🧲 Front-end three loops: QMC + observation de-embedding + "
+        "adaptive DPD",
+    "漂移 PA + TX 前端(镜像/LO 泄漏)+ 污染环回(时延/CFO/相噪/RX IQ/纹波/"
+    "噪声):对比原始环回自适应(失效)、仅去嵌(钉在 IRR)与三环联合"
+    "(QMC 收编镜像/DC,DPD 保持纯相位等变基)。见手册 5.9。":
+        "Drifting PA + TX front end (image / LO leakage) + corrupted "
+        "loopback (delay / CFO / phase noise / RX IQ / ripple / noise): "
+        "compares adapting from the raw loopback (broken), de-embed only "
+        "(pinned at the IRR) and all three loops (QMC owns image/DC, "
+        "the DPD keeps a purely phase-equivariant basis). See manual "
+        "5.9.",
+    "相位失衡按 10x 联动(0.3 dB ≈ 3°,IRR ≈ 30 dB)":
+        "Phase imbalance tracks at 10x (0.3 dB ~ 3 deg, IRR ~ 30 dB)",
+    "EVM(原始环回)": "EVM (raw loopback)",
+    "EVM(仅去嵌)": "EVM (de-embed only)",
+    "EVM(三环)": "EVM (three loops)",
+    "镜像残差": "Image residual",
+    "已注册为 run(kind=dpd)。": "Registered as a run (kind=dpd).",
+    "TX 前端损伤": "TX front-end impairments",
+    "iq=镜像(0.3 dB/3°,IRR≈30 dB),+lo=LO 泄漏 -35 dBc,+cim3=counter-IM3 "
+    "-32 dBc;配套模型选 Spline-MP-WL / Spline-MP-CIM3(手册 5.9)":
+        "iq = image (0.3 dB/3 deg, IRR ~30 dB), +lo = LO leakage "
+        "-35 dBc, +cim3 = counter-IM3 -32 dBc; pair with the "
+        "Spline-MP-WL / Spline-MP-CIM3 models (manual 5.9)",
 }
 
 

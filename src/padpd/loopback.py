@@ -48,6 +48,9 @@ class LoopbackChannel:
     n_fir_taps: int = 33
     # receiver nonlinearity
     rx_im3_dbc: float | None = None           # cubic product level vs signal
+    rx_im3_freeze: bool = False               # calibrate kappa once, then
+    #                                           behave physically (level-
+    #                                           dependent dBc on later calls)
     # timing
     delay_samples: float = 0.0                # fixed integer+fractional delay
     delay_drift_samples: float = 0.0          # linear drift across the capture
@@ -67,6 +70,10 @@ class LoopbackChannel:
         if abs(b) == 0:
             return np.inf
         return 20 * np.log10(abs(a) / abs(b))
+
+    def reset(self) -> None:
+        """Drop frozen calibrations (rx_im3_freeze kappa)."""
+        self._extra.clear()
 
     # ---- pieces -----------------------------------------------------
     def _fir(self, fs: float) -> np.ndarray | None:
@@ -118,12 +125,25 @@ class LoopbackChannel:
                                      taps.size // 2 + n]
             y *= rms / np.sqrt(np.mean(np.abs(y) ** 2))
 
-        # receiver third-order nonlinearity at a calibrated IM3 level
+        # receiver third-order nonlinearity at a calibrated IM3 level.
+        # Default: re-calibrated every call (constant dBc — a *budget*
+        # model). With rx_im3_freeze the cubic coefficient kappa is
+        # calibrated on the FIRST call and then held, so the IM3 level
+        # scales 2:1 with input power like a physical receiver — required
+        # for attenuator-step identification (deembed.calibrate_rx_im3).
         if self.rx_im3_dbc is not None:
             d = y * np.abs(y) ** 2
-            d *= rms * 10 ** (self.rx_im3_dbc / 20) / \
-                np.sqrt(np.mean(np.abs(d) ** 2))
-            y = y + d
+            if self.rx_im3_freeze:
+                kappa = self._extra.get("rx_im3_kappa")
+                if kappa is None:
+                    kappa = rms * 10 ** (self.rx_im3_dbc / 20) / \
+                        np.sqrt(np.mean(np.abs(d) ** 2))
+                    self._extra["rx_im3_kappa"] = float(kappa)
+                y = y + kappa * d
+            else:
+                d *= rms * 10 ** (self.rx_im3_dbc / 20) / \
+                    np.sqrt(np.mean(np.abs(d) ** 2))
+                y = y + d
 
         # IQ imbalance
         if self.iq_gain_imbalance_db or self.iq_phase_imbalance_deg:

@@ -75,11 +75,12 @@ class DpdPage(QWidget):
         lay.addWidget(card_row([self.c_e0, self.c_e1, self.c_a0, self.c_a1]))
 
         self.tabs = QTabWidget()
-        self.p_psd, self.p_const, self.p_adapt = (FigurePane(), FigurePane(),
-                                                 FigurePane())
+        self.p_psd, self.p_const, self.p_adapt, self.p_3loop = (
+            FigurePane(), FigurePane(), FigurePane(), FigurePane())
         self.tabs.addTab(self.p_psd, tr("PSD 前后对比"))
         self.tabs.addTab(self.p_const, tr("星座前后对比"))
         self.tabs.addTab(self.p_adapt, tr("自适应(漂移)"))
+        self.tabs.addTab(self.p_3loop, tr("前端三环"))
         lay.addWidget(self.tabs, 1)
         self.msg = QLabel("")
         lay.addWidget(self.msg)
@@ -133,9 +134,46 @@ class DpdPage(QWidget):
         self.ad_msg.setWordWrap(True)
         lay.addWidget(self.ad_msg)
 
+        tgrp = QGroupBox(tr("前端三环(QMC + 观测去嵌 + 自适应 DPD)"))
+        tl = QHBoxLayout(tgrp)
+        self.tl_blocks = QSpinBox()
+        self.tl_blocks.setRange(4, 16)
+        self.tl_blocks.setValue(10)
+        self.tl_span = QDoubleSpinBox()
+        self.tl_span.setRange(0.0, 0.05)
+        self.tl_span.setSingleStep(0.005)
+        self.tl_span.setValue(0.02)
+        self.tl_lo = QDoubleSpinBox()
+        self.tl_lo.setRange(-60.0, -20.0)
+        self.tl_lo.setSingleStep(1.0)
+        self.tl_lo.setValue(-35.0)
+        self.tl_iq = QDoubleSpinBox()
+        self.tl_iq.setRange(0.0, 1.0)
+        self.tl_iq.setSingleStep(0.1)
+        self.tl_iq.setValue(0.3)
+        self.tl_iq.setToolTip(tr("TX IQ 增益失衡 (dB);相位失衡按 10x 联动"
+                                 "(0.3 dB ≈ 3°,IRR ≈ 30 dB)"))
+        self.tl_run = QPushButton(tr("运行三环演示"))
+        self.tl_run.setObjectName("primary")
+        for lbl, w in [(tr("块数"), self.tl_blocks),
+                       (tr("漂移"), self.tl_span),
+                       (tr("LO 泄漏 (dBc)"), self.tl_lo),
+                       (tr("IQ 失衡 (dB)"), self.tl_iq)]:
+            tl.addWidget(QLabel(lbl))
+            tl.addWidget(w)
+        tl.addStretch(1)
+        tl.addWidget(self.tl_run)
+        lay.addWidget(tgrp)
+        self.tl_msg = QLabel(tr("漂移 PA + TX 前端(镜像/LO 泄漏)+ 污染环回:"
+                                "对比原始环回自适应(失效)、仅去嵌(钉在 IRR)"
+                                "与三环联合。见手册 5.9。"))
+        self.tl_msg.setWordWrap(True)
+        lay.addWidget(self.tl_msg)
+
         self.algo.currentIndexChanged.connect(self._toggle)
         self.run_btn.clicked.connect(self.run)
         self.ad_run.clicked.connect(self.run_adaptive)
+        self.tl_run.clicked.connect(self.run_three_loop)
         self.refresh()
         self._toggle(self.algo.currentIndex())
 
@@ -244,6 +282,42 @@ class DpdPage(QWidget):
             lambda e: (self.ad_msg.setText(f"❌ {e}"),
                        self.ad_run.setEnabled(True)))
         self._ad_worker.start()
+
+    def run_three_loop(self):
+        self.tl_run.setEnabled(False)
+        self.tl_msg.setText(tr("三环联合运行中…"))
+        # snapshot widget values on the GUI thread (worker thread below)
+        n_blocks = self.tl_blocks.value()
+        drift_span = self.tl_span.value()
+        lo_dbc = self.tl_lo.value()
+        iq_db = self.tl_iq.value()
+
+        def job(on_progress=None):
+            return services.run_three_loop_demo(
+                n_blocks=n_blocks, drift_span=drift_span,
+                gain_db=iq_db, phase_deg=10.0 * iq_db,
+                lo_leakage_dbc=lo_dbc, on_block=on_progress)
+
+        self._tl_worker = FnWorker(job)
+        self._tl_worker.done.connect(self._finish_three_loop)
+        self._tl_worker.failed.connect(
+            lambda e: (self.tl_msg.setText(f"❌ {e}"),
+                       self.tl_run.setEnabled(True)))
+        self._tl_worker.start()
+
+    def _finish_three_loop(self, res):
+        self.tl_run.setEnabled(True)
+        self.p_3loop.set_figure(figs.three_loop_fig(res))
+        self.tabs.setCurrentWidget(self.p_3loop)
+        name, cfg, metrics = services.three_loop_run_record(res)
+        self.state.runstore.add(Run(name=name, kind="dpd", config=cfg,
+                                    metrics=metrics))
+        self.tl_msg.setText(tr(
+            "满漂移在空口 EVM:原始环回 {r:.1f} dB(失效)→ 仅去嵌 "
+            "{d:.1f} dB(钉在 IRR)→ 三环 {f:.1f} dB;镜像残差 "
+            "{i:.1f} dBc;已注册为 run。").format(
+            r=res["final_raw"], d=res["final_deembed"],
+            f=res["final_full"], i=res["final_image_dbc"]))
 
     def _finish_adaptive(self, res):
         self.ad_run.setEnabled(True)

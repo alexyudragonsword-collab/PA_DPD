@@ -441,7 +441,70 @@ EVM must run receiver-style timing sync before demodulation). Measured
 loopback +3.6 dB (completely broken)**, adapting through the
 de-embedder **-48.4 dB** — within ~5 dB of the clean reference (the
 residual is the fast phase-noise component plus the 45 dB noise
-floor). In-band FIR ripple and RX nonlinearity are out of scope (keep
-them in the loopback budget, §5.7). `wrap(pa, channel, fs)` packages
-the whole chain as a callable that drops straight into
-ILA/AdaptiveDPD.
+floor). `wrap(pa, channel, fs)` packages the whole chain as a callable
+that drops straight into ILA/AdaptiveDPD.
+
+Two impairments are NOT blindly identifiable from a single capture and
+use dedicated calibration captures instead (as products do):
+
+- **In-band FIR ripple + the RX's own IQ imbalance**
+  (`calibrate_rx_path`): one **PA-bypass** capture (known signal
+  through the observation receiver only) yields the RX widely-linear
+  response and an LS inverse-FIR equalizer, applied by every later
+  `process`. Only a bypass capture separates the RX's linear response
+  from the PA's — a blind equalizer would wash the PA's linear memory
+  out of the observation and hide what the DPD must learn. The inverse
+  FIR is ridge-regularized toward the pass-through delta: the cal
+  signal only excites the occupied band, and an unconstrained LS
+  inverse amplifies the PA's distortion shoulders out of band.
+  Calibrating the RX IQ here (rather than per capture) also keeps the
+  **TX image visible** in the corrected observation — exactly what the
+  QMC loop must see. Measured (1 dB ripple + 2 ns group-delay ripple):
+  blind -30.7 -> calibrated **-35.9 dB** (the fast-phase-noise floor).
+- **RX third-order nonlinearity** (`calibrate_rx_im3`): two captures
+  of the same drive at a known RX attenuator step — the PA distortion
+  is common mode while the RX cubic scales with the attenuation
+  squared, so the scale-aligned difference isolates it (in a blind
+  single-capture fit the PA-cubic and RX-cubic regressors are nearly
+  collinear). `process` then subtracts kappa*y|y|^2 (first-order
+  inverse). `LoopbackChannel(rx_im3_freeze=True)` provides the
+  physical (level-dependent) RX IM3 in simulation. Measured
+  (-28 dBc): estimated kappa matches the truth through the chain-gain
+  square; blind -31.8 -> calibrated **-35.9 dB**; ripple + IM3
+  together: -29.0 -> **-35.9 dB**.
+
+**Three loops running together (the system experiment)**: each loop
+was validated in isolation; a product runs them SIMULTANEOUSLY while
+the PA drifts underneath. `padpd.three_loop.run_three_loop` (script
+`scripts/run_three_loop_demo.py`) puts a drifting PA behind a TX front
+end (image + LO leakage), observes through a corrupted loopback
+(delay / CFO / phase noise / RX IQ / ripple / noise), and per block:
+de-embeds the capture -> QMC corrects (b, c) from the residual -> the
+RLS DPD updates around the QMC-corrected front end. The division of
+labor keeps the coupling stable: the de-embedder's RX stages come from
+the bypass calibration (the TX image survives for QMC), QMC owns
+image/DC (the DPD basis stays purely phase-equivariant), and the DPD
+owns the PA nonlinearity and its drift (phase-equivariant distortion
+projects onto none of the other loops' estimators). Three
+configurations over the same drift trajectory (12 blocks, cold->hot):
+
+![Three loops: per-block on-air EVM and QMC residuals](../assets/three_loop_demo.png)
+
+- **adapting from the raw loopback**: **+33 dB** throughout
+  (completely broken — the adaptation learns the observation path);
+- **de-embed only**: tracks the drift but stays pinned at
+  **-29..-30 dB** by the TX image (IRR ~30);
+- **three loops**: **-41.9 dB** by block 1 (QMC converges in one
+  update), **-35.1 dB** at full drift (hot), 6-12 dB ahead of
+  de-embed-only throughout; the image residual holds at
+  **-60..-66 dBc** under drift, and the QMC IRR estimate reads
+  30.2 dB (truth 30.1). The hot-end gap to a bare PA (no front end,
+  perfect observation) is only ~1.5-5 dB — the price of the whole
+  front end + corrupted observation. A static control (drift = 0)
+  holds -36..-37 with no coupling divergence.
+
+**GUI entry points**: the PA-modeling page's synthetic DUT gains a
+"front end" impairment selector (iq / iq+lo / iq+lo+cim3, paired with
+the Spline-MP-WL / Spline-MP-CIM3 model entries); the DPD-lab page
+gains a "front-end three loops" panel that runs the three-way
+comparison and registers the run.

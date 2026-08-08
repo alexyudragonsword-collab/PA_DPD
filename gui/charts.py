@@ -138,6 +138,35 @@ def fig_adaptive_evm(res: dict, title: str | None = None) -> go.Figure:
     return fig
 
 
+def fig_three_loop(res: dict, title: str | None = None) -> go.Figure:
+    """Per-block on-air EVM for the three loopback configurations plus
+    the QMC image residual (right axis). ``res`` is
+    ``services.run_three_loop_demo`` output."""
+    fig = _fig(tr("前端三环:每块在空口 EVM") if title is None else title)
+    pal = palette()
+    b = res["blocks"]
+    fig.add_trace(go.Scatter(x=b, y=res["evm_raw"], mode="lines+markers",
+                             name=tr("原始环回(无环)"),
+                             line=dict(width=1.8, color=pal[1])))
+    fig.add_trace(go.Scatter(x=b, y=res["evm_deembed"],
+                             mode="lines+markers",
+                             name=tr("仅去嵌(无 QMC)"),
+                             line=dict(width=1.8, color=pal[3])))
+    fig.add_trace(go.Scatter(x=b, y=res["evm_full"], mode="lines+markers",
+                             name=tr("三环(去嵌+QMC+DPD)"),
+                             line=dict(width=2.0, color=pal[0])))
+    fig.add_trace(go.Scatter(x=b, y=res["image_dbc"], mode="lines",
+                             name=tr("镜像残差 (dBc)"), yaxis="y2",
+                             line=dict(width=1.4, dash="dot",
+                                       color=pal[4])))
+    fig.update_xaxes(title=tr("块(冷 → 热)"))
+    fig.update_yaxes(title=tr("在空口 EVM (dB)"))
+    fig.update_layout(yaxis2=dict(title=tr("镜像残差 (dBc)"),
+                                  overlaying="y", side="right",
+                                  showgrid=False))
+    return fig
+
+
 def fig_two_tone(res: dict, title: str | None = None) -> go.Figure:
     """IM3 lower/upper (dBc) vs tone spacing on a log-x axis.
 
