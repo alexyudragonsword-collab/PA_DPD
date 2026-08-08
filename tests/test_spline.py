@@ -509,3 +509,20 @@ def test_cim3_branch_lifts_observation_floor():
     assert e_m1 < e_m0                      # image + leakage help first
     assert -35 < e_m1 < -28                 # then pinned near cim3 level
     assert e_m2 < e_m1 - 10                 # conj^3 unlocks the floor
+
+
+def test_txfrontend_calibration_freezes():
+    """kappa/dc calibrate on the first call and stay fixed (real mixer
+    hardware has a fixed 3LO conversion gain); reset() re-arms."""
+    from padpd.pa import ReferencePA, TxFrontEndPA
+    pa = TxFrontEndPA(ReferencePA(drive=0.14), lo_leakage_dbc=-35.0,
+                      cim3_dbc=-32.0)
+    rng = np.random.default_rng(11)
+    x1 = (rng.standard_normal(8000) + 1j * rng.standard_normal(8000))
+    pa(x1)
+    k1, dc1 = pa._kappa, pa._dc
+    pa(0.5 * x1)                    # different scale: must NOT recalibrate
+    assert pa._kappa == k1 and pa._dc == dc1
+    pa.reset()
+    pa(0.5 * x1)
+    assert pa._kappa != k1          # re-armed calibration

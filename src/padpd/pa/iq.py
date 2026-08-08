@@ -86,9 +86,12 @@ class TxFrontEndPA(IQImbalancePA):
       PA IM3 between the image and the wanted signal,
       2(LO-BB) - (LO+BB) = LO-3BB, lands on the SAME conj(x)^3 term
       with coefficient ~b^2 and emerges from the wrapped PA itself.)
-      The injected level is calibrated per call relative to the PA
-      output rms, so it is scale-invariant like the loopback
-      impairments.
+      The injection level is calibrated ON THE FIRST CALL relative to
+      that call's PA output rms and then FROZEN — a real mixer's 3rd-
+      harmonic conversion gain is fixed hardware, not a per-waveform
+      quantity (a per-call recalibration would make the spur level
+      waveform-dependent, which defeats any calibrated canceller).
+      ``reset()`` clears the calibration.
     """
 
     def __init__(self, pa: Callable[[np.ndarray], np.ndarray],
@@ -100,18 +103,29 @@ class TxFrontEndPA(IQImbalancePA):
         self.cim3_dbc = cim3_dbc
         theta = np.random.default_rng(seed).uniform(0, 2 * np.pi)
         self._dc_phase = complex(np.exp(1j * theta))
+        self._dc: complex | None = None
+        self._kappa: float | None = None
+
+    def reset(self) -> None:
+        """Forget the first-call level calibration."""
+        self._dc = None
+        self._kappa = None
 
     def __call__(self, x: np.ndarray) -> np.ndarray:
         x = np.asarray(x, dtype=complex)
         v = self.a * x + self.b * np.conj(x)
-        rms_in = float(np.sqrt(np.mean(np.abs(v) ** 2))) or 1.0
         if self.lo_leakage_dbc is not None:
-            v = v + (rms_in * 10 ** (self.lo_leakage_dbc / 20)
-                     * self._dc_phase)
+            if self._dc is None:
+                rms_in = float(np.sqrt(np.mean(np.abs(v) ** 2))) or 1.0
+                self._dc = (rms_in * 10 ** (self.lo_leakage_dbc / 20)
+                            * self._dc_phase)
+            v = v + self._dc
         y = self.pa(v)
         if self.cim3_dbc is not None:
             d = np.conj(x) ** 3
-            rms_y = float(np.sqrt(np.mean(np.abs(y) ** 2))) or 1.0
-            rms_d = float(np.sqrt(np.mean(np.abs(d) ** 2))) or 1.0
-            y = y + d * (rms_y * 10 ** (self.cim3_dbc / 20) / rms_d)
+            if self._kappa is None:
+                rms_y = float(np.sqrt(np.mean(np.abs(y) ** 2))) or 1.0
+                rms_d = float(np.sqrt(np.mean(np.abs(d) ** 2))) or 1.0
+                self._kappa = rms_y * 10 ** (self.cim3_dbc / 20) / rms_d
+            y = y + d * self._kappa
         return y

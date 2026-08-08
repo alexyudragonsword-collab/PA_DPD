@@ -365,9 +365,21 @@ x+conjugate+DC model pins at -31.6 dB, conj^3 unlocks **-46.1 dB
 (+14.5 dB)**. The deployment chain carries phase orders and DC
 throughout (LUT evaluator, JSON, RTL: conj^3 = one complex cube,
 per-branch power-of-two scales aligned by left shifts, iverilog
-bit-true with 0 errors). **Honest boundary**: conj^3 branches serve
-the *modeling/observation* direction (evaluation surrogates, the
-estimator side of a digital canceller); measured, a classic ILA-copied
-predistorter does NOT cancel post-PA-injected C-IM3 (no linearization
-NMSE change) — in practice mixer spurs get a dedicated calibration/
-cancellation loop, not ILA, which remains future work.
+bit-true with 0 errors). **Honest boundary (dedicated-canceller experiments)**: conj^3
+branches serve the *modeling/observation* direction (+14.5 dB). For
+TX-side closed-loop cancellation we systematically tried five linear-LS
+architectures (ILA with conj^3 columns deployed wholesale, u-domain
+injection after the DPD, x-domain injection before the DPD, and two
+bookkeeping variants of alternating "estimate spur -> clean the
+observation -> refit the main DPD"); all plateau at +2-3 dB. Root
+causes are a genuine two-loop coupling: (1) the spur biases the main
+DPD's ILA estimate (a post-inverse without conj^3 columns absorbs the
+spur into its x/x* columns — a coefficient bias at spur level and
+specific to the training capture); (2) the injected anti-spur rides the
+raw nonlinear PA, whose local complex gain deviates most from the
+global scalar exactly in the peak region where r^3 concentrates the
+spur energy; (3) in alternating schemes the refitted post-inverse
+learns the injection, double-cancelling at deployment and going
+unstable. The credible fix is joint estimation / direct learning
+(gradient optimization of the full two-path TX chain — the existing
+torch DLA infrastructure can carry it), left as future work.
