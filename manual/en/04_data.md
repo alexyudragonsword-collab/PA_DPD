@@ -125,3 +125,28 @@ this study): the aligner absorbs the PA's own group delay, so the DPD
 carries a fractional-sample advance — **perform receiver-style timing
 sync before measuring EVM**, or the constellation shows a phase ramp
 and EVM saturates near -20 dB while ACLR looks fine.
+
+## 4.9 The Complete Measured-Source Container
+
+A single `.npz` packs every capture the platform can consume (the
+IQDataset of 4.5 is its degenerate case): the required aligned
+`(x, y, sample_rate_hz)` plus five optional capture groups, each
+unlocking one capability — **burst** (`burst_x/y`, unlocks the
+state-conditioned spline; slow states are unobservable in a stationary
+capture), **step probe** (`step_x/y`, offline tau -> alpha
+identification; generate the transmit sequence with
+`padpd.gain_modulation.step_probe_drive`), **bypass calibration**
+(`cal_rx_ref/obs`, RX widely-linear + inverse-FIR de-embedding),
+**attenuator step** (`atten_*`, isolates the RX-IM3 kappa) and
+**operating points** (`op_*`, cross-condition coefficient scheduling).
+`meta` records the reference plane, center frequency, absolute power
+calibration and the shared-LO flag.
+
+After loading an npz the data page shows the capture-group checklist
+and a "run complete-source tools" button that sweeps the available
+groups (tau identification, state-spline comparison, RX calibration,
+scheduler). The example `examples/complete_source_demo.npz` (one-click
+load on the data page) verifies against virtual-DUT ground truth: taus
+identified at 5.1/29.6 µs (truth 5/30), state spline +8.5 dB, RX-IM3
+estimated at -28.8 dBc (configured -28). Array conventions are in
+`docs/02_data_interface.md`, section 9.

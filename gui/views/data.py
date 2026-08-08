@@ -46,7 +46,15 @@ with tab_up:
     up = st.file_uploader(ui.tr("选择文件"), type=["csv", "mat", "npz"])
     fs_override = None
     if kind == "npz":
-        pass
+        st.caption(ui.tr("npz 同时支持完整实测源容器(可含 burst/step/"
+                         "cal_rx/atten/多工况采集组,见手册第 4 章)。"))
+        if st.button(ui.tr("载入完整源示例"
+                           "(examples/complete_source_demo.npz)")):
+            src = services.load_source("npz",
+                                       services.EXAMPLE_COMPLETE_NPZ)
+            state.sources[src["name"]] = src
+            st.success(ui.tr("已注册数据源:{name}").format(
+                name=src["name"]))
     auto_align = st.toggle(ui.tr("自动延迟对齐 (align_delay)"), value=False,
                            help=ui.tr("实测/仿真数据常有输入输出定时偏差,"
                                       "用互相关自动估计并消除整数+分数延迟"))
@@ -130,6 +138,50 @@ else:
     with col2:
         st.plotly_chart(charts.fig_amam(prev["amam"]),
                         use_container_width=True)
+
+    if src.get("extras"):
+        names = {"burst": ui.tr("突发"), "step": ui.tr("阶跃探针"),
+                 "cal_rx": ui.tr("旁路标定"), "atten": ui.tr("衰减步进"),
+                 "operating_points": ui.tr("多工况")}
+        rows = services.source_extras_rows(src)
+        st.markdown(ui.tr("**完整源采集组**:") + " · ".join(
+            ("✅ " if r["present"] else "✖ ") + names[r["group"]]
+            for r in rows))
+        if st.button(ui.tr("运行完整源工具"),
+                     help=ui.tr("对当前源可用的采集组一键跑:τ 辨识、"
+                                "状态样条对比、RX 去嵌标定、跨工况调度器")):
+            with st.spinner(ui.tr("完整源工具运行中…")):
+                cx = services.consume_source_extras(src)
+            st.session_state["last_extras"] = cx
+        cx = st.session_state.get("last_extras")
+        if cx:
+            e1, e2, e3, e4 = st.columns(4)
+            gm = cx.get("gain_mod")
+            if gm and gm["significant"]:
+                e1.metric(ui.tr("辨识 τ (µs)"),
+                          " / ".join(f"{t:.1f}"
+                                     for t in gm["taus_heat_us"]))
+            stf = cx.get("state_fit")
+            if stf:
+                e2.metric(ui.tr("状态样条收益"),
+                          f"+{stf['state_gain_db']:.1f} dB",
+                          f"{stf['nmse_plain_db']:.1f} → "
+                          f"{stf['nmse_state_db']:.1f} dB")
+            de = cx.get("deembed")
+            if de:
+                e3.metric(ui.tr("RX 标定"),
+                          f"IRR {de['rx_irr_db']:.1f} dB",
+                          f"IM3 {de['rx_im3_dbc']:.1f} dBc")
+            sc = cx.get("scheduler")
+            if sc:
+                e4.metric(ui.tr("跨工况调度"),
+                          ui.tr("{n} 工况点").format(
+                              n=len(sc["conditions"])),
+                          " / ".join(f"{v:.0f}"
+                                     for v in sc["nmse_per_point_db"]))
+            errs = [v for k, v in cx.items() if k.endswith("_error")]
+            if errs:
+                st.warning("; ".join(errs))
 
     if st.button(ui.tr("移除该数据源")):
         del state.sources[sel]

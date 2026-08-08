@@ -310,3 +310,13 @@ def test_modeling_gain_mod_panel_runs(app, window):
 def services_gain_mod_duts():
     from gui_core import services
     return services.GAIN_MOD_DUTS
+
+
+def test_data_complete_source_example(app, window):
+    """The data page loads the complete-source demo and shows the
+    capture-group checklist."""
+    page = window._pages["data"]
+    page.load_complete_example()
+    app.processEvents()
+    assert "✓" in page.extras_lbl.text()
+    assert not page.btn_consume.isHidden()

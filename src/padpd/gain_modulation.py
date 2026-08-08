@@ -156,6 +156,106 @@ class GainModulationResult:
         return "; ".join(bits)
 
 
+def _result_from_trajectories(fs: float, t: np.ndarray,
+                              g_heat: np.ndarray, g_cool: np.ndarray,
+                              max_poles: int, droop_threshold_db: float,
+                              phase_threshold_deg: float
+                              ) -> GainModulationResult:
+    """Shared fitting path: significance test, bin-average, multi-exp
+    fit of the heating and cooling gain trajectories."""
+    droop_db = float(20 * np.log10(np.abs(g_heat[-1])
+                                   / np.abs(g_heat[0])))
+    phase_deg = float(np.degrees(np.angle(g_heat[-1] / g_heat[0])))
+    res = GainModulationResult(fs=float(fs), significant=False,
+                               droop_db=droop_db,
+                               phase_drift_deg=phase_deg, t_s=t,
+                               gain_heat=g_heat, gain_cool=g_cool)
+    if (abs(droop_db) < droop_threshold_db
+            and abs(phase_deg) < phase_threshold_deg):
+        return res
+
+    tb, gb_heat = _bin_average(t, g_heat, n_bins=512)
+    _, gb_cool = _bin_average(t, g_cool, n_bins=512)
+    taus_h, bs_h, _, rms_h = _fit_step(tb, gb_heat, max_poles)
+    taus_c, bs_c, _, _ = _fit_step(tb, gb_cool, max_poles)
+    tot_h = sum(abs(b) for b in bs_h) or 1.0
+    tot_c = sum(abs(b) for b in bs_c) or 1.0
+    res.significant = True
+    res.taus_heat_s = taus_h
+    res.weights_heat = [float(abs(b) / tot_h) for b in bs_h]
+    res.taus_cool_s = taus_c
+    res.weights_cool = [float(abs(b) / tot_c) for b in bs_c]
+    res.fit_rms = rms_h
+    return res
+
+
+def identify_gain_modulation_capture(x: np.ndarray, y: np.ndarray,
+                                     fs: float, t_guard_s: float = 1e-6,
+                                     max_poles: int = 2,
+                                     droop_threshold_db: float = 0.05,
+                                     phase_threshold_deg: float = 0.5,
+                                     level_tol: float = 0.02
+                                     ) -> GainModulationResult:
+    """OFFLINE identification from a recorded step-probe capture.
+
+    For measured data the experiment cannot drive the DUT interactively;
+    instead the probe sequence is transmitted once and (x, y) recorded.
+    ``x`` must be the constant-envelope probe actually sent — reference
+    burst, low-power settle, step up, step down (the same sequence
+    :func:`identify_gain_modulation` transmits). Segment boundaries are
+    recovered from the |x| level changes, so exact durations don't
+    matter: the LAST high-amplitude segment is the heating observation
+    and the low segment after it the cooling one. Everything downstream
+    (guard window, binning, multi-exponential fits, significance
+    thresholds) is identical to the interactive path.
+    """
+    x = np.asarray(x, dtype=complex)
+    y = np.asarray(y, dtype=complex)
+    if x.shape != y.shape or x.ndim != 1:
+        raise ValueError("x and y must be 1-D arrays of equal length")
+    lev = np.abs(x) / max(float(np.abs(x).max()), 1e-30)
+    bounds = np.flatnonzero(np.abs(np.diff(lev)) > level_tol) + 1
+    segments = [s for s in np.split(np.arange(len(x)), bounds)
+                if len(s) >= 64]
+    if len(segments) < 2:
+        raise ValueError("capture does not contain a level step "
+                         "(need constant-envelope segments)")
+    heat, cool = segments[-2], segments[-1]
+    if np.median(lev[heat]) <= np.median(lev[cool]):
+        raise ValueError("last two segments are not a step-down pair "
+                         "(expected ... high (heat) -> low (cool))")
+    n_guard = min(int(round(t_guard_s * fs)), len(heat) // 4,
+                  len(cool) // 4)
+    g_heat = y[heat][n_guard:] / x[heat][n_guard:]
+    g_cool = y[cool][n_guard:] / x[cool][n_guard:]
+    n = min(len(g_heat), len(g_cool))
+    t = np.arange(n) / fs
+    return _result_from_trajectories(fs, t, g_heat[:n], g_cool[:n],
+                                     max_poles, droop_threshold_db,
+                                     phase_threshold_deg)
+
+
+def step_probe_drive(fs: float, a_hi: float = 1.5,
+                     a_lo_ratio: float = 0.35, t_obs_s: float = 2e-4,
+                     settle_factor: float = 5.0) -> np.ndarray:
+    """The step-probe drive sequence, for RECORDING on real hardware.
+
+    Transmit this once, capture the PA output, and feed the pair to
+    :func:`identify_gain_modulation_capture` (store both in the
+    complete-source container's ``step`` group). Mirrors the sequence
+    :func:`identify_gain_modulation` transmits interactively.
+    """
+    n_obs = max(int(round(t_obs_s * fs)), 64)
+    n_settle = max(int(round(settle_factor * t_obs_s * fs)), n_obs)
+    a_lo = a_hi * a_lo_ratio
+    return np.concatenate([
+        np.full(n_obs // 4, a_hi, dtype=complex),   # reference burst
+        np.full(n_settle, a_lo, dtype=complex),     # cool to steady state
+        np.full(n_obs, a_hi, dtype=complex),        # step up (heating)
+        np.full(n_obs, a_lo, dtype=complex),        # step down (cooling)
+    ])
+
+
 def identify_gain_modulation(pa, fs: float, a_hi: float = 1.5,
                              a_lo_ratio: float = 0.35,
                              t_obs_s: float = 2e-4,
@@ -196,29 +296,6 @@ def identify_gain_modulation(pa, fs: float, a_hi: float = 1.5,
     t = np.arange(n_obs - n_guard) / fs
     g_heat = np.asarray(y_heat, dtype=complex)[n_guard:] / a_hi
     g_cool = np.asarray(y_cool, dtype=complex)[n_guard:] / a_lo
-    droop_db = float(20 * np.log10(np.abs(g_heat[-1])
-                                   / np.abs(g_heat[0])))
-    phase_deg = float(np.degrees(np.angle(g_heat[-1]
-                                          / g_heat[0])))
-
-    res = GainModulationResult(fs=float(fs), significant=False,
-                               droop_db=droop_db,
-                               phase_drift_deg=phase_deg, t_s=t,
-                               gain_heat=g_heat, gain_cool=g_cool)
-    if (abs(droop_db) < droop_threshold_db
-            and abs(phase_deg) < phase_threshold_deg):
-        return res
-
-    tb, gb_heat = _bin_average(t, g_heat, n_bins=512)
-    _, gb_cool = _bin_average(t, g_cool, n_bins=512)
-    taus_h, bs_h, _, rms_h = _fit_step(tb, gb_heat, max_poles)
-    taus_c, bs_c, _, _ = _fit_step(tb, gb_cool, max_poles)
-    tot_h = sum(abs(b) for b in bs_h) or 1.0
-    tot_c = sum(abs(b) for b in bs_c) or 1.0
-    res.significant = True
-    res.taus_heat_s = taus_h
-    res.weights_heat = [float(abs(b) / tot_h) for b in bs_h]
-    res.taus_cool_s = taus_c
-    res.weights_cool = [float(abs(b) / tot_c) for b in bs_c]
-    res.fit_rms = rms_h
-    return res
+    return _result_from_trajectories(fs, t, g_heat, g_cool, max_poles,
+                                     droop_threshold_db,
+                                     phase_threshold_deg)

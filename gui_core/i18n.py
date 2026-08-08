@@ -760,6 +760,46 @@ _EN = {
         "Registered as a run (kind=pa_model). Criteria and experiment "
         "design (probe amplitude must sit in compression, guard window, "
         "time binning) are in manual 5.9.",
+    # -- complete measured-source container -------------------------------
+    "载入完整源示例": "Load complete-source example",
+    "examples/complete_source_demo.npz:含 burst/step/cal_rx/atten/多工况 "
+    "五个采集组的完整实测源容器示例":
+        "examples/complete_source_demo.npz: a complete measured-source "
+        "container example with all five capture groups (burst / step / "
+        "cal_rx / atten / operating points)",
+    "运行完整源工具": "Run complete-source tools",
+    "对当前源可用的采集组一键跑:τ 辨识、状态样条对比、RX 去嵌标定、"
+    "跨工况调度器":
+        "One click over the source's available capture groups: tau "
+        "identification, state-spline comparison, RX de-embedding "
+        "calibration, operating-point scheduler",
+    "完整源工具运行中…": "Running the complete-source tools…",
+    "τ 辨识 {taus} µs": "taus identified {taus} µs",
+    "状态样条 {a:.1f}→{b:.1f} dB(+{g:.1f})":
+        "state spline {a:.1f} -> {b:.1f} dB (+{g:.1f})",
+    "RX 标定 IRR {irr:.1f} dB · IM3 {im3:.1f} dBc":
+        "RX calibration IRR {irr:.1f} dB · IM3 {im3:.1f} dBc",
+    "调度器 {n} 工况点": "scheduler over {n} operating points",
+    "该源没有可消费的采集组": "This source has no consumable capture groups",
+    "完整源采集组:": "Complete-source capture groups: ",
+    "突发": "burst",
+    "阶跃探针": "step probe",
+    "旁路标定": "bypass cal",
+    "衰减步进": "atten step",
+    "多工况": "operating points",
+    "npz 同时支持完整实测源容器(可含 burst/step/cal_rx/atten/多工况采集组,"
+    "见手册第 4 章)。":
+        "npz also accepts the complete measured-source container "
+        "(optionally carrying burst / step / cal_rx / atten / "
+        "operating-point capture groups, see manual chapter 4).",
+    "载入完整源示例(examples/complete_source_demo.npz)":
+        "Load complete-source example "
+        "(examples/complete_source_demo.npz)",
+    "**完整源采集组**:": "**Complete-source capture groups**: ",
+    "辨识 τ (µs)": "Identified taus (µs)",
+    "RX 标定": "RX calibration",
+    "跨工况调度": "Operating-point scheduling",
+    "{n} 工况点": "{n} operating points",
 }
 
 

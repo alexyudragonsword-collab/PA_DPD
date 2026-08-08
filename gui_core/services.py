@@ -222,12 +222,18 @@ def load_source(kind: str, path: str, sample_rate_hz: float | None = None,
         return _from_dataset_splits(name, kind, ds["train"].sample_rate_hz,
                                     ds["spec"], ds["train"], ds["val"],
                                     ds["test"])
+    extras: dict = {}
     if kind == "cadence":
         d = load_cadence_csv(path)
     elif kind == "mat":
         d = load_matlab_mat(path)
     elif kind == "npz":
-        d = IQDataset.load(path)
+        # complete-source container (a plain IQDataset npz is the
+        # degenerate case with no capture groups)
+        from padpd.data import load_complete_npz
+        comp = load_complete_npz(path)
+        d = IQDataset(comp["x"], comp["y"], comp["fs"], comp["meta"])
+        extras = comp["extras"]
     else:
         raise ValueError(f"unknown source kind: {kind}")
     if sample_rate_hz:
@@ -241,6 +247,7 @@ def load_source(kind: str, path: str, sample_rate_hz: float | None = None,
                                tr, va, te)
     src["align_info"] = ({"lag": info["lag"],
                           "lag_total": info["lag_total"]} if info else None)
+    src["extras"] = extras
     return src
 
 
@@ -607,6 +614,35 @@ def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
 GAIN_MOD_DUTS = ("thermal", "static")
 
 
+def _gain_mod_dict(res, dut: str, drive: float | None, fs: float) -> dict:
+    """GUI-friendly dict from a GainModulationResult (shared by the
+    virtual-DUT experiment and the measured-capture path)."""
+    def _bins(v, n=400):
+        m = len(v) - len(v) % n
+        return v[:m].reshape(n, -1).mean(axis=1)
+
+    g0 = res.gain_heat[0]
+    return {"dut": dut, "drive": drive, "fs": fs,
+            "significant": res.significant,
+            "droop_db": res.droop_db,
+            "phase_drift_deg": res.phase_drift_deg,
+            "taus_heat_us": [t * 1e6 for t in res.taus_heat_s],
+            "weights_heat": res.weights_heat,
+            "taus_cool_us": [t * 1e6 for t in res.taus_cool_s],
+            "weights_cool": res.weights_cool,
+            "hysteresis_ratio": res.hysteresis_ratio,
+            "state_alphas": list(res.state_alphas(fs)),
+            "rationale": res.rationale(),
+            "t_us": _bins(res.t_s) * 1e6,
+            "heat_db": 20 * np.log10(np.abs(_bins(res.gain_heat)
+                                            / abs(g0))),
+            "cool_db": 20 * np.log10(np.abs(_bins(res.gain_cool)
+                                            / abs(g0))),
+            "heat_deg": np.degrees(np.angle(_bins(res.gain_heat) / g0)),
+            "nmse_plain_db": None, "nmse_state_db": None,
+            "state_gain_db": None}
+
+
 def run_gain_modulation(dut: str = "thermal", drive: float = 0.13,
                         fit_state_model: bool = True,
                         bw: float = 80e6, qam: int = 1024,
@@ -634,30 +670,7 @@ def run_gain_modulation(dut: str = "thermal", drive: float = 0.13,
           else ReferencePA(drive=drive))
     res = identify_gain_modulation(pa, fs=fs)
 
-    def _bins(v, n=400):
-        m = len(v) - len(v) % n
-        return v[:m].reshape(n, -1).mean(axis=1)
-
-    g0 = res.gain_heat[0]
-    out = {"dut": dut, "drive": drive, "fs": fs,
-           "significant": res.significant,
-           "droop_db": res.droop_db,
-           "phase_drift_deg": res.phase_drift_deg,
-           "taus_heat_us": [t * 1e6 for t in res.taus_heat_s],
-           "weights_heat": res.weights_heat,
-           "taus_cool_us": [t * 1e6 for t in res.taus_cool_s],
-           "weights_cool": res.weights_cool,
-           "hysteresis_ratio": res.hysteresis_ratio,
-           "state_alphas": list(res.state_alphas(fs)),
-           "rationale": res.rationale(),
-           "t_us": _bins(res.t_s) * 1e6,
-           "heat_db": 20 * np.log10(np.abs(_bins(res.gain_heat)
-                                           / abs(g0))),
-           "cool_db": 20 * np.log10(np.abs(_bins(res.gain_cool)
-                                           / abs(g0))),
-           "heat_deg": np.degrees(np.angle(_bins(res.gain_heat) / g0)),
-           "nmse_plain_db": None, "nmse_state_db": None,
-           "state_gain_db": None}
+    out = _gain_mod_dict(res, dut, drive, fs)
 
     if fit_state_model and res.significant:
         # burst stimulus long enough for the slowest identified state to
@@ -710,6 +723,170 @@ def gain_mod_run_record(res: dict) -> tuple[str, dict, dict]:
                         "nmse_plain_db": res["nmse_plain_db"],
                         "state_gain_db": res["state_gain_db"]})
     return name, config, metrics
+
+
+# -- complete measured source: capture-group consumers -------------------
+EXAMPLE_COMPLETE_NPZ = str(_REPO_ROOT / "examples"
+                           / "complete_source_demo.npz")
+
+
+def source_extras_rows(src: dict) -> list[dict]:
+    """Checklist rows for a source's optional capture groups."""
+    from padpd.data import extras_summary
+    return extras_summary(src.get("extras"))
+
+
+def consume_source_extras(src: dict) -> dict:
+    """Run every consumer the source's capture groups allow; returns a
+    summary dict (missing groups are skipped, per-group errors are
+    reported as strings rather than raised)."""
+    out: dict = {}
+    gm = None
+    try:
+        gm = identify_gain_mod_from_source(src)
+        if gm is not None:
+            out["gain_mod"] = {k: gm[k] for k in
+                               ("significant", "droop_db",
+                                "phase_drift_deg", "taus_heat_us",
+                                "weights_heat", "hysteresis_ratio",
+                                "state_alphas")}
+    except Exception as e:
+        out["gain_mod_error"] = str(e)
+    try:
+        alphas = (tuple(gm["state_alphas"])
+                  if gm is not None and gm["significant"] else None)
+        st = fit_state_spline_from_source(src, state_alphas=alphas)
+        if st is not None:
+            out["state_fit"] = {k: st[k] for k in
+                                ("nmse_plain_db", "nmse_state_db",
+                                 "state_gain_db", "state_alphas")}
+    except Exception as e:
+        out["state_fit_error"] = str(e)
+    try:
+        de, info = deembedder_from_source(src)
+        if de is not None:
+            out["deembed"] = {
+                "rx_irr_db": info.get("cal_rx", {}).get("rx_irr_db"),
+                "fir_fit_nmse_db": info.get("cal_rx",
+                                            {}).get("fir_fit_nmse_db"),
+                "rx_im3_dbc": info.get("atten", {}).get("rx_im3_dbc")}
+    except Exception as e:
+        out["deembed_error"] = str(e)
+    try:
+        sc = scheduler_from_source(src)
+        if sc is not None:
+            out["scheduler"] = {"conditions": sc["conditions"],
+                                "nmse_per_point_db":
+                                    sc["nmse_per_point_db"]}
+    except Exception as e:
+        out["scheduler_error"] = str(e)
+    return out
+
+
+def deembedder_from_source(src: dict, n_taps: int = 33):
+    """Build an ObservationDeembedder calibrated from the source's
+    ``cal_rx`` (PA-bypass) and ``atten`` (attenuator-step) groups.
+
+    Returns ``(deembedder, info)`` or ``(None, {})`` when the source
+    carries neither calibration group.
+    """
+    from padpd.data import ObservationDeembedder
+    ex = src.get("extras") or {}
+    if "cal_rx" not in ex and "atten" not in ex:
+        return None, {}
+    de = ObservationDeembedder()
+    info: dict = {}
+    if "cal_rx" in ex:
+        info["cal_rx"] = de.calibrate_rx_path(
+            ex["cal_rx"]["ref"], ex["cal_rx"]["obs"], n_taps=n_taps)
+    if "atten" in ex:
+        a = ex["atten"]
+        info["atten"] = de.calibrate_rx_im3(a["ref"], a["hi"], a["lo"],
+                                            step_db=a["step_db"])
+    return de, info
+
+
+def identify_gain_mod_from_source(src: dict) -> dict | None:
+    """Offline tau identification from the source's ``step`` capture
+    (same output schema as :func:`run_gain_modulation`; None when the
+    source has no step group)."""
+    ex = src.get("extras") or {}
+    if "step" not in ex:
+        return None
+    from padpd.gain_modulation import identify_gain_modulation_capture
+    res = identify_gain_modulation_capture(ex["step"]["x"],
+                                           ex["step"]["y"], src["fs"])
+    return _gain_mod_dict(res, dut="measured", drive=None, fs=src["fs"])
+
+
+def fit_state_spline_from_source(src: dict,
+                                 state_alphas=None) -> dict | None:
+    """Fit plain SMP vs StateConditionedSpline on the source's burst
+    capture (train/val = contiguous 60/40 split of the burst).
+
+    ``state_alphas`` defaults to the taus identified from the source's
+    own ``step`` capture. Returns None when the burst group is missing;
+    raises when alphas are needed but the step capture shows no
+    significant modulation.
+    """
+    from padpd.pa.spline_state import StateConditionedSpline
+    ex = src.get("extras") or {}
+    if "burst" not in ex:
+        return None
+    if state_alphas is None:
+        gm = identify_gain_mod_from_source(src)
+        if gm is None or not gm["significant"]:
+            raise ValueError("no state_alphas given and the step capture "
+                             "shows no significant gain modulation")
+        state_alphas = tuple(gm["state_alphas"])
+    xb, yb = ex["burst"]["x"], ex["burst"]["y"]
+    n_tr = int(len(xb) * 0.6)
+    x_t, y_t = xb[:n_tr], yb[:n_tr]
+    plain = SplineMemoryPolynomial.from_signal(x_t, n_knots=8,
+                                               memory_depth=4)
+    plain.fit(x_t, y_t, regularization=1e-9)
+    state = StateConditionedSpline.from_signal(
+        x_t, n_knots=8, memory_depth=4, state_alphas=state_alphas)
+    state.fit(x_t, y_t, regularization=1e-9)
+    # evaluate as full-capture prediction, scored on the held-out tail:
+    # the model's causal state recursion must see the same power
+    # history the DUT did — predicting on the tail alone would assume
+    # a cold start that the recorded tail did not have
+    out = {"state_alphas": list(state_alphas),
+           "nmse_plain_db": nmse_db(yb[n_tr:], plain(xb)[n_tr:]),
+           "nmse_state_db": nmse_db(yb[n_tr:], state(xb)[n_tr:]),
+           "model": state}
+    out["state_gain_db"] = out["nmse_plain_db"] - out["nmse_state_db"]
+    return out
+
+
+def scheduler_from_source(src: dict, n_knots: int = 8,
+                          memory_depth: int = 4) -> dict | None:
+    """Fit one spline model per operating point and build a
+    CoefficientScheduler over the source's ``operating_points`` group.
+
+    All models share the first point's configuration (knots included) —
+    the scheduler interpolates coefficients, so the basis must be
+    common. Returns None when the group is missing.
+    """
+    from padpd.pa.spline_state import CoefficientScheduler
+    ex = src.get("extras") or {}
+    if "operating_points" not in ex:
+        return None
+    conditions = ex["operating_points"]["conditions"]
+    pairs = ex["operating_points"]["pairs"]
+    base = SplineMemoryPolynomial.from_signal(
+        np.concatenate([p[0] for p in pairs]), n_knots=n_knots,
+        memory_depth=memory_depth)
+    models, nmses = [], []
+    for xi, yi in pairs:
+        m = type(base)(**base.get_config())
+        m.fit(xi, yi, regularization=1e-9)
+        models.append(m)
+        nmses.append(nmse_db(yi[WARMUP:], m(xi)[WARMUP:]))
+    sched = CoefficientScheduler(models, conditions)
+    return {"scheduler": sched, "conditions": list(map(float, conditions)),
+            "nmse_per_point_db": nmses}
 
 
 # -- three-loop joint demo (QMC + de-embed + adaptive DPD) ---------------

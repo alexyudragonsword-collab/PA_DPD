@@ -32,6 +32,10 @@ class DataPage(QWidget):
         self.btn_load_ds = QPushButton(tr("加载数据集"))
         self.btn_load_ds.setObjectName("primary")
         self.btn_file = QPushButton(tr("打开文件 (CSV/.mat/.npz)…"))
+        self.btn_complete_ex = QPushButton(tr("载入完整源示例"))
+        self.btn_complete_ex.setToolTip(
+            tr("examples/complete_source_demo.npz:含 burst/step/cal_rx/"
+               "atten/多工况 五个采集组的完整实测源容器示例"))
         self.align = QCheckBox(tr("自动延迟对齐"))
         gl.addWidget(QLabel(tr("OpenDPD 目录")))
         gl.addWidget(self.root, 2)
@@ -40,6 +44,7 @@ class DataPage(QWidget):
         gl.addWidget(self.ds, 1)
         gl.addWidget(self.btn_load_ds)
         gl.addWidget(self.btn_file)
+        gl.addWidget(self.btn_complete_ex)
         gl.addWidget(self.align)
         lay.addWidget(grp)
 
@@ -72,6 +77,20 @@ class DataPage(QWidget):
         self.c_mod = MetricCard(tr("调制 / 子信道"))
         lay.addWidget(card_row([self.c_fs, self.c_n, self.c_bw, self.c_mod]))
 
+        ex_row = QHBoxLayout()
+        self.extras_lbl = QLabel("")
+        self.extras_lbl.setWordWrap(True)
+        self.btn_consume = QPushButton(tr("运行完整源工具"))
+        self.btn_consume.setToolTip(
+            tr("对当前源可用的采集组一键跑:τ 辨识、状态样条对比、"
+               "RX 去嵌标定、跨工况调度器"))
+        self.btn_consume.hide()
+        ex_row.addWidget(self.extras_lbl, 1)
+        ex_row.addWidget(self.btn_consume)
+        w2 = QWidget()
+        w2.setLayout(ex_row)
+        lay.addWidget(w2)
+
         self.tabs = QTabWidget()
         self.p_psd, self.p_amam, self.p_tt = (FigurePane(), FigurePane(),
                                               FigurePane())
@@ -89,6 +108,8 @@ class DataPage(QWidget):
         self.btn_tt.clicked.connect(self.load_two_tone)
         self.btn_tt_ex.clicked.connect(
             lambda: self.load_two_tone(services.EXAMPLE_TWO_TONE_CSV))
+        self.btn_complete_ex.clicked.connect(self.load_complete_example)
+        self.btn_consume.clicked.connect(self.consume_extras)
         self.btn_rm.clicked.connect(self.remove)
         self.sel.currentTextChanged.connect(self.preview)
         self.scan()
@@ -145,6 +166,60 @@ class DataPage(QWidget):
         except Exception as e:
             self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
 
+    def load_complete_example(self):
+        try:
+            src = services.load_source("npz",
+                                       services.EXAMPLE_COMPLETE_NPZ)
+            self._register(src)
+        except Exception as e:
+            self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
+
+    def consume_extras(self):
+        name = self.sel.currentText()
+        src = self.state.sources.get(name)
+        if not src or not src.get("extras"):
+            return
+        self.btn_consume.setEnabled(False)
+        self.msg.setText(tr("完整源工具运行中…"))
+        from gui_qt.common import FnWorker
+
+        def job(on_progress=None):
+            return services.consume_source_extras(src)
+
+        self._cx_worker = FnWorker(job)
+        self._cx_worker.done.connect(self._finish_consume)
+        self._cx_worker.failed.connect(
+            lambda e: (self.msg.setText(f"❌ {e}"),
+                       self.btn_consume.setEnabled(True)))
+        self._cx_worker.start()
+
+    def _finish_consume(self, out):
+        self.btn_consume.setEnabled(True)
+        bits = []
+        gm = out.get("gain_mod")
+        if gm and gm["significant"]:
+            taus = "/".join(f"{t:.1f}" for t in gm["taus_heat_us"])
+            bits.append(tr("τ 辨识 {taus} µs").format(taus=taus))
+        st = out.get("state_fit")
+        if st:
+            bits.append(tr("状态样条 {a:.1f}→{b:.1f} dB(+{g:.1f})").format(
+                a=st["nmse_plain_db"], b=st["nmse_state_db"],
+                g=st["state_gain_db"]))
+        de = out.get("deembed")
+        if de:
+            bits.append(tr("RX 标定 IRR {irr:.1f} dB · IM3 {im3:.1f} dBc")
+                        .format(irr=de["rx_irr_db"] or float("nan"),
+                                im3=de["rx_im3_dbc"] or float("nan")))
+        sc = out.get("scheduler")
+        if sc:
+            bits.append(tr("调度器 {n} 工况点").format(
+                n=len(sc["conditions"])))
+        errs = [v for k, v in out.items() if k.endswith("_error")]
+        if errs:
+            bits.append("⚠ " + "; ".join(errs))
+        self.msg.setText("✅ " + ";".join(bits) if bits
+                         else tr("该源没有可消费的采集组"))
+
     def load_two_tone(self, path=None):
         if not path:
             path, _ = QFileDialog.getOpenFileName(
@@ -196,6 +271,18 @@ class DataPage(QWidget):
             src["fs"]))
         self.p_amam.set_figure(figs.amam_fig(src["x_train"][:n],
                                              src["y_train"][:n]))
+        if src.get("extras"):
+            names = {"burst": tr("突发"), "step": tr("阶跃探针"),
+                     "cal_rx": tr("旁路标定"), "atten": tr("衰减步进"),
+                     "operating_points": tr("多工况")}
+            parts = [("✓ " if r["present"] else "✗ ")
+                     + names[r["group"]]
+                     for r in services.source_extras_rows(src)]
+            self.extras_lbl.setText(tr("完整源采集组:") + " · ".join(parts))
+            self.btn_consume.show()
+        else:
+            self.extras_lbl.setText("")
+            self.btn_consume.hide()
 
     def remove(self):
         name = self.sel.currentText()

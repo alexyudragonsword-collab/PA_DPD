@@ -162,3 +162,25 @@ pa = load_hb_pa("hb_amam.csv", "s21_in.csv", "s21_out.csv",
 Mask FAIL → PASS)。扫 `--drive`(配合 CFR / 联合设计脚本)即可在
 流片前回答"这颗 PA 配 DPD 能不能过 spec、退多少功率"。注意:S21
 FIR 的整体群时延不计入模型(实测中由对齐消除),仅保留色散。
+
+## 9. 完整实测源容器(`padpd.data.complete`)
+
+单个 `.npz` 承载平台能消费的全部采集。必备 `x`、`y`、`sample_rate_hz`
+(普通 IQDataset npz 即退化情形);五个**可选采集组**各解锁一类能力:
+
+| 采集组(数组名) | 内容 | 解锁 |
+|---|---|---|
+| `burst_x/burst_y` | 高低功率交替突发采集(段长 ≳ 最慢 τ) | `StateConditionedSpline`(平稳采集里慢状态不可观测) |
+| `step_x/step_y` | 恒包络阶跃探针录制(`step_probe_drive` 生成发射序列) | `identify_gain_modulation_capture` 离线辨识 τ → `state_alphas` |
+| `cal_rx_ref/cal_rx_obs` | 旁路 PA 标定采集(已知信号只过观测 RX) | `calibrate_rx_path`(RX WL + 逆 FIR) |
+| `atten_ref/atten_hi/atten_lo/atten_step_db` | 同一驱动、RX 衰减步进两采集 | `calibrate_rx_im3`(分离 RX 立方 κ) |
+| `op_conditions` + `op{i}_x/op{i}_y` | 每工况点一组 (x,y) + 工况标量 | `CoefficientScheduler` |
+
+`meta` 建议记录:参考平面、中心频率、绝对功率标定、TX/RX 是否共本振。
+API:`save_complete_npz` / `load_complete_npz` / `extras_summary`;
+services 侧一键消费 `consume_source_extras`。示例文件
+`examples/complete_source_demo.npz`(由
+`scripts/make_complete_source_demo.py` 生成,含全部五组)在虚拟 DUT
+真值下验证:离线 τ 辨识 5.1/29.6 µs(真值 5/30)、状态样条 +8.5 dB、
+RX-IM3 估计 -28.8 dBc(配置 -28)、IRR 30.2 dB(真值 30.1)。GUI 数据
+页载入 npz 后显示采集组清单并可"运行完整源工具"。
