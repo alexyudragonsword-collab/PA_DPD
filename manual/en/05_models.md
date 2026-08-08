@@ -380,6 +380,19 @@ raw nonlinear PA, whose local complex gain deviates most from the
 global scalar exactly in the peak region where r^3 concentrates the
 spur energy; (3) in alternating schemes the refitted post-inverse
 learns the injection, double-cancelling at deployment and going
-unstable. The credible fix is joint estimation / direct learning
-(gradient optimization of the full two-path TX chain — the existing
-torch DLA infrastructure can carry it), left as future work.
+unstable. The sixth experiment is direct learning
+(`padpd.dpd.direct_learn_spline_dpd`): use the -48 dB-class M2 spline
+model as a differentiable surrogate and gradient-optimize the
+predistorter coefficients end to end in torch (the differentiable
+torch twin of the spline basis matches numpy to machine precision) —
+no ILA copy assumption, gradients that see the local gain. The
+optimizer converges cleanly and gains +1.0 dB over ILA-M2 and +3.6 dB
+over the conjugate-only DPD on held-out data — but the cascade floors
+near -35 dB even INSIDE the surrogate: with exact gradients the
+bottleneck is the predistorter STRUCTURE, not the algorithm. The
+injection that cancels a conj^3 spur spawns ever-higher phase
+harmonics through the cubic PA, an infinite tower a basis truncated at
+order 3 cannot chase. Engineering conclusion: DSP-side suppression of
+post-PA C-IM3 has a structural ceiling (~3-4 dB on this chain); beyond
+it, fix the mixer in hardware (harmonic-reject mixing / LO duty
+tuning), not the DPD.
