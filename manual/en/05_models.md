@@ -396,3 +396,52 @@ order 3 cannot chase. Engineering conclusion: DSP-side suppression of
 post-PA C-IM3 has a structural ceiling (~3-4 dB on this chain); beyond
 it, fix the mixer in hardware (harmonic-reject mixing / LO duty
 tuning), not the DPD.
+
+**QMC dedicated canceller (image + LO leakage)**: unlike post-PA
+spurs, IQ imbalance and LO leakage happen *before* the PA —
+`v = a*z + b*conj(z) + c` admits an exact algebraic pre-inverse
+(`QMCCorrector.precorrect`) with `F(precorrect(w)) = w` identically:
+**no structural ceiling**. Industry practice splits exactly this out
+of the DPD as its own slow loop (QMC / LO cal): each closed-loop pass
+corrects (b, c) from the residual's conj(x) and DC projections
+referred through the chain gain g, and convergence is geometric —
+measured ~19 dB image reduction per iteration, **-88.5 dBc** after
+three, DC < -70 dBc, with the estimated b within 2e-3 of the DUT's
+ground truth `pa.b/pa.a` (IRR estimate within 1 dB). The division of
+labor pays: with QMC owning image/DC, the DPD basis drops back to
+**purely phase-equivariant** (no conjugate/dc_term columns, half the
+coefficients) — a 40-coefficient plain-x DPD + QMC reaches -50.8 dB,
+matching the 81-coefficient conj+dc wide-basis DPD at -50.4 dB. Each
+loop owns one physical mechanism, and the LUT/RTL side no longer needs
+conjugate branches. See `padpd.dpd.QMCCorrector` and
+`tests/test_qmc.py`.
+
+**Observation-path de-embedding (RX loop)**: DPD adapts from a
+TX -> coupler -> RX loopback capture, and every observation impairment
+(delay, CFO, phase drift, RX IQ imbalance, LO leakage, noise) gets
+*learned into the DPD coefficients* — identification effectively
+appends the RX inverse to the predistorter, and the on-air signal pays
+for it. `padpd.data.ObservationDeembedder` estimates and inverts the
+observation path per capture against the known transmitted reference.
+**Order matters**: integer-delay alignment first (pure correlation
+peak, CFO-robust — the fractional cross-spectrum phase-slope estimator
+is biased by over a sample under an 8 kHz CFO) -> CFO via weighted-LS
+phase slope on segment correlations -> fractional-delay refinement
+(`align_delay`) -> CPE-style per-segment common-phase drift (only the
+drift around the mean is removed; the mean phase belongs to the gain)
+-> one widely-linear IQ+DC+gain inversion (iterated twice to kill the
+rotation residual). The PA's own phase-equivariant distortion projects
+onto none of the corrections, so what the DPD must learn passes
+through untouched; the PA's own FIR group delay is absorbed as a
+consistent reference-plane shift (~0.2 samples, harmless — end-to-end
+EVM must run receiver-style timing sync before demodulation). Measured
+(loopback with 0.3 dB/3° IQ, -40 dBc LO, 8 kHz CFO, 1° phase noise,
+7.3-sample delay, 45 dB SNR): CFO estimated at 8.01 kHz, drift rms
+0.98°; clean-loopback DPD EVM -53.5 dB, **adapting through the raw
+loopback +3.6 dB (completely broken)**, adapting through the
+de-embedder **-48.4 dB** — within ~5 dB of the clean reference (the
+residual is the fast phase-noise component plus the 45 dB noise
+floor). In-band FIR ripple and RX nonlinearity are out of scope (keep
+them in the loopback budget, §5.7). `wrap(pa, channel, fs)` packages
+the whole chain as a callable that drops straight into
+ILA/AdaptiveDPD.

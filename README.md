@@ -179,6 +179,13 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
   估计、状态条件化样条(自热虚拟 DUT 上比纯 SMP 改善 ~10 dB)、跨工况
   系数调度器、LUT 提取 + 表深/位宽双轴扫描、**LUT 寻址+线性插值 RTL
   (iverilog 逐位验证 0 错误)**,手册 §5.9
+- **Phase 6.5**:TX/RX 前端损伤全链路 ✅ —— widely-linear 共轭分支
+  (镜像,DPD +22.3 dB)、conj³ 相位谐波分支(C-IM3 建模 +14.5 dB,
+  含 LUT/RTL 部署与 DSP 结构天花板实证)、增益调制时常数辨识
+  (阶跃响应表征 → 状态样条配置)、**QMC 专用抵消环**(镜像/LO 泄漏
+  精确预逆,三轮 -88.5 dBc,DPD 系数减半)、**观测路径去嵌**
+  (时延/CFO/相位漂移/RX IQ 逐级反演:不去嵌自适应失效 +3.6 dB →
+  去嵌后 -48.4 dB,距干净参考 ~5 dB),手册 §5.9
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 本环境(4 核 CPU、无 GPU)已完成可做部分;仍需硬件/EDA(FPGA 上板、SDR

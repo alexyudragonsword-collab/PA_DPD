@@ -1,5 +1,6 @@
 from .adaptive import AdaptiveDPD
 from .ila import ILAPredistorter
+from .qmc import QMCCorrector
 
 
 def __getattr__(name):
@@ -11,5 +12,5 @@ def __getattr__(name):
     raise AttributeError(f"module 'padpd.dpd' has no attribute {name!r}")
 
 
-__all__ = ["ILAPredistorter", "AdaptiveDPD", "direct_learn_spline_dpd",
-           "torch_spline_basis"]
+__all__ = ["ILAPredistorter", "AdaptiveDPD", "QMCCorrector",
+           "direct_learn_spline_dpd", "torch_spline_basis"]
