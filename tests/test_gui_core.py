@@ -232,3 +232,29 @@ def test_run_three_loop_demo_service():
     assert config["algo"] == "three_loop"
     assert metrics["evm_db"] == res["final_full"]
     assert np.isfinite(metrics["image_dbc"])
+
+
+def test_run_gain_modulation_thermal_closes_the_loop():
+    """Identification recovers the thermal DUT's taus (truth 5/30 us)
+    and the identified alphas buy a real state-spline gain."""
+    res = services.run_gain_modulation(dut="thermal")
+    assert res["significant"]
+    assert len(res["taus_heat_us"]) == 2
+    assert abs(res["taus_heat_us"][0] - 5.0) < 1.5
+    assert abs(res["taus_heat_us"][1] - 30.0) < 6.0
+    assert 0.5 < res["hysteresis_ratio"] < 2.0     # linear thermal RC
+    assert res["state_gain_db"] > 6.0              # measured +10.5
+    name, config, metrics = services.gain_mod_run_record(res)
+    assert config["algo"] == "gain_modulation"
+    assert metrics["tau1_us"] == res["taus_heat_us"][0]
+    assert metrics["state_gain_db"] == res["state_gain_db"]
+
+
+def test_run_gain_modulation_static_control():
+    """The probe must not hallucinate modulation on a static PA."""
+    res = services.run_gain_modulation(dut="static")
+    assert not res["significant"]
+    assert abs(res["droop_db"]) < 0.05
+    assert res["state_gain_db"] is None
+    with pytest.raises(ValueError):
+        services.run_gain_modulation(dut="oven")

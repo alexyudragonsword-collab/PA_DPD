@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QFileDialog,
-                               QGroupBox, QHBoxLayout, QLabel, QProgressBar,
-                               QPushButton, QSpinBox, QTabWidget,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
+                               QFileDialog, QGroupBox, QHBoxLayout, QLabel,
+                               QProgressBar, QPushButton, QSpinBox,
+                               QTabWidget, QVBoxLayout, QWidget)
 
 from gui_core import Run, services
 from gui_qt import figs
@@ -79,10 +79,41 @@ class ModelingPage(QWidget):
         lay.addWidget(card_row([self.c_nmse, self.c_np, self.c_src]))
 
         self.tabs = QTabWidget()
-        self.p_psd, self.p_amam = FigurePane(), FigurePane()
+        self.p_psd, self.p_amam, self.p_gm = (FigurePane(), FigurePane(),
+                                              FigurePane())
         self.tabs.addTab(self.p_psd, tr("PSD:实测 vs 预测"))
         self.tabs.addTab(self.p_amam, tr("AM-AM / AM-PM(预测)"))
+        self.tabs.addTab(self.p_gm, tr("增益调制"))
         lay.addWidget(self.tabs, 1)
+
+        ggrp = QGroupBox(tr("增益调制辨识(τ 表征 → 状态样条)"))
+        gl2 = QHBoxLayout(ggrp)
+        self.gm_dut = QComboBox()
+        self.gm_dut.addItems(list(services.GAIN_MOD_DUTS))
+        self.gm_dut.setToolTip(tr("thermal=自热虚拟 DUT(τ 真值 5/30 µs);"
+                                  "static=纯 ReferencePA 对照(应判无调制)"))
+        self.gm_drive = QDoubleSpinBox()
+        self.gm_drive.setRange(0.06, 0.24)
+        self.gm_drive.setSingleStep(0.01)
+        self.gm_drive.setValue(0.13)
+        self.gm_fit = QCheckBox(tr("拟合状态样条"))
+        self.gm_fit.setChecked(True)
+        self.gm_fit.setToolTip(tr("用辨识出的 α 配置 StateConditionedSpline,"
+                                  "在突发激励上与纯 SMP 对比 NMSE"))
+        self.gm_run = QPushButton(tr("运行辨识"))
+        self.gm_run.setObjectName("primary")
+        for lbl, w in [(tr("虚拟 DUT"), self.gm_dut),
+                       ("drive", self.gm_drive)]:
+            gl2.addWidget(QLabel(lbl))
+            gl2.addWidget(w)
+        gl2.addWidget(self.gm_fit)
+        gl2.addStretch(1)
+        gl2.addWidget(self.gm_run)
+        lay.addWidget(ggrp)
+        self.gm_msg = QLabel(tr("阶跃响应实验辨识增益调制时常数(手册 5.9):"
+                                "恒包络探针,加热/冷却分别多指数拟合。"))
+        self.gm_msg.setWordWrap(True)
+        lay.addWidget(self.gm_msg)
 
         bottom = QHBoxLayout()
         self.save_btn = QPushButton(tr("保存 checkpoint…"))
@@ -97,6 +128,7 @@ class ModelingPage(QWidget):
         self.family.currentIndexChanged.connect(self._toggle)
         self.fit_btn.clicked.connect(self.fit)
         self.save_btn.clicked.connect(self.save)
+        self.gm_run.clicked.connect(self.run_gain_mod)
         self._toggle(self.family.currentIndex())
         self.refresh()
         self._last = None
@@ -201,6 +233,52 @@ class ModelingPage(QWidget):
         self._last = (res, cfg, name)
         self.save_btn.setEnabled(True)
         self.msg.setText(tr("✅ {name} 已注册").format(name=name))
+
+    def run_gain_mod(self):
+        self.gm_run.setEnabled(False)
+        self.gm_msg.setText(tr("阶跃响应实验运行中…"))
+        # snapshot widget values on the GUI thread (worker thread below)
+        dut = self.gm_dut.currentText()
+        drive = self.gm_drive.value()
+        fit_state = self.gm_fit.isChecked()
+
+        def job(on_progress=None):
+            return services.run_gain_modulation(dut=dut, drive=drive,
+                                                fit_state_model=fit_state)
+
+        self._gm_worker = FnWorker(job)
+        self._gm_worker.done.connect(self._finish_gain_mod)
+        self._gm_worker.failed.connect(
+            lambda e: (self.gm_msg.setText(f"❌ {e}"),
+                       self.gm_run.setEnabled(True)))
+        self._gm_worker.start()
+
+    def _finish_gain_mod(self, res):
+        self.gm_run.setEnabled(True)
+        self.p_gm.set_figure(figs.gain_modulation_fig(res))
+        self.tabs.setCurrentWidget(self.p_gm)
+        name, cfg, metrics = services.gain_mod_run_record(res)
+        self.state.runstore.add(Run(name=name, kind="pa_model", config=cfg,
+                                    metrics=metrics))
+        if not res["significant"]:
+            self.gm_msg.setText(tr(
+                "无增益调制(垂降 {d:+.3f} dB / {p:+.2f}°)——纯 SMP/"
+                "SplineGMP 即可;已注册为 run。").format(
+                d=res["droop_db"], p=res["phase_drift_deg"]))
+            return
+        taus = ", ".join(f"{t:.1f}µs(权重 {w:.2f})" for t, w in
+                         zip(res["taus_heat_us"], res["weights_heat"]))
+        extra = ""
+        if res["state_gain_db"] is not None:
+            extra = tr(";状态样条 vs 纯 SMP:{a:.1f} → {b:.1f} dB"
+                       "(+{g:.1f} dB)").format(
+                a=res["nmse_plain_db"], b=res["nmse_state_db"],
+                g=res["state_gain_db"])
+        self.gm_msg.setText(tr(
+            "垂降 {d:+.2f} dB / {p:+.1f}°;加热 τ:{taus};迟滞比 "
+            "{h:.2f}{extra};已注册为 run。").format(
+            d=res["droop_db"], p=res["phase_drift_deg"], taus=taus,
+            h=res["hysteresis_ratio"], extra=extra))
 
     def save(self):
         if not self._last:

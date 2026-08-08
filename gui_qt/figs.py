@@ -60,6 +60,29 @@ def adaptive_evm_fig(res: dict) -> Figure:
     return fig
 
 
+def gain_modulation_fig(res: dict) -> Figure:
+    """Step-response gain trajectories (heating / cooling) with the
+    identified taus. ``res`` is ``services.run_gain_modulation``
+    output."""
+    fig, ax = _fig()
+    t = res["t_us"]
+    taus = ", ".join(f"{v:.1f}µs" for v in res["taus_heat_us"])
+    ax.plot(t, res["heat_db"], lw=1.5,
+            label=tr("升功率(加热)|G|") + (f" τ=[{taus}]" if taus else ""))
+    ax.plot(t, res["cool_db"], lw=1.5, label=tr("降功率(冷却)|G|"))
+    ax.set_xlabel(tr("阶跃后时间 (µs)"))
+    ax.set_ylabel(tr("增益变化 (dB)"))
+    ax2 = ax.twinx()
+    ax2.plot(t, res["heat_deg"], ":", lw=1.2, color="#9aa4bd",
+             label=tr("加热相位漂移 (°)"))
+    ax2.set_ylabel(tr("相位漂移 (°)"))
+    ax2.grid(False)
+    h1, l1 = ax.get_legend_handles_labels()
+    h2, l2 = ax2.get_legend_handles_labels()
+    ax.legend(h1 + h2, l1 + l2, fontsize=8, loc="center right")
+    return fig
+
+
 def three_loop_fig(res: dict) -> Figure:
     """Per-block on-air EVM for the three loopback configurations plus
     the QMC image residual (right axis). ``res`` is

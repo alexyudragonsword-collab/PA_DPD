@@ -349,6 +349,17 @@ the identified alphas lands within 1 dB of the truth-configured one.
 The probe amplitude must sit in the compression region (default
 a_hi=1.5 for unit-RMS baseband) — a small-signal probe is nearly blind
 to gain modulation.
+**GUI entry point**: the PA-modeling page's "gain-modulation
+identification" panel (an expander of the same name in the web
+version) picks a virtual DUT (thermal self-heating / static control)
+and runs the step experiment in one click: heating/cooling gain
+trajectories, taus/weights/hysteresis ratio, and an optional "fit
+state spline" step that configures a StateConditionedSpline with the
+identified alphas against a plain SMP (measured -24.6 -> -35.0 dB,
+**+10.5 dB**), registered as a run. Note the virtual DUT freezes its
+dissipated-power reference on its first capture — the
+characterization probe and the modeling capture must each use a fresh
+DUT instance (the GUI handles this).
 
 **C-IM3 (counter-IM3) and phase-harmonic branches**: in a
 direct-conversion TX, the mixer's 3rd LO harmonic converts the baseband

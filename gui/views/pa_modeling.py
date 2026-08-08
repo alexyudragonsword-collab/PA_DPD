@@ -143,3 +143,55 @@ if ui.model_options():
                    ui.tr("数据源"): v['meta']['source']}
                   for k, v in ui.model_options().items()],
                  use_container_width=True, hide_index=True)
+
+st.divider()
+with st.expander(ui.tr("🌡️ 增益调制辨识(τ 表征 → 状态样条)"),
+                 expanded=False):
+    st.caption(ui.tr("阶跃响应实验辨识增益调制时常数(手册 5.9):恒包络"
+                     "探针升/降功率,复增益轨迹多指数拟合;辨识出的 α 可"
+                     "直接配置 StateConditionedSpline 并与纯 SMP 对比。"))
+    gc1, gc2, gc3 = st.columns(3)
+    gm_dut = gc1.selectbox(ui.tr("虚拟 DUT"),
+                           list(services.GAIN_MOD_DUTS),
+                           help=ui.tr("thermal=自热虚拟 DUT(τ 真值 "
+                                      "5/30 µs);static=纯 ReferencePA "
+                                      "对照(应判无调制)"))
+    gm_drive = gc2.slider(ui.tr("PA 工作点 drive"), 0.06, 0.24, 0.13, 0.01,
+                          key="gm_drive")
+    gm_fit = gc3.toggle(ui.tr("拟合状态样条"), value=True,
+                        help=ui.tr("用辨识出的 α 配置 StateConditioned"
+                                   "Spline,在突发激励上与纯 SMP 对比 "
+                                   "NMSE"))
+    if st.button(ui.tr("运行辨识"), type="primary"):
+        with st.spinner(ui.tr("阶跃响应实验运行中…")):
+            gres = services.run_gain_modulation(dut=gm_dut, drive=gm_drive,
+                                                fit_state_model=gm_fit)
+        st.session_state["last_gain_mod"] = gres
+        g_name, g_cfg, g_metrics = services.gain_mod_run_record(gres)
+        state.runstore.add(Run(name=g_name, kind="pa_model", config=g_cfg,
+                               metrics=g_metrics))
+    gres = st.session_state.get("last_gain_mod")
+    if gres:
+        if not gres["significant"]:
+            st.success(ui.tr("无增益调制(垂降 {d:+.3f} dB / {p:+.2f}°)"
+                             "——纯 SMP/SplineGMP 即可。").format(
+                d=gres["droop_db"], p=gres["phase_drift_deg"]))
+        else:
+            g1, g2, g3, g4 = st.columns(4)
+            g1.metric(ui.tr("增益垂降"), f"{gres['droop_db']:+.2f} dB",
+                      f"{gres['phase_drift_deg']:+.1f}°")
+            g2.metric(ui.tr("加热 τ (µs)"),
+                      " / ".join(f"{t:.1f}"
+                                 for t in gres["taus_heat_us"]))
+            g3.metric(ui.tr("迟滞比(冷/热)"),
+                      f"{gres['hysteresis_ratio']:.2f}")
+            if gres["state_gain_db"] is not None:
+                g4.metric(ui.tr("状态样条收益"),
+                          f"+{gres['state_gain_db']:.1f} dB",
+                          f"{gres['nmse_plain_db']:.1f} → "
+                          f"{gres['nmse_state_db']:.1f} dB")
+        st.plotly_chart(charts.fig_gain_modulation(gres),
+                        use_container_width=True)
+        st.caption(ui.tr("已注册为 run(kind=pa_model)。判据与实验设计"
+                         "(探针幅度须在压缩区、段首保护窗、时间分箱)"
+                         "见手册 5.9。"))

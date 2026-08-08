@@ -697,6 +697,69 @@ _EN = {
         "iq = image (0.3 dB/3 deg, IRR ~30 dB), +lo = LO leakage "
         "-35 dBc, +cim3 = counter-IM3 -32 dBc; pair with the "
         "Spline-MP-WL / Spline-MP-CIM3 models (manual 5.9)",
+    # -- gain-modulation identification panel ----------------------------
+    "升功率(加热)|G|": "step up (heating) |G|",
+    "降功率(冷却)|G|": "step down (cooling) |G|",
+    "阶跃后时间 (µs)": "time after step (µs)",
+    "增益变化 (dB)": "gain change (dB)",
+    "加热相位漂移 (°)": "heating phase drift (deg)",
+    "相位漂移 (°)": "phase drift (deg)",
+    "增益调制": "Gain modulation",
+    "增益调制辨识(τ 表征 → 状态样条)":
+        "Gain-modulation identification (tau characterization -> "
+        "state-conditioned spline)",
+    "thermal=自热虚拟 DUT(τ 真值 5/30 µs);static=纯 ReferencePA 对照"
+    "(应判无调制)":
+        "thermal = self-heating virtual DUT (ground-truth taus "
+        "5/30 µs); static = plain ReferencePA control (must report no "
+        "modulation)",
+    "拟合状态样条": "Fit state spline",
+    "用辨识出的 α 配置 StateConditionedSpline,在突发激励上与纯 SMP 对比 "
+    "NMSE":
+        "Configure a StateConditionedSpline with the identified alphas "
+        "and compare NMSE against a plain SMP on a burst stimulus",
+    "运行辨识": "Run identification",
+    "阶跃响应实验辨识增益调制时常数(手册 5.9):恒包络探针,加热/冷却分别"
+    "多指数拟合。":
+        "Step-response experiment identifying the gain-modulation time "
+        "constants (manual 5.9): constant-envelope probe, heating and "
+        "cooling fitted with separate multi-exponentials.",
+    "阶跃响应实验运行中…": "Running the step-response experiment…",
+    "无增益调制(垂降 {d:+.3f} dB / {p:+.2f}°)——纯 SMP/SplineGMP 即可;"
+    "已注册为 run。":
+        "No gain modulation (droop {d:+.3f} dB / {p:+.2f} deg) — a "
+        "plain SMP/SplineGMP suffices; registered as a run.",
+    ";状态样条 vs 纯 SMP:{a:.1f} → {b:.1f} dB(+{g:.1f} dB)":
+        "; state spline vs plain SMP: {a:.1f} -> {b:.1f} dB "
+        "(+{g:.1f} dB)",
+    "垂降 {d:+.2f} dB / {p:+.1f}°;加热 τ:{taus};迟滞比 {h:.2f}{extra};"
+    "已注册为 run。":
+        "Droop {d:+.2f} dB / {p:+.1f} deg; heating taus: {taus}; "
+        "hysteresis ratio {h:.2f}{extra}; registered as a run.",
+    "🌡️ 增益调制辨识(τ 表征 → 状态样条)":
+        "🌡️ Gain-modulation identification (tau characterization -> "
+        "state-conditioned spline)",
+    "阶跃响应实验辨识增益调制时常数(手册 5.9):恒包络探针升/降功率,复增益"
+    "轨迹多指数拟合;辨识出的 α 可直接配置 StateConditionedSpline 并与纯 "
+    "SMP 对比。":
+        "Step-response experiment identifying the gain-modulation time "
+        "constants (manual 5.9): a constant-envelope probe steps power "
+        "up/down and the complex-gain trajectories are fitted with "
+        "multi-exponentials; the identified alphas configure a "
+        "StateConditionedSpline compared against a plain SMP.",
+    "无增益调制(垂降 {d:+.3f} dB / {p:+.2f}°)——纯 SMP/SplineGMP 即可。":
+        "No gain modulation (droop {d:+.3f} dB / {p:+.2f} deg) — a "
+        "plain SMP/SplineGMP suffices.",
+    "增益垂降": "Gain droop",
+    "加热 τ (µs)": "Heating taus (µs)",
+    "迟滞比(冷/热)": "Hysteresis ratio (cool/heat)",
+    "状态样条收益": "State-spline gain",
+    "增益调制:阶跃响应": "Gain modulation: step response",
+    "已注册为 run(kind=pa_model)。判据与实验设计(探针幅度须在压缩区、"
+    "段首保护窗、时间分箱)见手册 5.9。":
+        "Registered as a run (kind=pa_model). Criteria and experiment "
+        "design (probe amplitude must sit in compression, guard window, "
+        "time binning) are in manual 5.9.",
 }
 
 

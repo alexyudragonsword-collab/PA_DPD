@@ -138,6 +138,31 @@ def fig_adaptive_evm(res: dict, title: str | None = None) -> go.Figure:
     return fig
 
 
+def fig_gain_modulation(res: dict, title: str | None = None) -> go.Figure:
+    """Step-response gain trajectories (heating / cooling) plus the
+    heating AM-PM drift on the right axis. ``res`` is
+    ``services.run_gain_modulation`` output."""
+    fig = _fig(tr("增益调制:阶跃响应") if title is None else title)
+    pal = palette()
+    t = list(res["t_us"])
+    fig.add_trace(go.Scatter(x=t, y=list(res["heat_db"]), mode="lines",
+                             name=tr("升功率(加热)|G|"),
+                             line=dict(width=2.0, color=pal[1])))
+    fig.add_trace(go.Scatter(x=t, y=list(res["cool_db"]), mode="lines",
+                             name=tr("降功率(冷却)|G|"),
+                             line=dict(width=2.0, color=pal[0])))
+    fig.add_trace(go.Scatter(x=t, y=list(res["heat_deg"]), mode="lines",
+                             name=tr("加热相位漂移 (°)"), yaxis="y2",
+                             line=dict(width=1.4, dash="dot",
+                                       color=pal[4])))
+    fig.update_xaxes(title=tr("阶跃后时间 (µs)"))
+    fig.update_yaxes(title=tr("增益变化 (dB)"))
+    fig.update_layout(yaxis2=dict(title=tr("相位漂移 (°)"),
+                                  overlaying="y", side="right",
+                                  showgrid=False))
+    return fig
+
+
 def fig_three_loop(res: dict, title: str | None = None) -> go.Figure:
     """Per-block on-air EVM for the three loopback configurations plus
     the QMC image residual (right axis). ``res`` is

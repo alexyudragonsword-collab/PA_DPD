@@ -281,3 +281,32 @@ def test_dpd_three_loop_panel_runs(app, window):
     assert "dB" in page.tl_msg.text()
     runs = get_state().runstore.list()
     assert any(r.config.get("algo") == "three_loop" for r in runs)
+
+
+def test_modeling_gain_mod_panel_runs(app, window):
+    """The identification panel runs (static control DUT: fast path)
+    and registers a run."""
+    import time
+    from gui_qt import common as C
+    from gui_qt.common import get_state
+    page = window._pages["modeling"]
+    assert [page.gm_dut.itemText(i) for i in range(page.gm_dut.count())] \
+        == list(services_gain_mod_duts())
+    page.gm_dut.setCurrentText("static")
+    page.run_gain_mod()
+    assert page._gm_worker.wait(300000)
+    deadline = time.time() + 15
+    while time.time() < deadline:
+        app.processEvents()
+        if C.live_worker_count() == 0:
+            break
+        time.sleep(0.02)
+    app.processEvents()
+    assert "dB" in page.gm_msg.text()
+    runs = get_state().runstore.list()
+    assert any(r.config.get("algo") == "gain_modulation" for r in runs)
+
+
+def services_gain_mod_duts():
+    from gui_core import services
+    return services.GAIN_MOD_DUTS

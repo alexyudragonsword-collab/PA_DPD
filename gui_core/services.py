@@ -603,6 +603,115 @@ def adaptive_run_record(res: dict) -> tuple[str, dict, dict]:
     return name, config, metrics
 
 
+# -- power-gain-modulation identification (tau characterization) ---------
+GAIN_MOD_DUTS = ("thermal", "static")
+
+
+def run_gain_modulation(dut: str = "thermal", drive: float = 0.13,
+                        fit_state_model: bool = True,
+                        bw: float = 80e6, qam: int = 1024,
+                        n_symbols: int = 6, seed: int = 0) -> dict:
+    """Step-response characterization of power-gain modulation
+    (padpd.gain_modulation, manual 5.9): identify the heating/cooling
+    time constants of a virtual DUT, then (optionally) close the loop —
+    fit a plain SMP and a StateConditionedSpline configured with the
+    IDENTIFIED state_alphas on a burst stimulus and report the gain.
+
+    ``dut``: "thermal" = self-heating ThermalReferencePA (taus 5/30 us
+    ground truth), "static" = plain ReferencePA (control: the probe
+    must report no modulation).
+    """
+    if dut not in GAIN_MOD_DUTS:
+        raise ValueError(f"dut must be one of {GAIN_MOD_DUTS}")
+    from padpd.gain_modulation import identify_gain_modulation
+    from padpd.pa import ThermalReferencePA
+    from padpd.pa.spline_state import StateConditionedSpline
+    from padpd.pa.thermal import burst_stimulus
+
+    fs = OFDMConfig(bandwidth_hz=bw, qam_order=qam,
+                    n_symbols=n_symbols, seed=seed).sample_rate_hz
+    pa = (ThermalReferencePA(drive0=drive, fs=fs) if dut == "thermal"
+          else ReferencePA(drive=drive))
+    res = identify_gain_modulation(pa, fs=fs)
+
+    def _bins(v, n=400):
+        m = len(v) - len(v) % n
+        return v[:m].reshape(n, -1).mean(axis=1)
+
+    g0 = res.gain_heat[0]
+    out = {"dut": dut, "drive": drive, "fs": fs,
+           "significant": res.significant,
+           "droop_db": res.droop_db,
+           "phase_drift_deg": res.phase_drift_deg,
+           "taus_heat_us": [t * 1e6 for t in res.taus_heat_s],
+           "weights_heat": res.weights_heat,
+           "taus_cool_us": [t * 1e6 for t in res.taus_cool_s],
+           "weights_cool": res.weights_cool,
+           "hysteresis_ratio": res.hysteresis_ratio,
+           "state_alphas": list(res.state_alphas(fs)),
+           "rationale": res.rationale(),
+           "t_us": _bins(res.t_s) * 1e6,
+           "heat_db": 20 * np.log10(np.abs(_bins(res.gain_heat)
+                                           / abs(g0))),
+           "cool_db": 20 * np.log10(np.abs(_bins(res.gain_cool)
+                                           / abs(g0))),
+           "heat_deg": np.degrees(np.angle(_bins(res.gain_heat) / g0)),
+           "nmse_plain_db": None, "nmse_state_db": None,
+           "state_gain_db": None}
+
+    if fit_state_model and res.significant:
+        # burst stimulus long enough for the slowest identified state to
+        # evolve within a segment (12 symbols ~ 163 us at 80 MHz)
+        wf_t = generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=qam,
+                                        n_symbols=max(n_symbols, 12),
+                                        seed=seed))
+        wf_v = generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=qam,
+                                        n_symbols=max(n_symbols, 12),
+                                        seed=seed + 1))
+        xb_t = burst_stimulus(wf_t.x, n_bursts=6, low_scale=0.3)
+        xb_v = burst_stimulus(wf_v.x, n_bursts=6, low_scale=0.3)
+        # fresh DUT: ThermalReferencePA freezes its dissipated-power
+        # reference on the first capture, and the CW identification
+        # probe (|a_hi|^2 = 2.25) would mis-scale it for the ~0.55-power
+        # burst waveform, muting the very dynamics being modeled
+        pa2 = ThermalReferencePA(drive0=drive, fs=fs)
+        y_t = pa2(xb_t)
+        pa2.reset()
+        y_v = pa2(xb_v)
+        plain = SplineMemoryPolynomial.from_signal(xb_t, n_knots=8,
+                                                   memory_depth=4)
+        plain.fit(xb_t, y_t, regularization=1e-9)
+        state = StateConditionedSpline.from_signal(
+            xb_t, n_knots=8, memory_depth=4,
+            state_alphas=res.state_alphas(fs))
+        state.fit(xb_t, y_t, regularization=1e-9)
+        w = WARMUP
+        out["nmse_plain_db"] = nmse_db(y_v[w:], plain(xb_v)[w:])
+        out["nmse_state_db"] = nmse_db(y_v[w:], state(xb_v)[w:])
+        out["state_gain_db"] = (out["nmse_plain_db"]
+                                - out["nmse_state_db"])
+    return out
+
+
+def gain_mod_run_record(res: dict) -> tuple[str, dict, dict]:
+    """Build (name, config, metrics) to register an identification run."""
+    name = f"GainMod @ {res['dut']}"
+    config = {"algo": "gain_modulation", "dut": res["dut"],
+              "drive": res["drive"], "fs_mhz": res["fs"] / 1e6}
+    metrics = {"droop_db": res["droop_db"],
+               "phase_drift_deg": res["phase_drift_deg"],
+               "hysteresis_ratio": res["hysteresis_ratio"]}
+    for i, (t, w) in enumerate(zip(res["taus_heat_us"],
+                                   res["weights_heat"])):
+        metrics[f"tau{i+1}_us"] = t
+        metrics[f"w{i+1}"] = w
+    if res["state_gain_db"] is not None:
+        metrics.update({"nmse_db": res["nmse_state_db"],
+                        "nmse_plain_db": res["nmse_plain_db"],
+                        "state_gain_db": res["state_gain_db"]})
+    return name, config, metrics
+
+
 # -- three-loop joint demo (QMC + de-embed + adaptive DPD) ---------------
 def run_three_loop_demo(n_blocks: int = 10, drift_span: float = 0.02,
                         gain_db: float = 0.3, phase_deg: float = 3.0,
