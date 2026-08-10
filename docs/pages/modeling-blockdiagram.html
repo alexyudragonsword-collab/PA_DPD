@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>padpd 建模框图</title>
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --panel: #ffffff;
+    --ink: #22303a;
+    --muted: #5d6e76;
+    --line: #c3ccd0;
+    --line-soft: #dde3e5;
+    --accent: #0c7d8a;
+    --accent2: #a8681c;
+    --accent-soft: #0c7d8a1a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131a1d;
+      --panel: #1b2428;
+      --ink: #dce6e9;
+      --muted: #90a2aa;
+      --line: #3c4a50;
+      --line-soft: #2b373c;
+      --accent: #45b9c5;
+      --accent2: #d69a4d;
+      --accent-soft: #45b9c526;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131a1d;
+    --panel: #1b2428;
+    --ink: #dce6e9;
+    --muted: #90a2aa;
+    --line: #3c4a50;
+    --line-soft: #2b373c;
+    --accent: #45b9c5;
+    --accent2: #d69a4d;
+    --accent-soft: #45b9c526;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                 "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+    line-height: 1.65;
+    margin: 0;
+    padding: 2.2rem 1.2rem 3.5rem;
+  }
+  main { max-width: 1240px; margin: 0 auto; }
+  .eyebrow {
+    font-size: .78rem;
+    letter-spacing: .18em;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 .4rem;
+  }
+  h1 {
+    font-size: 1.7rem;
+    font-weight: 700;
+    margin: 0 0 .6rem;
+    text-wrap: balance;
+  }
+  p.lede {
+    max-width: 62ch;
+    color: var(--muted);
+    margin: 0 0 1.8rem;
+    font-size: .95rem;
+  }
+  p.lede strong { color: var(--ink); font-weight: 600; }
+  figure {
+    margin: 0 0 2rem;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 1.1rem 1.1rem .7rem;
+    overflow-x: auto;
+  }
+  figure svg { min-width: 980px; max-width: 100%; height: auto; display: block; }
+  figcaption {
+    font-size: .82rem;
+    color: var(--muted);
+    max-width: 90ch;
+    margin: .7rem auto 0;
+    border-top: 1px solid var(--line-soft);
+    padding-top: .6rem;
+  }
+  /* SVG token classes */
+  .box   { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+  .boxm  { fill: var(--bg);    stroke: var(--line-soft); stroke-width: 1; }
+  .cont  { fill: none; stroke: var(--line); stroke-width: 1.2; }
+  .flow  { stroke: currentColor; stroke-width: 1.4; fill: none; }
+  .map   { stroke: var(--accent); stroke-width: 1.5; fill: none; stroke-dasharray: 6 4; }
+  .cfg   { stroke: var(--accent2); stroke-width: 1.5; fill: none; stroke-dasharray: 2 4; stroke-linecap: round; }
+  .ah    { fill: currentColor; }
+  .ahT   { fill: var(--accent); }
+  .ahA   { fill: var(--accent2); }
+  svg text { fill: var(--ink); font-family: inherit; }
+  .t   { font-size: 12.5px; font-weight: 600; }
+  .ts  { font-size: 11px; fill: var(--muted); }
+  .tm  { font-size: 11px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
+  .tT  { font-size: 11.5px; fill: var(--accent); font-weight: 600; }
+  .tA  { font-size: 11px; fill: var(--accent2); font-weight: 600; }
+  .band { font-size: 11px; fill: var(--muted); letter-spacing: .12em; }
+  /* stat tiles */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .7rem;
+    margin: 0 0 2.2rem;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: .65rem .85rem;
+  }
+  .stat .k {
+    font-size: 1.25rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .01em;
+  }
+  .stat .l { font-size: .74rem; color: var(--muted); margin-top: .1rem; }
+  .stat .n { font-size: .74rem; color: var(--accent); font-weight: 600; letter-spacing: .06em; }
+  h2 { font-size: 1.05rem; margin: 0 0 .7rem; }
+  .tablewrap { overflow-x: auto; margin-bottom: 1.6rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 860px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    font-size: .84rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .5rem .75rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  th {
+    font-size: .76rem;
+    letter-spacing: .08em;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--bg);
+  }
+  tr:last-child td { border-bottom: none; }
+  td.gain { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  code {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: .86em;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 0 .25em;
+  }
+  .foot { font-size: .78rem; color: var(--muted); max-width: 80ch; }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">PADPD · PA 建模全景 · PHASE 6.5</p>
+  <h1>PA 建模框图:机制 ↔ 分支,一一对应</h1>
+  <p class="lede">建模侧现在的完整形态可以用一句话概括:<strong>每个物理损伤机制在模型里有唯一对应的专用分支;结构参数来自便宜的表征实验;LS 闭式解只负责系数</strong>。下图上排是虚拟 DUT 链(每个机制可独立开关,也可换成实测数据),下排是样条模型族的分支结构,中间的青色虚线就是这个一一映射——每条都标了实测收益。</p>
+
+  <figure>
+    <svg viewBox="0 0 1180 735" role="img"
+         aria-label="padpd 建模框图:激励与表征实验在左,虚拟 DUT 链(IQ 失衡、LO 泄漏、PA 核、counter-IM3)在上,样条模型族分支(conj 分支、DC 列、主分支、conj³ 分支、慢状态分支)在下,物理机制与模型分支一一映射;右侧为 LS 估计与 DPD/LUT/RTL 下游。">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ah"/>
+        </marker>
+        <marker id="ahT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ahT"/>
+        </marker>
+        <marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ahA"/>
+        </marker>
+      </defs>
+
+      <!-- ===== 激励 ===== -->
+      <rect class="box" x="30" y="70" width="220" height="96" rx="6"/>
+      <text class="t"  x="140" y="94"  text-anchor="middle">激励波形</text>
+      <text class="ts" x="140" y="114" text-anchor="middle">OFDM 20–320 MHz · CFR 削峰</text>
+      <text class="ts" x="140" y="132" text-anchor="middle">突发 burst · 恒包络阶跃探针</text>
+      <text class="ts" x="140" y="150" text-anchor="middle">双音对(扫音间距)</text>
+      <line class="flow" x1="250" y1="118" x2="298" y2="118" marker-end="url(#ah)"/>
+      <text class="tm" x="256" y="110">x(n)</text>
+
+      <!-- ===== 虚拟 DUT 链 ===== -->
+      <text class="band" x="300" y="58">虚拟 DUT 链 · TXFRONTENDPA(机制可开关)</text>
+      <rect class="box" x="300" y="70" width="156" height="96" rx="6"/>
+      <text class="t"  x="378" y="96"  text-anchor="middle">TX IQ 失衡(镜像)</text>
+      <text class="tm" x="378" y="118" text-anchor="middle">v = a·x + b·x*</text>
+      <text class="ts" x="378" y="140" text-anchor="middle">IRR ≈ 30 dB</text>
+
+      <line class="flow" x1="456" y1="118" x2="484" y2="118" marker-end="url(#ah)"/>
+      <rect class="box" x="486" y="70" width="120" height="96" rx="6"/>
+      <text class="t"  x="546" y="100" text-anchor="middle">LO 泄漏</text>
+      <text class="tm" x="546" y="122" text-anchor="middle">+ DC</text>
+      <text class="ts" x="546" y="142" text-anchor="middle">−35 dBc</text>
+
+      <line class="flow" x1="606" y1="118" x2="634" y2="118" marker-end="url(#ah)"/>
+      <rect class="box" x="636" y="70" width="170" height="96" rx="6"/>
+      <text class="t"  x="721" y="94"  text-anchor="middle">PA 核(三选一)</text>
+      <text class="ts" x="721" y="114" text-anchor="middle">WH:FIR → 非线性 → FIR</text>
+      <text class="ts" x="721" y="132" text-anchor="middle">漂移 drive(s)(冷→热)</text>
+      <text class="ts" x="721" y="150" text-anchor="middle">自热 θ(t):P_diss→RC</text>
+
+      <line class="flow" x1="806" y1="118" x2="828" y2="118" marker-end="url(#ah)"/>
+      <rect class="box" x="830" y="70" width="130" height="96" rx="6"/>
+      <text class="t"  x="895" y="98"  text-anchor="middle">counter-IM3</text>
+      <text class="tm" x="895" y="120" text-anchor="middle">+ κ·conj(x)³</text>
+      <text class="ts" x="895" y="142" text-anchor="middle">−32 dBc(首采冻结)</text>
+
+      <!-- 实测源 -->
+      <rect class="boxm" x="990" y="70" width="160" height="80" rx="6"/>
+      <text class="t"  x="1070" y="96"  text-anchor="middle">实测源(替代 DUT)</text>
+      <text class="ts" x="1070" y="116" text-anchor="middle">OpenDPD · Cadence CSV</text>
+      <text class="ts" x="1070" y="134" text-anchor="middle">HB 导入(装配 WH)</text>
+
+      <!-- ===== 表征实验(左列) ===== -->
+      <text class="band" x="30" y="296">表征实验 · 结构定档(系数留给数据)</text>
+      <rect class="box" x="30" y="310" width="220" height="92" rx="6"/>
+      <text class="t"  x="140" y="334" text-anchor="middle">增益调制辨识</text>
+      <text class="ts" x="140" y="354" text-anchor="middle">恒包络阶跃 → 复增益多指数拟合</text>
+      <text class="tm" x="140" y="374" text-anchor="middle">τ̂ = 4.9 / 29.1 µs(真值 5/30)</text>
+      <text class="ts" x="140" y="392" text-anchor="middle">迟滞比≠1 ⇒ 陷阱/偏置迟滞</text>
+
+      <rect class="box" x="30" y="436" width="220" height="84" rx="6"/>
+      <text class="t"  x="140" y="460" text-anchor="middle">双音记忆诊断</text>
+      <text class="ts" x="140" y="480" text-anchor="middle">IM3 随音间距变化 + 上下不对称</text>
+      <text class="ts" x="140" y="498" text-anchor="middle">记忆强度 → 记忆深度 M · 交叉项</text>
+
+      <!-- ===== 模型容器 ===== -->
+      <rect class="cont" x="280" y="430" width="640" height="250" rx="8"/>
+      <text class="t"  x="296" y="452">样条模型族(线性于系数)</text>
+      <text class="ts" x="296" y="468">Spline-MP · SplineGMP(±滞后/超前交叉包络) · StateConditionedSpline</text>
+
+      <rect class="box" x="300" y="478" width="150" height="72" rx="5"/>
+      <text class="t"  x="375" y="500" text-anchor="middle">镜像分支</text>
+      <text class="tm" x="375" y="520" text-anchor="middle">conj(x)·B_j(|x|)</text>
+      <text class="ts" x="375" y="538" text-anchor="middle">相位谐波 e^(−jφ)</text>
+
+      <rect class="box" x="480" y="478" width="100" height="72" rx="5"/>
+      <text class="t"  x="530" y="504" text-anchor="middle">DC 列</text>
+      <text class="ts" x="530" y="526" text-anchor="middle">常数项(LO)</text>
+
+      <rect class="box" x="600" y="478" width="160" height="72" rx="5"/>
+      <text class="t"  x="680" y="498" text-anchor="middle">主分支 × M 抽头</text>
+      <text class="tm" x="680" y="518" text-anchor="middle">x(n−m)·B_j(|x(n−m)|)</text>
+      <text class="ts" x="680" y="538" text-anchor="middle">M 由双音诊断定档</text>
+
+      <rect class="box" x="780" y="478" width="130" height="72" rx="5"/>
+      <text class="t"  x="845" y="498" text-anchor="middle">C-IM3 分支</text>
+      <text class="tm" x="845" y="518" text-anchor="middle">conj(x)³·B_j(|x|)</text>
+      <text class="ts" x="845" y="538" text-anchor="middle">相位谐波 e^(−j3φ)</text>
+
+      <rect class="box" x="300" y="586" width="300" height="76" rx="5"/>
+      <text class="t"  x="450" y="608" text-anchor="middle">慢状态分支(热/长时记忆)</text>
+      <text class="tm" x="450" y="628" text-anchor="middle">q_k = IIR(|x|²),α_k = e^(−1/(τ_k·fs))</text>
+      <text class="ts" x="450" y="648" text-anchor="middle">α 来自阶跃辨识 · 增益 + tap-0 (r,q) 张量面</text>
+
+      <rect class="boxm" x="620" y="586" width="280" height="76" rx="5"/>
+      <text class="ts" x="760" y="612" text-anchor="middle">对照基线:MP · GMP · DDR(全局幂基)</text>
+      <text class="ts" x="760" y="632" text-anchor="middle">神经:GRU · DGRU · TCN(SGD)</text>
+      <text class="ts" x="760" y="650" text-anchor="middle">同口径进入结果比较页</text>
+
+      <!-- ===== 机制 → 分支 映射(青色虚线) ===== -->
+      <line class="map" x1="378" y1="166" x2="375" y2="476" marker-end="url(#ahT)"/>
+      <text class="tT" x="378" y="255" text-anchor="middle">镜像 → conj 分支</text>
+      <text class="tT" x="378" y="272" text-anchor="middle">+22.3 dB(DPD EVM)</text>
+
+      <line class="map" x1="546" y1="166" x2="530" y2="476" marker-end="url(#ahT)"/>
+      <text class="tT" x="554" y="304">LO → DC 列</text>
+
+      <line class="map" x1="721" y1="166" x2="680" y2="476" marker-end="url(#ahT)"/>
+      <text class="tT" x="730" y="255">记忆/压缩 →</text>
+      <text class="tT" x="730" y="272">抽头 × 包络基</text>
+
+      <path class="map" d="M 660 166 V 410 H 460 V 584" marker-end="url(#ahT)"/>
+      <text class="tT" x="560" y="402" text-anchor="middle">自热/慢记忆 → 状态 +10.5 dB</text>
+
+      <line class="map" x1="850" y1="166" x2="845" y2="476" marker-end="url(#ahT)"/>
+      <text class="tT" x="838" y="320" text-anchor="end">C-IM3 → conj³</text>
+      <text class="tT" x="838" y="337" text-anchor="end">+14.5 dB</text>
+
+      <!-- ===== 表征 → 结构参数(琥珀虚线) ===== -->
+      <path class="cfg" d="M 250 356 H 268 V 620 H 298" marker-end="url(#ahA)"/>
+      <text class="tA" x="276" y="520">α</text>
+      <path class="cfg" d="M 250 478 H 278" marker-end="url(#ahA)"/>
+      <text class="tA" x="256" y="472">M</text>
+
+      <!-- ===== 采集 → LS ===== -->
+      <path class="flow" d="M 895 166 V 250 H 1010 V 298" marker-end="url(#ah)"/>
+      <text class="tm" x="902" y="205">y(n)</text>
+      <line class="flow" x1="1070" y1="150" x2="1070" y2="298" marker-end="url(#ah)"/>
+      <text class="tm" x="1078" y="230">(x, y)</text>
+
+      <rect class="box" x="950" y="300" width="200" height="110" rx="6"/>
+      <text class="t"  x="1050" y="324" text-anchor="middle">LS 闭式解(逐块)</text>
+      <text class="ts" x="1050" y="344" text-anchor="middle">相对 ridge · P-样条平滑 · WLS</text>
+      <text class="tm" x="1050" y="366" text-anchor="middle">cond ≈ 2×10²(MP:10⁵)</text>
+      <text class="ts" x="1050" y="388" text-anchor="middle">线性参数模型不用 SGD</text>
+
+      <path class="flow" d="M 920 500 H 938 V 358 H 948" marker-end="url(#ah)"/>
+      <text class="tm" x="934" y="445" text-anchor="end">Φ(x)</text>
+
+      <!-- ===== 下游 ===== -->
+      <line class="flow" x1="1050" y1="410" x2="1050" y2="468" marker-end="url(#ah)"/>
+      <text class="ts" x="1058" y="442">系数 w</text>
+
+      <rect class="box" x="950" y="470" width="200" height="58" rx="6"/>
+      <text class="t"  x="1050" y="493" text-anchor="middle">DPD 基函数</text>
+      <text class="ts" x="1050" y="513" text-anchor="middle">ILA · 自适应 RLS · 直接学习</text>
+
+      <line class="flow" x1="1050" y1="528" x2="1050" y2="542" marker-end="url(#ah)"/>
+      <rect class="box" x="950" y="544" width="200" height="58" rx="6"/>
+      <text class="t"  x="1050" y="567" text-anchor="middle">LUT → JSON → 插值 RTL</text>
+      <text class="ts" x="1050" y="587" text-anchor="middle">iverilog 位真 0 错 · 位宽/表深扫描</text>
+
+      <line class="flow" x1="1050" y1="602" x2="1050" y2="616" marker-end="url(#ah)"/>
+      <rect class="box" x="950" y="618" width="200" height="58" rx="6"/>
+      <text class="t"  x="1050" y="641" text-anchor="middle">跨工况调度</text>
+      <text class="ts" x="1050" y="661" text-anchor="middle">CoefficientScheduler(PCHIP)</text>
+
+      <!-- ===== 图例 ===== -->
+      <line class="flow" x1="30" y1="712" x2="66" y2="712" marker-end="url(#ah)"/>
+      <text class="ts" x="74" y="716">信号 / 数据流</text>
+      <line class="map" x1="200" y1="712" x2="236" y2="712" marker-end="url(#ahT)"/>
+      <text class="ts" x="244" y="716">物理机制 → 专用分支(标注实测收益)</text>
+      <line class="cfg" x1="520" y1="712" x2="556" y2="712" marker-end="url(#ahA)"/>
+      <text class="ts" x="564" y="716">表征实验 → 结构参数(τ→α,记忆深度 M)</text>
+    </svg>
+    <figcaption>padpd 建模全景:上排虚拟 DUT 链(<code>TxFrontEndPA</code> 包裹三种 PA 核,机制逐项可开关,亦可换实测源);下排样条模型族的分支结构。青色虚线是本图的论点——每个物理机制由一个结构上不可替代的分支承接(相位谐波 e<sup>+jφ</sup>/e<sup>−jφ</sup>/e<sup>−j3φ</sup> 互不可表示);琥珀虚线表示结构参数来自表征实验而非拍脑袋;系数则全部交给右侧 LS 闭式解。</figcaption>
+  </figure>
+
+  <div class="stats">
+    <div class="stat"><div class="k">24 <span class="n">vs 112</span></div><div class="l">运行时 MAC/样本(Spline-MP vs MP,同精度)</div></div>
+    <div class="stat"><div class="k">2×10²</div><div class="l">LS 条件数(7 阶 MP:1.2×10⁵)</div></div>
+    <div class="stat"><div class="k">+22.3 dB</div><div class="l">镜像分支(conj)DPD EVM 收益</div></div>
+    <div class="stat"><div class="k">+14.5 dB</div><div class="l">conj³ 分支 C-IM3 建模收益</div></div>
+    <div class="stat"><div class="k">+10.5 dB</div><div class="l">状态分支(α 来自辨识)</div></div>
+    <div class="stat"><div class="k">0 错误</div><div class="l">插值 RTL iverilog 位真 · LUT256 零损失</div></div>
+  </div>
+
+  <h2>机制 → 分支 → 结构来源 → GUI 入口</h2>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>物理机制</th><th>模型分支 / 结构</th><th>结构参数来源</th><th>实测收益</th><th>GUI 入口</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>静态 AM-AM / AM-PM</td><td>B 样条包络基 <code>B_j(|x|)</code>(局部支撑,每分支 4 有效基)</td><td>节点放置 hybrid:分位数铺主体 + 均匀铺压缩尾部</td><td class="gain">≈MP 精度,MAC 1/5</td><td>建模页 · Spline-MP</td></tr>
+        <tr><td>电记忆(匹配 / 偏置)</td><td>延迟抽头 ×M · SplineGMP 滞后/超前交叉分支</td><td>双音扫间距 → 记忆强度定 M 与交叉项</td><td class="gain">EVM 拐点吻合 depth 3</td><td>数据页 · 双音诊断</td></tr>
+        <tr><td>TX 镜像(IQ 失衡)</td><td><code>conj(x)·B_j</code> 分支(e<sup>−jφ</sup>)</td><td>前端损伤选项 <code>iq</code>(IRR≈30 dB)</td><td class="gain">+22.3 dB</td><td>建模页 · 前端=iq</td></tr>
+        <tr><td>LO 泄漏</td><td>DC 常数列</td><td>前端选项 <code>+lo</code>(−35 dBc)</td><td class="gain">与 QMC 环配套</td><td>建模页 · 前端=iq+lo</td></tr>
+        <tr><td>counter-IM3(混频器 3LO)</td><td><code>conj(x)³·B_j</code> 分支(e<sup>−j3φ</sup>)</td><td>前端选项 <code>+cim3</code>(−32 dBc)</td><td class="gain">+14.5 dB(建模向)</td><td>建模页 · 前端=iq+lo+cim3</td></tr>
+        <tr><td>热 / 慢记忆(自热)</td><td>慢状态 <code>q_k</code> × (r,q) 张量面</td><td>阶跃辨识 τ̂=4.9/29.1 µs → <code>state_alphas</code></td><td class="gain">+10.5 dB</td><td>建模页 · 增益调制辨识</td></tr>
+        <tr><td>跨工况漂移(温度/偏置点)</td><td>CoefficientScheduler(系数 PCHIP 插值)</td><td>多工况点各自拟合</td><td class="gain">工况间平滑调度</td><td>—(脚本)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot">数字出处:<code>docs/05_performance_summary.md</code> §3.7 与手册 §5.9(160 MHz / 1024-QAM,ReferencePA 系列虚拟 DUT)。建模侧到此闭环;观测去嵌、QMC 与三环联合属 DPD 侧,入口在 DPD 实验室页。</p>
+</main>
+</body>
+</html>

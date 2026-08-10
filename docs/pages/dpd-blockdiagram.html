@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>padpd DPD 侧框图</title>
+<style>
+  :root {
+    --bg: #f4f6f5;
+    --panel: #ffffff;
+    --ink: #22303a;
+    --muted: #5d6e76;
+    --line: #c3ccd0;
+    --line-soft: #dde3e5;
+    --accent: #0c7d8a;
+    --accent2: #a8681c;
+    --accent-soft: #0c7d8a1a;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #131a1d;
+      --panel: #1b2428;
+      --ink: #dce6e9;
+      --muted: #90a2aa;
+      --line: #3c4a50;
+      --line-soft: #2b373c;
+      --accent: #45b9c5;
+      --accent2: #d69a4d;
+      --accent-soft: #45b9c526;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #131a1d;
+    --panel: #1b2428;
+    --ink: #dce6e9;
+    --muted: #90a2aa;
+    --line: #3c4a50;
+    --line-soft: #2b373c;
+    --accent: #45b9c5;
+    --accent2: #d69a4d;
+    --accent-soft: #45b9c526;
+  }
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                 "Noto Sans CJK SC", "Source Han Sans SC", sans-serif;
+    line-height: 1.65;
+    margin: 0;
+    padding: 2.2rem 1.2rem 3.5rem;
+  }
+  main { max-width: 1240px; margin: 0 auto; }
+  .eyebrow {
+    font-size: .78rem;
+    letter-spacing: .18em;
+    color: var(--accent);
+    font-weight: 600;
+    margin: 0 0 .4rem;
+  }
+  h1 { font-size: 1.7rem; font-weight: 700; margin: 0 0 .6rem; text-wrap: balance; }
+  p.lede { max-width: 62ch; color: var(--muted); margin: 0 0 1.8rem; font-size: .95rem; }
+  p.lede strong { color: var(--ink); font-weight: 600; }
+  figure {
+    margin: 0 0 2rem;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 1.1rem 1.1rem .7rem;
+    overflow-x: auto;
+  }
+  figure svg { min-width: 980px; max-width: 100%; height: auto; display: block; }
+  figcaption {
+    font-size: .82rem;
+    color: var(--muted);
+    max-width: 90ch;
+    margin: .7rem auto 0;
+    border-top: 1px solid var(--line-soft);
+    padding-top: .6rem;
+  }
+  .box   { fill: var(--panel); stroke: var(--line); stroke-width: 1.2; }
+  .boxm  { fill: var(--bg);    stroke: var(--line-soft); stroke-width: 1; }
+  .flow  { stroke: currentColor; stroke-width: 1.4; fill: none; }
+  .loop  { stroke: var(--accent); stroke-width: 1.6; fill: none; }
+  .cfg   { stroke: var(--accent2); stroke-width: 1.5; fill: none; stroke-dasharray: 2 4; stroke-linecap: round; }
+  .ah    { fill: currentColor; }
+  .ahT   { fill: var(--accent); }
+  .ahA   { fill: var(--accent2); }
+  .tap   { fill: currentColor; }
+  svg text { fill: var(--ink); font-family: inherit; }
+  .t   { font-size: 12.5px; font-weight: 600; }
+  .ts  { font-size: 11px; fill: var(--muted); }
+  .tm  { font-size: 11px; font-family: ui-monospace, "SFMono-Regular", Consolas, monospace; }
+  .tT  { font-size: 11.5px; fill: var(--accent); font-weight: 600; }
+  .tA  { font-size: 11px; fill: var(--accent2); font-weight: 600; }
+  .town { font-size: 11px; fill: var(--accent); font-weight: 600; }
+  .band { font-size: 11px; fill: var(--muted); letter-spacing: .12em; }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .7rem;
+    margin: 0 0 2.2rem;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: .65rem .85rem;
+  }
+  .stat .k { font-size: 1.18rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stat .l { font-size: .74rem; color: var(--muted); margin-top: .1rem; }
+  h2 { font-size: 1.05rem; margin: 0 0 .7rem; }
+  .tablewrap { overflow-x: auto; margin-bottom: 1.6rem; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    min-width: 900px;
+    background: var(--panel);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    font-size: .84rem;
+  }
+  th, td {
+    text-align: left;
+    padding: .5rem .75rem;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+  }
+  th {
+    font-size: .76rem;
+    letter-spacing: .08em;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--bg);
+  }
+  tr:last-child td { border-bottom: none; }
+  td.gain { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+  code {
+    font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+    font-size: .86em;
+    background: var(--bg);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 0 .25em;
+  }
+  .foot { font-size: .78rem; color: var(--muted); max-width: 80ch; }
+  .foot a { color: var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">PADPD · DPD 侧全景 · 三环联合</p>
+  <h1>DPD 侧框图:三个环,各管一个机制</h1>
+  <p class="lede">DPD 侧的完整形态是<strong>三个同时闭合的环</strong>:DPD 快环只管 PA 非线性与漂移,QMC 慢环收编 PA 前的镜像/LO 泄漏(存在精确预逆,无天花板),观测去嵌环保证前两个环看到的是真实的 PA 输出而不是接收机。分工成立的原因写在结构里——相位等变的 PA 失真对另外两个环的估计项<strong>投影为零</strong>,所以耦合是稳定的。青色箭头是环路闭合;右下角是用实验换来的诚实边界。</p>
+
+  <figure>
+    <svg viewBox="0 0 1180 670" role="img"
+         aria-label="padpd DPD 侧框图:TX 信号路径(自适应 DPD → QMC 预逆 → TX 前端 → 漂移 PA → 在空口),观测路径(耦合器 → 观测损伤 → 观测去嵌),三环更新(DPD 快环、QMC 慢环)与标定采集,右下为 C-IM3 结构天花板的诚实边界。">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ah"/>
+        </marker>
+        <marker id="ahT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ahT"/>
+        </marker>
+        <marker id="ahA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+          <polygon points="0,0 10,5 0,10" class="ahA"/>
+        </marker>
+      </defs>
+
+      <!-- ===== TX 信号路径 ===== -->
+      <text class="band" x="160" y="58">TX 信号路径(在空口质量在此产生)</text>
+      <line class="flow" x1="110" y1="116" x2="158" y2="116" marker-end="url(#ah)"/>
+      <text class="tm" x="112" y="108">x(n)</text>
+
+      <rect class="box" x="160" y="70" width="180" height="92" rx="6"/>
+      <text class="t"  x="250" y="92"  text-anchor="middle">自适应 DPD</text>
+      <text class="tm" x="250" y="112" text-anchor="middle">u = Φ(x)·w</text>
+      <text class="ts" x="250" y="130" text-anchor="middle">纯相位等变基(系数减半)</text>
+      <text class="ts" x="250" y="148" text-anchor="middle">Φ 来自建模侧(姊妹图)</text>
+
+      <line class="flow" x1="340" y1="116" x2="370" y2="116" marker-end="url(#ah)"/>
+      <rect class="box" x="372" y="70" width="150" height="92" rx="6"/>
+      <text class="t"  x="447" y="92"  text-anchor="middle">QMC 精确预逆</text>
+      <text class="tm" x="447" y="112" text-anchor="middle">precorrect(u)</text>
+      <text class="ts" x="447" y="130" text-anchor="middle">逆 v = a·z + b·z* + c</text>
+      <text class="ts" x="447" y="148" text-anchor="middle">无结构天花板</text>
+
+      <line class="flow" x1="522" y1="116" x2="552" y2="116" marker-end="url(#ah)"/>
+      <rect class="box" x="554" y="70" width="150" height="92" rx="6"/>
+      <text class="t"  x="629" y="92"  text-anchor="middle">TX 前端</text>
+      <text class="tm" x="629" y="112" text-anchor="middle">+ b·x*(镜像)</text>
+      <text class="tm" x="629" y="130" text-anchor="middle">+ DC(LO 泄漏)</text>
+      <text class="ts" x="629" y="148" text-anchor="middle">IRR≈30 dB · −35 dBc</text>
+
+      <line class="flow" x1="704" y1="116" x2="734" y2="116" marker-end="url(#ah)"/>
+      <rect class="box" x="736" y="70" width="140" height="92" rx="6"/>
+      <text class="t"  x="806" y="96"  text-anchor="middle">PA(漂移中)</text>
+      <text class="ts" x="806" y="118" text-anchor="middle">drive(s) 冷→热</text>
+      <text class="ts" x="806" y="138" text-anchor="middle">WH / 自热核</text>
+
+      <line class="flow" x1="876" y1="116" x2="946" y2="116" marker-end="url(#ah)"/>
+      <text class="t"  x="952" y="112">在空口 y(n)</text>
+      <text class="ts" x="952" y="130">EVM 在此测(收端定时同步)</text>
+
+      <!-- 耦合器 -->
+      <circle class="tap" cx="920" cy="116" r="3.5"/>
+      <line class="flow" x1="920" y1="120" x2="920" y2="238" marker-end="url(#ah)"/>
+      <text class="ts" x="928" y="185">耦合器</text>
+
+      <!-- ===== 观测路径 ===== -->
+      <text class="band" x="420" y="230">观测路径(三个环从这里看世界)</text>
+      <rect class="box" x="760" y="240" width="220" height="100" rx="6"/>
+      <text class="t"  x="870" y="264" text-anchor="middle">观测损伤(环回)</text>
+      <text class="ts" x="870" y="284" text-anchor="middle">时延 7.3 spl · CFO 8 kHz · 相噪 1°</text>
+      <text class="ts" x="870" y="302" text-anchor="middle">RX IQ · 带内纹波 · RX-IM3</text>
+      <text class="ts" x="870" y="320" text-anchor="middle">SNR 45 dB</text>
+
+      <line class="flow" x1="760" y1="290" x2="702" y2="290" marker-end="url(#ah)"/>
+      <rect class="box" x="420" y="240" width="280" height="100" rx="6"/>
+      <text class="t"  x="560" y="262" text-anchor="middle">观测去嵌 ObservationDeembedder</text>
+      <text class="ts" x="560" y="282" text-anchor="middle">整数时延 → CFO → 分数时延 → 共相漂移</text>
+      <text class="ts" x="560" y="300" text-anchor="middle">→ WL IQ/DC → RX-IM3 逆 → FIR 均衡</text>
+      <text class="town" x="560" y="322" text-anchor="middle">管:观测路径 —— 防 DPD 学进 RX 逆</text>
+
+      <!-- ===== 校正观测 ŷ → 两个更新环 ===== -->
+      <path class="loop" d="M 420 290 H 350 V 423 H 314" marker-end="url(#ahT)"/>
+      <path class="loop" d="M 350 423 V 539 H 314" marker-end="url(#ahT)"/>
+      <text class="tT" x="360" y="278">校正观测 ŷ</text>
+      <text class="tT" x="344" y="416" text-anchor="end">(u, ŷ)</text>
+      <text class="tT" x="344" y="532" text-anchor="end">(x, ŷ)</text>
+
+      <!-- ===== 环路更新 ===== -->
+      <text class="band" x="60" y="372">三环更新 · 分工:各管一个机制</text>
+      <rect class="box" x="60" y="380" width="250" height="86" rx="6"/>
+      <text class="t"  x="185" y="402" text-anchor="middle">DPD 快环(每块)</text>
+      <text class="town" x="185" y="420" text-anchor="middle">管:PA 非线性 + 漂移</text>
+      <text class="ts" x="185" y="438" text-anchor="middle">ILA 批 · 块 RLS(forget)· whitened · APA</text>
+      <text class="tm" x="185" y="456" text-anchor="middle">min‖u − Φ(ŷ/G)·w‖</text>
+
+      <rect class="box" x="60" y="496" width="250" height="86" rx="6"/>
+      <text class="t"  x="185" y="518" text-anchor="middle">QMC 慢环(校准节拍)</text>
+      <text class="town" x="185" y="536" text-anchor="middle">管:TX 镜像 + LO 泄漏(PA 前)</text>
+      <text class="tm" x="185" y="554" text-anchor="middle">β=⟨x*,e⟩/⟨x,x⟩;b+=μβ/g,c+=μδ/g</text>
+      <text class="ts" x="185" y="572" text-anchor="middle">每轮 −19 dB → −88.5 dBc</text>
+
+      <!-- 环路闭合:更新量回注 -->
+      <path class="loop" d="M 185 378 V 166" marker-end="url(#ahT)"/>
+      <text class="tT" x="193" y="280">w(每块更新)</text>
+      <path class="loop" d="M 60 539 H 36 V 50 H 447 V 66" marker-end="url(#ahT)"/>
+      <text class="tT" x="250" y="44">(b, c) 慢速回注</text>
+
+      <!-- ===== 标定采集 ===== -->
+      <text class="tA" x="420" y="424">标定采集(盲估不可辨识项)</text>
+      <rect class="box" x="420" y="430" width="180" height="70" rx="6"/>
+      <text class="t"  x="510" y="452" text-anchor="middle">旁路 PA 标定</text>
+      <text class="ts" x="510" y="470" text-anchor="middle">RX WL + δ-正则逆 FIR</text>
+      <text class="ts" x="510" y="488" text-anchor="middle">盲均衡会洗掉 PA 记忆</text>
+      <path class="cfg" d="M 510 428 V 344" marker-end="url(#ahA)"/>
+
+      <rect class="box" x="620" y="430" width="180" height="70" rx="6"/>
+      <text class="t"  x="710" y="452" text-anchor="middle">衰减步进两采集</text>
+      <text class="ts" x="710" y="470" text-anchor="middle">分离 RX 立方 κ</text>
+      <text class="ts" x="710" y="488" text-anchor="middle">PA 失真为共模</text>
+      <path class="cfg" d="M 710 428 V 344" marker-end="url(#ahA)"/>
+
+      <!-- ===== 诚实边界 ===== -->
+      <rect class="boxm" x="640" y="530" width="330" height="100" rx="6"/>
+      <text class="t"  x="805" y="554" text-anchor="middle">诚实边界:C-IM3 的 TX 侧抵消</text>
+      <text class="ts" x="805" y="574" text-anchor="middle">五种线性 LS 抵消架构全部止步 +2~3 dB(两环耦合)</text>
+      <text class="ts" x="805" y="592" text-anchor="middle">直接学习(torch 梯度经样条代理)证明结构天花板 ~−35 dB</text>
+      <text class="ts" x="805" y="610" text-anchor="middle">→ 交给混频器硬件(谐波抑制 / LO 占空比调节)</text>
+
+      <!-- ===== 图例 ===== -->
+      <line class="flow" x1="30" y1="650" x2="66" y2="650" marker-end="url(#ah)"/>
+      <text class="ts" x="74" y="654">信号路径(TX / 观测)</text>
+      <line class="loop" x1="240" y1="650" x2="276" y2="650" marker-end="url(#ahT)"/>
+      <text class="ts" x="284" y="654">环路闭合(校正观测与更新量回注)</text>
+      <line class="cfg" x1="520" y1="650" x2="556" y2="650" marker-end="url(#ahA)"/>
+      <text class="ts" x="564" y="654">标定采集 → 去嵌器参数(RX WL / FIR / κ)</text>
+    </svg>
+    <figcaption>DPD 侧全景:上排是 TX 信号路径,在空口质量在 PA 之后产生;观测经耦合器、带全套损伤的环回信道进入去嵌器。三个环同时闭合——DPD 快环从 (u, ŷ) 做后逆回归,QMC 慢环从 (x, ŷ) 残差的 conj(x)/DC 投影修正 (b, c) 并回注到预逆。分工的关键一步是去嵌器的 RX 级来自<strong>旁路标定</strong>而非逐采集盲估:TX 镜像因此在 ŷ 中存活,QMC 才有东西可看。右下角是用六组实验换来的边界:PA 后 C-IM3 的 DSP 抵消存在结构天花板,越过它属于混频器硬件。</figcaption>
+  </figure>
+
+  <div class="stats">
+    <div class="stat"><div class="k">+33 → −35.1 dB</div><div class="l">满漂移在空口 EVM:原始环回(失效)→ 三环联合</div></div>
+    <div class="stat"><div class="k">−88.5 dBc</div><div class="l">QMC 三轮镜像残差(每轮 −19 dB,漂移中持续 &lt;−60)</div></div>
+    <div class="stat"><div class="k">40 vs 81</div><div class="l">纯相位等变 DPD + QMC ≥ 宽基 DPD(系数减半)</div></div>
+    <div class="stat"><div class="k">+3.6 → −48.4 dB</div><div class="l">观测去嵌拯救自适应(静态全损伤环回)</div></div>
+    <div class="stat"><div class="k">10.4 dB</div><div class="l">满漂移下自适应 RLS 领先冻结批处理 DPD</div></div>
+    <div class="stat"><div class="k">~−35 dB</div><div class="l">C-IM3 TX 侧抵消的结构天花板(→ 硬件)</div></div>
+  </div>
+
+  <h2>环路分工:机制 → 更新方式 → 关键数字 → 入口</h2>
+  <div class="tablewrap">
+    <table>
+      <thead>
+        <tr><th>环路</th><th>管辖机制</th><th>更新方式 / 节拍</th><th>关键数字</th><th>入口</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>DPD 快环</td><td>PA 非线性 + 漂移(相位等变部分)</td><td>ILA 批处理;在线块 RLS(forget=0.6)/ whitened / APA,每块一更</td><td class="gain">RLS 一块到 LS 底;满漂移领先冻结 10.4 dB</td><td>DPD 页 · 主面板 / 自适应面板</td></tr>
+        <tr><td>QMC 慢环</td><td>TX 镜像 + LO 泄漏(PA 前 → 存在精确预逆)</td><td>残差的 <code>conj(x)</code>/DC 投影经链路增益折算 → (b, c),校准节拍</td><td class="gain">每轮 −19 dB,三轮 −88.5 dBc;DPD 基减半(40 vs 81)</td><td>DPD 页 · 前端三环面板</td></tr>
+        <tr><td>观测去嵌(盲估项)</td><td>时延 / CFO / 相位漂移 / 复增益</td><td>每采集重估:整数时延 → CFO → 分数时延 → 共相漂移 → WL</td><td class="gain">CFO 估 8.01/8 kHz;+3.6(失效)→ −48.4 dB</td><td>DPD 页 · 前端三环面板</td></tr>
+        <tr><td>去嵌标定项</td><td>RX 带内纹波 / RX IQ / RX-IM3</td><td>旁路 PA 采集(WL + δ-正则逆 FIR)+ 衰减步进两采集(κ)</td><td class="gain">盲 −29.0 → −35.9 dB(相噪地板)</td><td>库 API(<code>calibrate_rx_path / _rx_im3</code>)</td></tr>
+        <tr><td>直接学习(探索)</td><td>C-IM3 的 TX 侧抵消</td><td>torch 梯度经可微样条代理,绕开 ILA 复制假设</td><td class="gain">优于 ILA +1.0 dB,但证明结构天花板 ~−35 dB</td><td><code>padpd.dpd.direct</code>(库 / 脚本)</td></tr>
+        <tr><td>神经 DLA</td><td>多项式失效的真实 PA(GaN 等)</td><td>神经预失真器经冻结神经代理端到端训练</td><td class="gain">DPA_160 ACLR −53.1 dBc</td><td>DPD 页 · DLA(需神经代理)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="foot">数字出处:<code>docs/05_performance_summary.md</code> 与手册 §5.7 / §5.9(三环官方跑分 12 块冷→热,80 MHz / 1024-QAM)。基函数 Φ 与虚拟 DUT 来自建模侧,见姊妹图 <a href="modeling-blockdiagram.html">《PA 建模框图:机制 ↔ 分支》</a>。</p>
+</main>
+</body>
+</html>
