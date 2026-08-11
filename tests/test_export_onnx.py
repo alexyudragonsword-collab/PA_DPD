@@ -2,6 +2,9 @@ import numpy as np
 import pytest
 
 torch = pytest.importorskip("torch")
+# ONNX handoff is an optional extra (pip install .[onnx]); the
+# exporter needs the onnx package itself, not just torch
+pytest.importorskip("onnx")
 
 from padpd.deploy import export_onnx
 from padpd.nn import NeuralPAModel

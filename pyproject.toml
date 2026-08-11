@@ -35,6 +35,7 @@ Repository = "https://github.com/alexyudragonsword-collab/PA_DPD"
 [project.optional-dependencies]
 dev = ["pytest>=7.0"]
 nn = ["torch>=2.0"]
+onnx = ["onnx>=1.15", "onnxruntime"]   # ONNX handoff (export + verify)
 gui = ["streamlit>=1.36", "plotly>=5.20"]
 gui-qt = ["pyside6>=6.6", "markdown>=3.5"]
 packaging = ["pyinstaller", "nuitka[onefile]>=2.4"]   # desktop exe builders

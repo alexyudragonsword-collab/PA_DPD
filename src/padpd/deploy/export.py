@@ -130,6 +130,14 @@ def export_onnx(neural_model, path: str, frame_length: int = 200,
     """
     import torch
 
+    try:
+        import onnx  # noqa: F401  (torch's exporter needs it to serialize)
+    except ImportError as e:
+        raise ImportError(
+            "ONNX export needs the onnx package: pip install "
+            "'padpd[onnx]' (adds onnx + onnxruntime for verification)"
+        ) from e
+
     net = neural_model.net.eval()
     dummy = torch.randn(1, frame_length, 2)
     kwargs = dict(input_names=["iq_in"], output_names=["iq_out"],
