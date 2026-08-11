@@ -132,11 +132,18 @@ def export_onnx(neural_model, path: str, frame_length: int = 200,
 
     net = neural_model.net.eval()
     dummy = torch.randn(1, frame_length, 2)
-    torch.onnx.export(
-        net, (dummy,), path, input_names=["iq_in"], output_names=["iq_out"],
-        dynamic_axes={"iq_in": {0: "batch", 1: "time"},
-                      "iq_out": {0: "batch", 1: "time"}},
-        opset_version=17)
+    kwargs = dict(input_names=["iq_in"], output_names=["iq_out"],
+                  dynamic_axes={"iq_in": {0: "batch", 1: "time"},
+                                "iq_out": {0: "batch", 1: "time"}},
+                  opset_version=17)
+    try:
+        # torch >= 2.6 defaults to the dynamo exporter, which imports
+        # onnxscript — an undeclared dependency here. Pin the TorchScript
+        # exporter so a plain `pip install .[nn]` can still hand off ONNX.
+        torch.onnx.export(net, (dummy,), path, dynamo=False, **kwargs)
+    except TypeError:
+        # older torch: no `dynamo` kwarg, TorchScript is already the path
+        torch.onnx.export(net, (dummy,), path, **kwargs)
 
     result = {"path": path, "verified": False}
     if verify:

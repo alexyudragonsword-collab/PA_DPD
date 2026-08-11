@@ -6,6 +6,20 @@ pytest.importorskip("streamlit")
 
 from streamlit.testing.v1 import AppTest  # noqa: E402
 
+from pathlib import Path  # noqa: E402
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def page_path(name: str) -> str:
+    """Absolute path to a view.
+
+    AppTest.from_file resolves a relative path against the file that
+    CALLS it (i.e. tests/), not the working directory — a bare
+    "gui/views/x.py" silently became "tests/gui/views/x.py".
+    """
+    return str(ROOT / "gui" / "views" / f"{name}.py")
+
 
 @pytest.fixture(autouse=True)
 def _isolated_registry(tmp_path, monkeypatch):
@@ -20,13 +34,13 @@ PAGES = ["home", "waveform", "data", "pa_modeling", "dpd_lab", "compare",
 
 @pytest.mark.parametrize("page", PAGES)
 def test_page_renders_without_exception(page):
-    at = AppTest.from_file(f"gui/views/{page}.py", default_timeout=120)
+    at = AppTest.from_file(page_path(page), default_timeout=120)
     at.run()
     assert not at.exception, at.exception
 
 
 def test_pa_modeling_classical_fit_e2e(_isolated_registry):
-    at = AppTest.from_file("gui/views/pa_modeling.py", default_timeout=300)
+    at = AppTest.from_file(page_path("pa_modeling"), default_timeout=300)
     at.run()
     # defaults: synthetic source, classical GMP; click the fit button
     at.sidebar.button[0].click().run()
@@ -39,7 +53,7 @@ def test_pa_modeling_classical_fit_e2e(_isolated_registry):
 
 
 def test_waveform_cfr_toggle():
-    at = AppTest.from_file("gui/views/waveform.py", default_timeout=120)
+    at = AppTest.from_file(page_path("waveform"), default_timeout=120)
     at.run()
     at.sidebar.toggle[0].set_value(True).run()
     assert not at.exception
@@ -48,7 +62,7 @@ def test_waveform_cfr_toggle():
 
 
 def test_compare_lists_runs():
-    at = AppTest.from_file("gui/views/compare.py", default_timeout=120)
+    at = AppTest.from_file(page_path("compare"), default_timeout=120)
     at.run()
     assert not at.exception
 
@@ -57,7 +71,7 @@ def test_home_renders_in_english_light(monkeypatch):
     from gui import ui
     monkeypatch.setattr(ui, "load_prefs",
                         lambda *a: {"lang": "en", "theme": "light"})
-    at = AppTest.from_file("gui/views/home.py", default_timeout=120)
+    at = AppTest.from_file(page_path("home"), default_timeout=120)
     at.run()
     assert not at.exception
     assert any("Workbench" in str(t.value) for t in at.title)
