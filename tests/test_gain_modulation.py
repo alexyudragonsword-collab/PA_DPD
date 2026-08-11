@@ -70,3 +70,30 @@ def test_identified_alphas_close_the_loop(identified):
     e_ident = nmse(identified.state_alphas())
     assert e_ident < e_smp - 4
     assert e_ident < e_truth + 1.0
+
+
+def test_hysteresis_verdict_needs_a_long_enough_window():
+    """A window only a couple of tau long cannot pin the slow pole, and
+    the heating/cooling fits then land on different points of that
+    valley — a spurious asymmetry on a linear-RC DUT. The verdict must
+    be withheld (state_alphas stay usable either way)."""
+    from padpd.gain_modulation import identify_gain_modulation
+    from padpd.pa import ThermalReferencePA
+
+    fs = 80e6
+    taus = (8e-6, 5e-5)
+
+    def dut():
+        return ThermalReferencePA(drive0=0.14, fs=fs, taus_s=taus,
+                                  weights=(0.55, 0.45))
+
+    short = identify_gain_modulation(dut(), fs=fs, t_obs_s=1.25e-4)
+    assert short.significant
+    assert not short.hysteresis_reliable
+    assert "NOT assessed" in short.rationale()
+    assert len(short.state_alphas(fs)) == len(short.taus_heat_s)
+
+    long = identify_gain_modulation(dut(), fs=fs, t_obs_s=4e-4)
+    assert long.hysteresis_reliable
+    assert "NOT assessed" not in long.rationale()
+    assert abs(long.taus_heat_s[-1] - taus[-1]) < 1e-5

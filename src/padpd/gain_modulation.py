@@ -119,18 +119,56 @@ class GainModulationResult:
     taus_cool_s: list = field(default_factory=list)
     weights_cool: list = field(default_factory=list)
     fit_rms: float = 0.0
+    # time constants of the slowest pole that must fit inside the
+    # observation before the heating/cooling asymmetry is trustworthy
+    min_tau_spans: float = 4.0
     # raw trajectories for plotting / residual inspection
     t_s: np.ndarray | None = None
     gain_heat: np.ndarray | None = None
     gain_cool: np.ndarray | None = None
 
     @property
+    def observation_s(self) -> float:
+        """Duration of one step observation segment."""
+        if self.t_s is None or len(self.t_s) < 2:
+            return float("nan")
+        return float(self.t_s[-1])
+
+    @property
     def hysteresis_ratio(self) -> float:
         """Slowest cooling tau / slowest heating tau. ~1 for a linear
-        thermal RC; far from 1 suggests trapping / bias hysteresis."""
+        thermal RC; far from 1 suggests trapping / bias hysteresis —
+        but only when :attr:`hysteresis_reliable` holds."""
         if not self.taus_heat_s or not self.taus_cool_s:
             return float("nan")
         return self.taus_cool_s[-1] / self.taus_heat_s[-1]
+
+    @property
+    def hysteresis_reliable(self) -> bool:
+        """Whether the observation window constrains the slowest pole.
+
+        A multi-exponential fit cannot pin a time constant the capture
+        barely spans: with an observation only a couple of tau long the
+        slow residue and tau trade off almost freely, and the heating
+        and cooling fits land on different points of that valley — a
+        spurious hysteresis ratio on a perfectly linear thermal RC (a
+        0.47 reading with truth 1.0 was measured this way). Requires at
+        least ``min_tau_spans`` time constants of both fits inside the
+        window; ``state_alphas`` (from the heating fit) stays usable
+        either way — it is this *asymmetry verdict* that needs the
+        margin.
+
+        Even with a long window the cooling fit is the weaker of the
+        two: the backed-off segment excites the state far less, so its
+        tau carries more uncertainty than the heating tau (a linear-RC
+        DUT read 0.51 at 8 tau spans). Treat the ratio as a coarse
+        flag — only a clearly out-of-band value is evidence.
+        """
+        obs = self.observation_s
+        if not (self.taus_heat_s and self.taus_cool_s) or not obs > 0:
+            return False
+        slowest = max(self.taus_heat_s[-1], self.taus_cool_s[-1])
+        return obs >= self.min_tau_spans * slowest
 
     def state_alphas(self, fs: float | None = None) -> tuple:
         """Per-sample IIR factors for StateConditionedSpline."""
@@ -149,7 +187,16 @@ class GainModulationResult:
                 f"heating taus [{taus}] -> "
                 f"state_alphas {tuple(round(a, 6) for a in self.state_alphas())}"]
         r = self.hysteresis_ratio
-        if np.isfinite(r) and not 0.5 <= r <= 2.0:
+        if not self.hysteresis_reliable:
+            slowest = max(self.taus_heat_s[-1] if self.taus_heat_s else 0.0,
+                          self.taus_cool_s[-1] if self.taus_cool_s else 0.0)
+            bits.append(
+                f"heating/cooling asymmetry NOT assessed (ratio {r:.2f} "
+                f"unreliable): the observation is {self.observation_s*1e6:.0f}us "
+                f"but the slowest tau is {slowest*1e6:.1f}us — re-run the "
+                f"probe with t_obs >= {self.min_tau_spans*slowest*1e6:.0f}us "
+                "to judge trapping/bias hysteresis")
+        elif np.isfinite(r) and not 0.5 <= r <= 2.0:
             bits.append(f"cooling {r:.1f}x slower than heating -> "
                         "trapping/bias hysteresis suspected (a linear "
                         "thermal RC cannot capture the asymmetry)")

@@ -274,11 +274,16 @@ class ModelingPage(QWidget):
                        "(+{g:.1f} dB)").format(
                 a=res["nmse_plain_db"], b=res["nmse_state_db"],
                 g=res["state_gain_db"])
+        hyst = (tr("迟滞比 {h:.2f}").format(h=res["hysteresis_ratio"])
+                if res["hysteresis_reliable"] else
+                tr("迟滞比 {h:.2f}(观测窗仅 {o:.0f} µs,不足以判定,"
+                   "加长 t_obs 再看)").format(
+                    h=res["hysteresis_ratio"], o=res["observation_us"]))
         self.gm_msg.setText(tr(
-            "垂降 {d:+.2f} dB / {p:+.1f}°;加热 τ:{taus};迟滞比 "
-            "{h:.2f}{extra};已注册为 run。").format(
+            "垂降 {d:+.2f} dB / {p:+.1f}°;加热 τ:{taus};{hyst}"
+            "{extra};已注册为 run。").format(
             d=res["droop_db"], p=res["phase_drift_deg"], taus=taus,
-            h=res["hysteresis_ratio"], extra=extra))
+            hyst=hyst, extra=extra))
 
     def save(self):
         if not self._last:

@@ -750,6 +750,14 @@ _EN = {
     "无增益调制(垂降 {d:+.3f} dB / {p:+.2f}°)——纯 SMP/SplineGMP 即可。":
         "No gain modulation (droop {d:+.3f} dB / {p:+.2f} deg) — a "
         "plain SMP/SplineGMP suffices.",
+    "迟滞比 {h:.2f}": "hysteresis ratio {h:.2f}",
+    "迟滞比 {h:.2f}(观测窗仅 {o:.0f} µs,不足以判定,加长 t_obs 再看)":
+        "hysteresis ratio {h:.2f} (observation only {o:.0f} µs — too "
+        "short to judge; lengthen t_obs)",
+    "垂降 {d:+.2f} dB / {p:+.1f}°;加热 τ:{taus};{hyst}{extra};已注册为 run。":
+        "Droop {d:+.2f} dB / {p:+.1f} deg; heating taus: {taus}; {hyst}"
+        "{extra}; registered as a run.",
+    "观测窗不足,勿据此判定": "window too short — do not judge from this",
     "增益垂降": "Gain droop",
     "加热 τ (µs)": "Heating taus (µs)",
     "迟滞比(冷/热)": "Hysteresis ratio (cool/heat)",

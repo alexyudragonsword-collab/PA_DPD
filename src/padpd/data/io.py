@@ -58,7 +58,10 @@ def load_cadence_csv(path: str) -> IQDataset:
         raise ValueError(f"Cadence CSV is missing columns: {sorted(missing)}")
     t = cols["time"]
     dt = np.diff(t)
-    if not np.allclose(dt, dt[0], rtol=1e-6):
+    # atol=0 matters: numpy's default 1e-8 s exceeds the sample period
+    # above ~100 MHz, so a jittered export would pass and the sample
+    # rate would be taken from its first (arbitrary) step
+    if not np.allclose(dt, dt[0], rtol=1e-6, atol=0.0):
         raise ValueError("time column is not uniformly sampled")
     fs = 1.0 / dt[0]
     x = cols["i_in"] + 1j * cols["q_in"]

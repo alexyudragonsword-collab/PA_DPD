@@ -116,3 +116,12 @@ time,i_in,q_in,i_out,q_out
 下验证:τ 辨识 5.1/29.6 µs(真值 5/30)、状态样条 +8.5 dB、RX-IM3
 估计 -28.8 dBc(配置 -28)。数组约定见 `docs/02_data_interface.md`
 第 9 节。
+
+### 4.9.1 从 Cadence 导出目录打包
+
+`scripts/pack_cadence_source.py` 把一目录 Cadence CSV(`main.csv` 必备,
+`burst/step/cal_rx/atten_hi/atten_lo/op_<工况>.csv` 可选)校验后打成完整
+源 npz。**所有采集共用一个定标系数**(记入 `meta["norm_scale"]`)——逐
+采集归一化会抹掉衰减步进对与突发高低段的相对功率信息,而那正是这些
+采集组的信息所在。先跑 `--dry-run` 看采集组清单与警告,再加 `-o` 落盘;
+数组约定见 `docs/02_data_interface.md` 第 9 节。

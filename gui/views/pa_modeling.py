@@ -184,12 +184,17 @@ with st.expander(ui.tr("🌡️ 增益调制辨识(τ 表征 → 状态样条)")
                       " / ".join(f"{t:.1f}"
                                  for t in gres["taus_heat_us"]))
             g3.metric(ui.tr("迟滞比(冷/热)"),
-                      f"{gres['hysteresis_ratio']:.2f}")
+                      f"{gres['hysteresis_ratio']:.2f}",
+                      None if gres["hysteresis_reliable"]
+                      else ui.tr("观测窗不足,勿据此判定"),
+                      delta_color="off")
             if gres["state_gain_db"] is not None:
                 g4.metric(ui.tr("状态样条收益"),
                           f"+{gres['state_gain_db']:.1f} dB",
                           f"{gres['nmse_plain_db']:.1f} → "
                           f"{gres['nmse_state_db']:.1f} dB")
+            if not gres["hysteresis_reliable"]:
+                st.warning(gres["rationale"])
         st.plotly_chart(charts.fig_gain_modulation(gres),
                         use_container_width=True)
         st.caption(ui.tr("已注册为 run(kind=pa_model)。判据与实验设计"

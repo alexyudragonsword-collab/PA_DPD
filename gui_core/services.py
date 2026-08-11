@@ -631,6 +631,8 @@ def _gain_mod_dict(res, dut: str, drive: float | None, fs: float) -> dict:
             "taus_cool_us": [t * 1e6 for t in res.taus_cool_s],
             "weights_cool": res.weights_cool,
             "hysteresis_ratio": res.hysteresis_ratio,
+            "hysteresis_reliable": res.hysteresis_reliable,
+            "observation_us": res.observation_s * 1e6,
             "state_alphas": list(res.state_alphas(fs)),
             "rationale": res.rationale(),
             "t_us": _bins(res.t_s) * 1e6,

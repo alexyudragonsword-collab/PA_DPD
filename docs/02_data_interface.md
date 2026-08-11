@@ -184,3 +184,33 @@ services 侧一键消费 `consume_source_extras`。示例文件
 真值下验证:离线 τ 辨识 5.1/29.6 µs(真值 5/30)、状态样条 +8.5 dB、
 RX-IM3 估计 -28.8 dBc(配置 -28)、IRR 30.2 dB(真值 30.1)。GUI 数据
 页载入 npz 后显示采集组清单并可"运行完整源工具"。
+
+### 9.1 从 Cadence 导出目录一键打包(`scripts/pack_cadence_source.py`)
+
+把每个采集导出成一个 Cadence Envelope CSV(列 `time,i_in,q_in,i_out,
+q_out`),按约定命名放同一目录,脚本负责校验与打包:
+
+| 文件 | 角色 |
+|---|---|
+| `main.csv` | 平稳 (x,y) 采集(**必备**) |
+| `burst.csv` / `step.csv` | 突发 / 恒包络阶跃探针 |
+| `cal_rx.csv` | 旁路 PA:in=标定驱动,out=RX 输出 |
+| `atten_hi.csv` + `atten_lo.csv` | 衰减步进对(配 `--atten-step-db`) |
+| `op_<cond>.csv` | 每工况一个,`<cond>` 从文件名解析(`op_25.csv`、`op_-40.csv`、`op_1.8.csv`) |
+
+```bash
+python scripts/pack_cadence_source.py CAPTURE_DIR --dry-run     # 先校验
+python scripts/pack_cadence_source.py CAPTURE_DIR -o chip_tt_25c.npz \
+    --atten-step-db 6 --meta center_freq_hz=5.955e9 corner=tt
+```
+
+**定标只用一个公共系数**(由 `main.csv` 的输入 rms 导出,记入
+`meta["norm_scale"]`,乘回即得原始单位)。逐采集各自归一化是错的——
+衰减步进对与突发的高/低段携带的正是**相对功率**信息,而这恰是这两组
+存在的意义;实测校验:6 dB 步进打包后仍精确为 6.02 dB。
+
+校验项(全部给可操作的报错):缺 `main.csv`、时间列非均匀采样、各采集
+采样率不一致、衰减对只给一半、给了衰减对却没给 `--atten-step-db`、
+工况点不足 2 个(降级为警告并丢弃该组)。注意时间列均匀性检查用
+`atol=0`——numpy 默认的 1e-8 秒在 100 MHz 以上比采样周期还大,会把
+抖动的导出静默放行。

@@ -150,3 +150,16 @@ load on the data page) verifies against virtual-DUT ground truth: taus
 identified at 5.1/29.6 µs (truth 5/30), state spline +8.5 dB, RX-IM3
 estimated at -28.8 dBc (configured -28). Array conventions are in
 `docs/02_data_interface.md`, section 9.
+
+### 4.9.1 Packing a Cadence Export Directory
+
+`scripts/pack_cadence_source.py` validates a directory of Cadence CSVs
+(`main.csv` required; `burst/step/cal_rx/atten_hi/atten_lo/op_<cond>.csv`
+optional) and packs it into a complete-source npz. **One common scale
+factor covers every capture** (recorded in `meta["norm_scale"]`) —
+normalizing each capture on its own would erase the relative power
+between the attenuator-step pair and between the burst's high/low
+segments, which is precisely the information those groups carry. Run
+`--dry-run` first for the capture-group checklist and warnings, then add
+`-o` to write. Array conventions are in `docs/02_data_interface.md`,
+section 9.
