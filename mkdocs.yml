@@ -1,0 +1,72 @@
+site_name: padpd
+site_description: WiFi 7 (802.11be) PA 行为建模与数字预失真研发平台
+repo_url: https://github.com/alexyudragonsword-collab/PA_DPD
+repo_name: PA_DPD
+docs_dir: docs
+site_dir: site
+
+theme:
+  name: material
+  language: zh
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - search.suggest
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      toggle: {icon: material/weather-night, name: 切换到深色}
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      toggle: {icon: material/weather-sunny, name: 切换到浅色}
+
+validation:
+  nav:
+    not_found: warn
+  links:
+    not_found: ignore          # docs/pages/*.html 是原样拷贝的静态页
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            members_order: source
+            separate_signature: true
+            filters: ["!^_"]
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc: {permalink: true}
+  - pymdownx.superfences
+  - pymdownx.details
+
+nav:
+  - 首页: index.md
+  - 工程文档:
+      - 总体流程: 00_overview.md
+      - 环境搭建: 01_environment_setup.md
+      - 数据接口: 02_data_interface.md
+      - 路线图: 03_roadmap.md
+      - 神经建模: 04_neural.md
+      - 性能汇总: 05_performance_summary.md
+      - GUI 导览: 06_gui.md
+  - API 参考:
+      - 概览: api/index.md
+      - 波形 waveform: api/waveform.md
+      - PA 模型 pa: api/pa.md
+      - DPD dpd: api/dpd.md
+      - 数据 data: api/data.md
+      - 指标 metrics: api/metrics.md
+      - 部署 deploy: api/deploy.md
+      - 表征与环路: api/analysis.md

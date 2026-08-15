@@ -194,6 +194,8 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
   辨识 + 一键消费工具 + 示例文件,数据页显示完整度清单),手册
   §5.9 与第 4 章
 
+参与开发见 [CONTRIBUTING.md](CONTRIBUTING.md),版本历史见 [CHANGELOG.md](CHANGELOG.md);工程文档与 API 参考可用 `mkdocs serve` 在本地浏览(`pip install -r docs/requirements.txt`)。
+
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 一页式速览(自包含 HTML,clone 后浏览器直接打开):
 [PA 建模框图](docs/pages/modeling-blockdiagram.html)(机制 ↔ 分支一一映射)、

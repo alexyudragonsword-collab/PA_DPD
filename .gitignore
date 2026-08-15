@@ -27,3 +27,6 @@ packaging/build/
 packaging/build_nuitka/
 packaging/build_nuitka.log
 gui_prefs.json
+
+# mkdocs 构建输出
+site/

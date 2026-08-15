@@ -1,0 +1,45 @@
+name: Docs
+
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - docs/**
+      - mkdocs.yml
+      - src/**            # API 参考由 docstring 生成
+      - .github/workflows/docs.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: docs
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11", cache: pip}
+      # 站点不需要可选依赖:mkdocstrings 走 griffe 静态分析,不导入模块
+      - run: pip install -e . && pip install -r docs/requirements.txt
+      - run: python -m mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: site}
+
+  deploy:
+    # 只有默认分支才发布;其他分支上一步的 --strict 构建即是门禁
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

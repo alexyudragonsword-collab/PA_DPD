@@ -1,0 +1,4 @@
+# 文档站构建依赖(与运行时依赖分开,CI 的 docs job 使用)
+mkdocs>=1.6
+mkdocs-material>=9.5
+mkdocstrings[python]>=0.26
