@@ -1,0 +1,18 @@
+version: 0.1
+project:
+  name: "padpd"
+  summary: "WiFi 7(802.11be)PA 行为建模与数字预失真的 AI 辅助研发平台:经典/神经/样条 PA 模型、ILA/DLA 预失真、前端损伤专用抵消环、定点部署与 PA/DPD 联合设计。"
+cairn:
+  knowledge_dir: "cairn"
+  # Date of the skill spec this instance was initialized against.
+  skill_spec_date: "2026-08-07"
+  # git_policy: track | ignore | private_sync
+  git_policy: "track"
+  # language: en | zh | ...
+  language: "zh"
+graduation:
+  # (c) 暂缓对接 —— provider 决策留到首次毕业时收集
+  provider: none
+history:
+  # migration_mode: start_fresh | inventory_only | selective_migrate
+  migration_mode: "inventory_only"
