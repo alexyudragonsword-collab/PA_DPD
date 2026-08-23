@@ -4,14 +4,12 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -25,7 +23,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -82,7 +79,6 @@ fun GalleryScreen() {
     var bootError by remember { mutableStateOf<String?>(null) }
     val loaded = remember { mutableStateMapOf<String, Load>() }
     var open by remember { mutableStateOf<String?>(null) }
-    var clicks by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         // Interpreter startup unpacks numpy and scipy; measured at 178 ms
@@ -114,69 +110,13 @@ fun GalleryScreen() {
     LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
         item {
             Header(caps, bootError)
-            StateMarkers(open, clicks, caps, entries.size)
         }
         items(entries, key = { it.id }) { entry ->
             EntryRow(
                 entry,
                 state = loaded[entry.id],
                 expanded = open == entry.id,
-                onClick = {
-                    clicks++
-                    open = if (open == entry.id) null else entry.id
-                },
-            )
-        }
-    }
-}
-
-/**
- * Zero-size nodes whose test tags carry the screen's own state.
- *
- * Diagnostic scaffolding for a failure that has so far only been
- * observable from outside: a tap that reaches onClick (the semantics
- * action is present and fires) but leaves the row collapsed. Encoding
- * `open` and the click count as tags puts both in the tag list a failing
- * test prints, which separates "onClick never ran" from "it ran and the
- * state change did not reach the row".
- */
-@Composable
-private fun StateMarkers(
-    open: String?,
-    clicks: Int,
-    caps: PyBridge.Capabilities?,
-    entryCount: Int,
-) {
-    Box(Modifier.size(1.dp).testTag("open=${open ?: "none"}"))
-    Box(Modifier.size(1.dp).testTag("clicks=$clicks"))
-    // caps and entries are written together in one success branch, so
-    // capsNull=true alongside entries>0 cannot happen within a single
-    // composition. Run 8 showed the header on its "starting Python"
-    // branch while seven rows were on screen, which says one of those
-    // two beliefs is wrong. These read both states from the same place
-    // the header reads them.
-    Box(Modifier.size(1.dp).testTag("capsNull=${caps == null}"))
-    Box(Modifier.size(1.dp).testTag("entries=$entryCount"))
-}
-
-@Composable
-private fun Header(caps: PyBridge.Capabilities?, error: String?) {
-    Column(Modifier.padding(bottom = 12.dp)) {
-        Text("padpd chart gallery", fontSize = 20.sp,
-             fontWeight = FontWeight.SemiBold)
-        when {
-            error != null -> Text("Python failed to start: $error",
-                                  color = MaterialTheme.colorScheme.error,
-                                  fontSize = 12.sp,
-                                  modifier = Modifier.testTag("bootError"))
-            caps == null -> Text("starting Python…", fontSize = 12.sp,
-                                 modifier = Modifier.testTag("bootPending"))
-            else -> Text(
-                "padpd ${caps.version} · ${caps.charts.size} chart types · " +
-                    "torch unavailable (${caps.unavailable.size} entry points)",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("caps"),
+                onClick = { open = if (open == entry.id) null else entry.id },
             )
         }
     }
@@ -215,9 +155,6 @@ private fun EntryRow(
                  fontFamily = FontFamily.Monospace,
                  color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-
-        // Diagnostic: says what this row was actually handed.
-        Box(Modifier.size(1.dp).testTag("expanded:${entry.id}=$expanded"))
 
         if (expanded) {
             Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {

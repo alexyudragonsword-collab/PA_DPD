@@ -1,6 +1,5 @@
 package com.padpd
 
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -42,53 +41,29 @@ class GalleryScreenTest {
         assertFalse("Python failed to start on device", exists("bootError"))
         compose.onNodeWithTag("caps", useUnmergedTree = true).assertIsDisplayed()
 
-        // The caption, not the row: the chart is deliberately outside the
-        // tap target so it can be panned without collapsing its own row.
-        val row = compose.onNodeWithTag("head:psd")
-        val hasOnClick =
-            row.fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick) != null
+        // The caption, not the whole row: the chart sits outside the tap
+        // target so it can be panned without collapsing its own row. One
+        // click only, since the handler toggles.
+        compose.onNodeWithTag("head:psd").performClick()
 
-        // Exactly one click. The handler toggles, so a second attempt
-        // would undo a first that worked.
-        row.performClick()
-        val expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
-
-        val seen = awaitAny(CHART_TIMEOUT_MS,
-                            "hasOnClick=$hasOnClick", "expanded=$expanded",
-                            "chart:psd", "error:psd")
+        val seen = awaitAny(CHART_TIMEOUT_MS, "chart:psd", "error:psd")
         assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
             .assertIsDisplayed()
     }
 
     /** Poll in real time for the first of [tags] to appear, and report
-     * what was there instead if none does. The first vararg may be a
-     * "note=value" string rather than a tag; it is not polled for, only
-     * quoted in the failure. */
+     * what the semantics tree held instead if none does. */
     private fun awaitAny(timeoutMs: Long, vararg tags: String): String {
-        val notes = tags.filter { it.contains('=') }
-        val real = tags.filterNot { it.contains('=') }
-        val deadline = System.currentTimeMillis() + timeoutMs
-        while (System.currentTimeMillis() < deadline) {
-            compose.waitForIdle()
-            real.firstOrNull { exists(it) }?.let { return it }
-            Thread.sleep(POLL_MS)
-        }
-        fail("none of $real appeared within ${timeoutMs}ms. " +
-             "Tags present: ${presentTags()}. $notes")
-        error("unreachable")
-    }
-
-    /** Like [awaitAny] but returns null on timeout instead of failing,
-     * for observations that are diagnostic rather than the assertion. */
-    private fun await(timeoutMs: Long, vararg tags: String): String? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             compose.waitForIdle()
             tags.firstOrNull { exists(it) }?.let { return it }
             Thread.sleep(POLL_MS)
         }
-        return null
+        fail("none of ${tags.toList()} appeared within ${timeoutMs}ms. " +
+             "Tags present: ${presentTags()}")
+        error("unreachable")
     }
 
     // Unmerged, and that is the whole point. Modifier.clickable merges
@@ -112,7 +87,6 @@ class GalleryScreenTest {
         // First launch unpacks numpy and scipy.
         const val BOOT_TIMEOUT_MS = 120_000L
         const val CHART_TIMEOUT_MS = 60_000L
-        const val EXPAND_TIMEOUT_MS = 10_000L
         const val POLL_MS = 250L
     }
 }
