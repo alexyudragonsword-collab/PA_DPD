@@ -183,29 +183,48 @@ jobs:
           arch: x86_64
           disable-animations: true
           script: |
-            cd android
+            # set +e FIRST and on its own line. The action runs this under
+            # `set -e`, so a failing gradle pipeline aborts the whole script
+            # - taking the collection below with it. PIPESTATUS preserves
+            # gradle's exit code but does NOT stop that abort; the two are
+            # complementary, not alternatives. Run 7 collected nothing at
+            # all because only PIPESTATUS was in place.
+            set +e
+
+            # Write under the checkout rather than $RUNNER_TEMP: this script
+            # runs inside a nested action whose environment is not
+            # guaranteed to carry the runner's temp path, and an unset
+            # variable would silently aim tee at /gradle-test.log.
+            out="$GITHUB_WORKSPACE/probe-artifacts"
+            mkdir -p "$out"
+
+            cd "$GITHUB_WORKSPACE/android"
             ./gradlew :app:connectedDebugAndroidTest \
               -PpadpdAbis=x86_64 \
               -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-              2>&1 | tee "$RUNNER_TEMP/gradle-test.log"
+              2>&1 | tee "$out/gradle-test.log"
             status=${PIPESTATUS[0]}
-            # Collect the report whether or not the assertions passed - a
-            # failing probe is exactly when its output is worth reading.
-            adb logcat -d -s padpd-probe:I > "$GITHUB_WORKSPACE/probe-logcat.txt" || true
+
+            # Collect whether or not the assertions passed - a failing probe
+            # is exactly when its output is worth reading.
+            adb logcat -d -s padpd-probe:I > "$out/probe-logcat.txt"
             adb pull \
               /sdcard/Android/data/com.padpd.spike/files/probe-report.txt \
-              "$GITHUB_WORKSPACE/probe-report.txt" || true
+              "$out/probe-report.txt"
+
+            echo "--- collected ---"
+            ls -l "$out"
             exit $status
 
       - name: Surface Gradle failure
         if: failure()
-        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-test.log"
+        run: .github/scripts/surface-gradle-failure.sh probe-artifacts/gradle-test.log
 
       - name: Publish probe report
         if: always()
         run: |
-          report=probe-report.txt
-          [ -s "$report" ] || report=probe-logcat.txt
+          report=probe-artifacts/probe-report.txt
+          [ -s "$report" ] || report=probe-artifacts/probe-logcat.txt
           {
             echo "## Probe report (emulated x86_64)"
             echo
@@ -223,7 +242,6 @@ jobs:
         with:
           name: probe-report
           path: |
-            probe-report.txt
-            probe-logcat.txt
+            probe-artifacts/**
             android/app/build/reports/androidTests/**
           if-no-files-found: warn
