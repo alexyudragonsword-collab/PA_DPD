@@ -56,9 +56,19 @@ jobs:
       - name: Assemble release (arm64-v8a)
         working-directory: android
         run: |
+          set -o pipefail
           ./gradlew :app:assembleRelease \
             -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-            --stacktrace
+            2>&1 | tee "$RUNNER_TEMP/gradle-assemble.log"
+
+      # Gradle prints "What went wrong" ABOVE its stack trace, so on a long
+      # failure the one line that matters scrolls far from the end of the
+      # job log - and --stacktrace makes that worse, not better. Re-print
+      # the tail from a step of its own so the message lands at the bottom
+      # of the log and in the run summary.
+      - name: Surface Gradle failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-assemble.log"
 
       - name: Report APK size
         working-directory: android
@@ -138,19 +148,22 @@ jobs:
           disable-animations: true
           script: |
             cd android
-            set +e
             ./gradlew :app:connectedDebugAndroidTest \
               -PpadpdAbis=x86_64 \
               -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-              --stacktrace
-            status=$?
+              2>&1 | tee "$RUNNER_TEMP/gradle-test.log"
+            status=${PIPESTATUS[0]}
             # Collect the report whether or not the assertions passed - a
             # failing probe is exactly when its output is worth reading.
-            adb logcat -d -s padpd-probe:I > "$GITHUB_WORKSPACE/probe-logcat.txt"
+            adb logcat -d -s padpd-probe:I > "$GITHUB_WORKSPACE/probe-logcat.txt" || true
             adb pull \
               /sdcard/Android/data/com.padpd.spike/files/probe-report.txt \
-              "$GITHUB_WORKSPACE/probe-report.txt"
+              "$GITHUB_WORKSPACE/probe-report.txt" || true
             exit $status
+
+      - name: Surface Gradle failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-test.log"
 
       - name: Publish probe report
         if: always()
