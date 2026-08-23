@@ -139,11 +139,17 @@ class Scale(
 
         /** Enough decimals for the step, and no more - "-30" not
          * "-30.000000001", which is what naive formatting of an
-         * accumulated float step produces. */
+         * accumulated float step produces.
+         *
+         * Note the rounding: toLong() truncates towards zero, so a tick
+         * that accumulated to -29.999999999999996 came out labelled "-29"
+         * - every negative gridline off by one step, with the line drawn
+         * in the right place. Caught by ScaleTest, which is what it is
+         * for. */
         fun formatTick(v: Double, step: Double): String {
             val decimals = max(0, -floor(log10(step)).toInt())
             val snapped = if (abs(v) < step * 1e-6) 0.0 else v
-            return if (decimals == 0) snapped.toLong().toString()
+            return if (decimals == 0) Math.round(snapped).toString()
             else String.format("%.${min(decimals, 6)}f", snapped)
         }
 
