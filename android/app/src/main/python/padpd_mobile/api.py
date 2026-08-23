@@ -283,6 +283,10 @@ def page(name: str, args_json: str = "{}") -> str:
         return json.dumps({"ok": True,
                            "handle": _register(built["result"]),
                            "metrics": built["metrics"],
+                           # Sentences the screen wants shown verbatim -
+                           # the gain-modulation verdict, for one, whose
+                           # wording depends on what was measured.
+                           "notes": built.get("notes", []),
                            "charts": charts})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",

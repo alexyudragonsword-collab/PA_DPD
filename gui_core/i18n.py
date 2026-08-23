@@ -39,6 +39,13 @@ _EN = {
     "正在启动 Python…": "starting Python…",
     "{n} 种图表": "{n} chart types",
     "torch 不可用({n} 个入口)": "torch unavailable ({n} entry points)",
+    "torch 在 Android 上没有可用轮子,神经模型无法在设备上训练。":
+        "torch has no Android wheel; neural models cannot be trained "
+        "on device.",
+    "垂降": "Droop",
+    "相位漂移": "Phase drift",
+    "观测窗": "Observation window",
+    "{t:.1f}µs(权重 {w:.2f})": "{t:.1f}µs (weight {w:.2f})",
     "主题": "Theme",
     "用户手册": "User Manual",
     "目录": "Contents",

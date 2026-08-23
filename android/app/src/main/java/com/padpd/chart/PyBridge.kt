@@ -63,6 +63,9 @@ object PyBridge {
         val handle: String,
         val metrics: List<Metric>,
         val charts: Map<String, ChartSpec>,
+        /** Sentences the screen wants shown verbatim - a verdict whose
+         * wording depends on what was measured, for instance. */
+        val notes: List<String> = emptyList(),
     )
 
     @Serializable
@@ -71,6 +74,7 @@ object PyBridge {
         val handle: String = "",
         val metrics: List<Metric> = emptyList(),
         val charts: Map<String, ChartSpec> = emptyMap(),
+        val notes: List<String> = emptyList(),
         val error: String = "",
         val traceback: String = "",
     )
@@ -147,7 +151,8 @@ object PyBridge {
         val reply = ChartJson.decodeFromString(PageReply.serializer(), json)
         if (!reply.ok) throw IllegalStateException(
             "${reply.error}\n${reply.traceback}")
-        return Screen(reply.handle, reply.metrics, reply.charts)
+        return Screen(reply.handle, reply.metrics, reply.charts,
+                      reply.notes)
     }
 
     /**

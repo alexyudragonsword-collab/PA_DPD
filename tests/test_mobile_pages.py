@@ -118,6 +118,88 @@ def test_bad_parameters_return_the_traceback(api):
     assert "traceback" in reply
 
 
+# ---- the modeling screen ------------------------------------------------
+def _screen(api, name, *args, **kwargs):
+    payload = json.dumps({"args": list(args), "kwargs": kwargs})
+    reply = json.loads(api.page(name, payload))
+    assert reply["ok"], reply.get("traceback", reply.get("error"))
+    return reply
+
+
+def test_modeling_screen_fits_and_plots(api):
+    from padpd_mobile import pages
+    reply = _screen(api, "modeling", "GMP", 5, 4, 0.14, "none")
+    assert set(reply["charts"]) == set(pages.chart_names("modeling"))
+    nmse = next(m for m in reply["metrics"] if "NMSE" in m["label"])
+    # A GMP on the synthetic ReferencePA fits well; the threshold is
+    # loose because the point is "the fit happened", not its quality.
+    assert float(nmse["value"].split()[0]) < -20, nmse   # measured -55.42
+
+
+def test_modeling_psd_plots_measured_against_predicted(api):
+    """Two curves, not one: the whole point of the panel is the residual
+    between them, and a single-curve chart would look fine and say
+    nothing."""
+    reply = _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    series = reply["charts"]["psd"]["panels"][0]["series"]
+    assert len(series) == 2, [s.get("label") for s in series]
+
+
+def test_every_classical_model_is_callable(api):
+    """The type list is CLASSICAL_MODELS itself, so a model added there
+    reaches the phone's picker; this asserts none of them raises when
+    built with the order/memory the screen actually sends."""
+    import gui_core.services as services
+    for name in services.CLASSICAL_MODELS:
+        reply = json.loads(api.page("modeling", json.dumps(
+            {"args": [name, 5, 4, 0.14, "none"]})))
+        assert reply["ok"], f"{name}: {reply.get('error')}"
+
+
+def test_neural_family_is_refused_rather_than_crashing(api):
+    """torch has no Android wheel. The dispatch table says so up front,
+    and the refusal names the reason - a screen greying the control out
+    still needs the call underneath to fail cleanly if it is reached."""
+    reply = json.loads(api.call("fit_neural", json.dumps({"args": []})))
+    assert reply["ok"] is False
+    assert "torch" in reply["error"]
+
+
+# ---- the gain-modulation screen -----------------------------------------
+def test_static_dut_reports_no_modulation(api):
+    """The control case: a plain ReferencePA has no thermal state, so the
+    probe must say so. If this ever reports modulation, the probe is
+    measuring its own noise."""
+    reply = _screen(api, "gain_modulation", "static", 0.13, False)
+    assert reply["charts"]["gain_modulation"]["panels"]
+    assert "无增益调制" in reply["notes"][0] or "No gain" in reply["notes"][0]
+
+
+def test_gain_modulation_verdict_is_a_sentence_not_a_number(api):
+    """The desktop turns this result into prose whose branches depend on
+    significance and on whether the observation window supports the
+    hysteresis figure. That wording lives in pages.py so it exists once."""
+    reply = _screen(api, "gain_modulation", "static", 0.13, False)
+    assert reply["notes"] and len(reply["notes"][0]) > 20
+
+
+def test_screens_register_runs_they_claim_to_register(api, tmp_path_factory):
+    """The notes say "registered as a run". This asserts that is true.
+
+    A message describing an effect that did not happen is worse than no
+    message: it is checked by reading, and reading cannot tell.
+    """
+    from gui_core.paths import user_data_dir
+    from gui_core.runstore import RunStore
+
+    before = len(RunStore(user_data_dir() / "gui_runs").list())
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    _screen(api, "gain_modulation", "static", 0.13, False)
+    after = RunStore(user_data_dir() / "gui_runs").list()
+    assert len(after) == before + 2, [r.name for r in after]
+    assert all(r.kind == "pa_model" for r in after[:2])
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n
@@ -175,6 +257,35 @@ def test_kotlin_block_comments_are_balanced():
         if depth:
             bad[f.name] = depth
     assert not bad, f"unbalanced Kotlin block comments: {bad}"
+
+
+def test_every_tr_key_in_the_screen_layer_has_a_translation():
+    """The Python half of the same rule, for padpd_mobile.
+
+    tests/test_gui_i18n.py walks gui/ and gui_qt/ for tr() calls but not
+    android/, so the screen layer's own strings - the gain-modulation
+    verdict among them - were outside every existing guard. Same AST
+    walk, pointed at pages.py.
+    """
+    import ast
+
+    from gui_core import i18n
+    tree = ast.parse((MOBILE / "padpd_mobile" / "pages.py").read_text(
+        encoding="utf-8"))
+    missing = set()
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        fn = node.func
+        name = (fn.id if isinstance(fn, ast.Name)
+                else getattr(fn, "attr", ""))
+        if name != "tr" or not node.args:
+            continue
+        arg = node.args[0]
+        if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
+            if CJK.search(arg.value) and arg.value not in i18n._EN:
+                missing.add(arg.value)
+    assert not missing, f"pages.py tr() keys missing from i18n: {missing}"
 
 
 def test_every_chinese_string_in_kotlin_has_a_translation():

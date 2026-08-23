@@ -63,13 +63,6 @@ private val CHART_TABS = listOf(
     "time" to "时域",
 )
 
-private sealed interface Run {
-    data object Idle : Run
-    data object Busy : Run
-    data class Ready(val screen: PyBridge.Screen, val blobs: BlobStore) : Run
-    data class Failed(val message: String) : Run
-}
-
 @Composable
 fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
     var bandwidth by remember { mutableIntStateOf(80) }
@@ -77,7 +70,7 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
     var symbols by remember { mutableIntStateOf(8) }
     var seed by remember { mutableIntStateOf(0) }
     var cfrOn by remember { mutableStateOf(false) }
-    var run by remember { mutableStateOf<Run>(Run.Idle) }
+    var run by remember { mutableStateOf<ScreenRun>(ScreenRun.Idle) }
     var generation by remember { mutableIntStateOf(0) }
     var tab by remember { mutableIntStateOf(0) }
 
@@ -86,24 +79,14 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
     // rebuild the screen rather than re-render it.
     LaunchedEffect(generation, lang) {
         if (generation == 0) return@LaunchedEffect
-        run = Run.Busy
-        run = runCatching {
-            withContext(Dispatchers.Default) {
-                val screen = PyBridge.page(
-                    "waveform",
-                    args = listOf(
-                        JsonPrimitive(bandwidth), JsonPrimitive(qam),
-                        JsonPrimitive(symbols), JsonPrimitive(seed),
-                        if (cfrOn) JsonPrimitive(CFR_PAPR_DB)
-                        else JsonPrimitive(null as String?),
-                    ),
-                    kwargs = mapOf("lang" to JsonPrimitive(lang)),
-                )
-                val blobs = PyBridge.newBlobStore()
-                    .apply { screen.charts.values.forEach { preload(it) } }
-                Run.Ready(screen, blobs)
-            }
-        }.getOrElse { Run.Failed(it.message ?: it.toString()) }
+        run = ScreenRun.Busy
+        run = loadScreen(
+            "waveform", lang,
+            JsonPrimitive(bandwidth), JsonPrimitive(qam),
+            JsonPrimitive(symbols), JsonPrimitive(seed),
+            if (cfrOn) JsonPrimitive(CFR_PAPR_DB)
+            else JsonPrimitive(null as String?),
+        )
     }
 
     Column(modifier.fillMaxSize().padding(12.dp)) {
@@ -114,10 +97,10 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
                 .horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Choice(tr("带宽(MHz)"), BANDWIDTHS, bandwidth) { bandwidth = it }
-            Choice("QAM", QAM_ORDERS, qam) { qam = it }
-            Stepper(tr("符号数"), symbols, 2, 40, 2) { symbols = it }
-            Stepper(tr("种子"), seed, 0, 9999, 1) { seed = it }
+            OptionRow(tr("带宽(MHz)"), BANDWIDTHS, bandwidth) { bandwidth = it }
+            OptionRow("QAM", QAM_ORDERS, qam) { qam = it }
+            IntStepper(tr("符号数"), symbols, 2, 40, 2) { symbols = it }
+            IntStepper(tr("种子"), seed, 0, 9999, 1) { seed = it }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("CFR 削峰"), fontSize = 12.sp)
                 Switch(cfrOn, { cfrOn = it }, Modifier.testTag("cfr"))
@@ -126,23 +109,23 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
 
         Button(
             { generation++ },
-            enabled = run !is Run.Busy,
+            enabled = run !is ScreenRun.Busy,
             modifier = Modifier.testTag("generate"),
         ) { Text(tr("生成波形")) }
 
         when (val state = run) {
-            is Run.Idle -> Unit
-            is Run.Busy -> Text(
+            is ScreenRun.Idle -> Unit
+            is ScreenRun.Busy -> Text(
                 tr("计算中…"), fontSize = 12.sp,
                 modifier = Modifier.padding(top = 12.dp).testTag("busy"),
             )
-            is Run.Failed -> Text(
+            is ScreenRun.Failed -> Text(
                 state.message, fontSize = 11.sp,
                 fontFamily = FontFamily.Monospace,
                 color = MaterialTheme.colorScheme.error,
                 modifier = Modifier.padding(top = 12.dp).testTag("waveformError"),
             )
-            is Run.Ready -> {
+            is ScreenRun.Ready -> {
                 MetricRow(state.screen.metrics)
                 TabRow(tab, Modifier.testTag("chartTabs")) {
                     CHART_TABS.forEachIndexed { i, (slot, label) ->
@@ -163,98 +146,6 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun MetricRow(metrics: List<PyBridge.Metric>) {
-    Row(
-        Modifier.fillMaxWidth().padding(vertical = 8.dp)
-            .horizontalScroll(rememberScrollState()),
-    ) {
-        for (m in metrics) {
-            Column(
-                Modifier.padding(end = 8.dp)
-                    .background(
-                        MaterialTheme.colorScheme.surfaceVariant,
-                        RoundedCornerShape(8.dp),
-                    )
-                    .padding(10.dp)
-                    .width(140.dp)
-                    .testTag("metric:${m.label}"),
-            ) {
-                Text(
-                    m.label, fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                Text(m.value, fontSize = 15.sp, fontWeight = FontWeight.Medium)
-                if (m.note.isNotEmpty()) {
-                    Text(
-                        m.note, fontSize = 10.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        }
-    }
-}
-
-/** A value picked from a fixed set, the phone form of a QComboBox. */
-@Composable
-private fun Choice(
-    label: String,
-    options: List<Int>,
-    selected: Int,
-    onPick: (Int) -> Unit,
-) {
-    Column(Modifier.padding(end = 12.dp)) {
-        Text(label, fontSize = 10.sp,
-             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row {
-            for (o in options) {
-                val chosen = o == selected
-                Text(
-                    o.toString(),
-                    fontSize = 12.sp,
-                    fontWeight = if (chosen) FontWeight.Bold else FontWeight.Normal,
-                    color = if (chosen) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier
-                        .padding(end = 6.dp)
-                        .testTag("$label:$o")
-                        .clickable { onPick(o) },
-                )
-            }
-        }
-    }
-}
-
-/** An integer nudged by fixed steps, the phone form of a QSpinBox. */
-@Composable
-private fun Stepper(
-    label: String,
-    value: Int,
-    min: Int,
-    max: Int,
-    step: Int,
-    onSet: (Int) -> Unit,
-) {
-    Column(Modifier.padding(end = 12.dp)) {
-        Text(label, fontSize = 10.sp,
-             color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text("−", fontSize = 16.sp,
-                 modifier = Modifier.testTag("$label:-")
-                     .clickable { onSet((value - step).coerceAtLeast(min)) })
-            Text(value.toString(), fontSize = 13.sp,
-                 modifier = Modifier.testTag("$label:value"))
-            Text("+", fontSize = 16.sp,
-                 modifier = Modifier.testTag("$label:+")
-                     .clickable { onSet((value + step).coerceAtMost(max)) })
         }
     }
 }

@@ -34,6 +34,7 @@ import com.padpd.chart.PyBridge
 import com.padpd.i18n.Strings
 import com.padpd.i18n.tr
 import com.padpd.screens.GalleryScreen
+import com.padpd.screens.ModelingScreen
 import com.padpd.screens.Placeholder
 import com.padpd.screens.WaveformScreen
 import kotlinx.coroutines.Dispatchers
@@ -118,6 +119,8 @@ fun PadpdApp() {
                 NavBar(where) { where = it }
                 when (where) {
                     Destination.WAVEFORM -> WaveformScreen(lang)
+                    Destination.MODELING ->
+                        ModelingScreen(lang, torchAvailable = caps!!.torch)
                     Destination.GALLERY -> GalleryScreen()
                     else -> Placeholder(tr(where.zh))
                 }
