@@ -163,7 +163,15 @@ jobs:
         with:
           python-version: "3.10"
 
+      # cache-disabled, unlike in the build job. Its post-action runs a
+      # Gradle cache cleanup at --info and emits ~100 lines AFTER every
+      # step of this job, which buries the probe report and the failure
+      # diagnostics at a point in the log no step of mine can reach past.
+      # This job is dominated by emulator boot anyway, so the cache was
+      # buying very little.
       - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
 
       - name: Enable KVM
         run: |
@@ -191,14 +199,23 @@ jobs:
             # all because only PIPESTATUS was in place.
             set +e
 
+            # Marker plus environment dump. Runs 8 and 9 produced no files
+            # whatsoever, which does not distinguish "the script ran and
+            # collection failed" from "the script never ran because the
+            # emulator did not come up". This line separates the two.
+            echo "=== probe script started ==="
+            echo "pwd=$(pwd)"
+            echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE:-<unset>}"
+            adb devices
+
             # Write under the checkout rather than $RUNNER_TEMP: this script
             # runs inside a nested action whose environment is not
             # guaranteed to carry the runner's temp path, and an unset
             # variable would silently aim tee at /gradle-test.log.
-            out="$GITHUB_WORKSPACE/probe-artifacts"
-            mkdir -p "$out"
+            out="${GITHUB_WORKSPACE:-$(pwd)}/probe-artifacts"
+            mkdir -p "$out" && echo "collecting into $out"
 
-            cd "$GITHUB_WORKSPACE/android"
+            cd "${GITHUB_WORKSPACE:-$(pwd)}/android" || { echo "cannot cd to android/"; exit 1; }
             ./gradlew :app:connectedDebugAndroidTest \
               -PpadpdAbis=x86_64 \
               -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
