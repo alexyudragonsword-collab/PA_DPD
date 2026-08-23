@@ -190,48 +190,10 @@ jobs:
           target: google_apis
           arch: x86_64
           disable-animations: true
-          script: |
-            # set +e FIRST and on its own line. The action runs this under
-            # `set -e`, so a failing gradle pipeline aborts the whole script
-            # - taking the collection below with it. PIPESTATUS preserves
-            # gradle's exit code but does NOT stop that abort; the two are
-            # complementary, not alternatives. Run 7 collected nothing at
-            # all because only PIPESTATUS was in place.
-            set +e
-
-            # Marker plus environment dump. Runs 8 and 9 produced no files
-            # whatsoever, which does not distinguish "the script ran and
-            # collection failed" from "the script never ran because the
-            # emulator did not come up". This line separates the two.
-            echo "=== probe script started ==="
-            echo "pwd=$(pwd)"
-            echo "GITHUB_WORKSPACE=${GITHUB_WORKSPACE:-<unset>}"
-            adb devices
-
-            # Write under the checkout rather than $RUNNER_TEMP: this script
-            # runs inside a nested action whose environment is not
-            # guaranteed to carry the runner's temp path, and an unset
-            # variable would silently aim tee at /gradle-test.log.
-            out="${GITHUB_WORKSPACE:-$(pwd)}/probe-artifacts"
-            mkdir -p "$out" && echo "collecting into $out"
-
-            cd "${GITHUB_WORKSPACE:-$(pwd)}/android" || { echo "cannot cd to android/"; exit 1; }
-            ./gradlew :app:connectedDebugAndroidTest \
-              -PpadpdAbis=x86_64 \
-              -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-              2>&1 | tee "$out/gradle-test.log"
-            status=${PIPESTATUS[0]}
-
-            # Collect whether or not the assertions passed - a failing probe
-            # is exactly when its output is worth reading.
-            adb logcat -d -s padpd-probe:I > "$out/probe-logcat.txt"
-            adb pull \
-              /sdcard/Android/data/com.padpd.spike/files/probe-report.txt \
-              "$out/probe-report.txt"
-
-            echo "--- collected ---"
-            ls -l "$out"
-            exit $status
+          # ONE line. The action runs each line of `script` in its own
+          # shell, so nothing persists between lines - not variables, not
+          # cd, not set +e. See the script's header comment.
+          script: .github/scripts/run-probe-on-emulator.sh "${{ steps.py.outputs.python-path }}"
 
       - name: Surface Gradle failure
         if: failure()
