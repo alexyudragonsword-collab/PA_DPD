@@ -1,12 +1,20 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    // Kotlin 2.0 moved the Compose compiler out of AGP into its own
+    // Kotlin plugin; it must track the Kotlin version, not the AGP one.
+    id 'org.jetbrains.kotlin.plugin.compose'
+    // Chart specs arrive as JSON with ~15 fields per panel and several
+    // nullable ones. Hand-rolled org.json parsing at that size is a
+    // reliable source of silent field-name typos, so parse into typed
+    // classes instead and let a mismatch fail loudly at the boundary.
+    id 'org.jetbrains.kotlin.plugin.serialization'
     id 'com.chaquo.python'
 }
 
-// Which ABIs to package. Defaults to arm64-v8a: the spike measures
-// whether this is viable on a real phone, and extra ABIs multiply APK
-// size and build time for no extra information.
+// Which ABIs to package. Defaults to arm64-v8a: extra ABIs multiply APK
+// size and build time, and every device we care about runs arm64.
+// Phase 1+ ships the rest through an App Bundle.
 //
 // CI overrides it (-PpadpdAbis=x86_64) because GitHub's runners only
 // offer x86_64 emulators - an arm64-only APK will not install on one.
@@ -49,15 +57,15 @@ if (buildPythonPath) {
 }
 
 android {
-    namespace 'com.padpd.spike'
+    namespace 'com.padpd'
     compileSdk 35
 
     defaultConfig {
-        applicationId "com.padpd.spike"
+        applicationId "com.padpd"
         minSdk 24
         targetSdk 35
         versionCode 1
-        versionName "0.1.0-spike"
+        versionName "0.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
 
@@ -103,9 +111,9 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            // Spike only, so `assembleRelease` yields an installable APK
-            // whose size can be measured. A real release build gets its
-            // own signing config.
+            // Debug-signed so `assembleRelease` yields an installable APK
+            // whose size CI can measure. A shipping release needs its own
+            // signing config.
             signingConfig signingConfigs.debug
         }
     }
@@ -117,16 +125,39 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+
+    buildFeatures {
+        compose true
+    }
+
+    testOptions {
+        unitTests {
+            // Scale mapping, tick generation and blob decoding are pure
+            // arithmetic. Running them as JVM tests keeps that feedback in
+            // seconds instead of behind an emulator boot.
+            returnDefaultValues = true
+        }
+    }
 }
 
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
-    implementation 'androidx.appcompat:appcompat:1.7.0'
+    implementation 'androidx.activity:activity-compose:1.9.3'
+    implementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
 
-    // The probe also runs as an instrumented test, so CI can execute it
-    // on an emulator without a human tapping the button.
+    implementation platform('androidx.compose:compose-bom:2024.10.01')
+    implementation 'androidx.compose.ui:ui'
+    implementation 'androidx.compose.ui:ui-graphics'
+    implementation 'androidx.compose.material3:material3'
+    debugImplementation 'androidx.compose.ui:ui-tooling'
+
+    testImplementation 'junit:junit:4.13.2'
+
     androidTestImplementation 'androidx.test.ext:junit:1.2.1'
     androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
+    androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
 
 // ---------------------------------------------------------------------------

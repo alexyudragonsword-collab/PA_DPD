@@ -3,6 +3,26 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android Phase 2:Kotlin 渲染器 + 14 种规格画廊
+
+- 模块从 `com.padpd.spike` 改名 `com.padpd`,删除 Phase 0 的探针屏与
+  `padpd_spike/`;CI 的 emulator job 改跑 `GalleryRenderTest`,设备侧守卫
+  从"Python 能不能跑"换成"每种图表规格能不能构建、传输、绘制"。
+- 一个渲染器覆盖 15 个 figs.py 函数:它们只落在四种原语上(多线 XY、散点、
+  柱状、带状叠加)。Phase 3 加图表 = 加一个规格构造函数,不碰渲染器。
+- 画廊 14 条标注数据来源:`computed`(真实服务路径)vs `fixture`(真实产出方
+  是分钟级/需要 torch/需要设备上没有的仪器 CSV)。**一屏像样的图表极易被当成
+  "整条链路能用"的证据,而其中一半不是。**
+- 跨语言契约三道守卫,坏的方向都是"静默画出空图",所以都做硬失败:
+  builder 与 `*_fig` 一一对应(AST 读,不 import);Kotlin 解析 **Python 真实
+  产出**的 fixture;fixture 键集必须与当前 Python 产出一致(防 fixture 过期后
+  Kotlin 对着昨天的形状继续通过)。
+- 一处故意偏离 figs.py:散点抽稀改向上取整,让 `MAX_SCATTER_POINTS` 真的是
+  上界(原式 20 万点溢出到 15,385)。渲染无所谓,传输上界必须是界。
+- **Kotlin 侧本地无法验证**(无 SDK/编译器),第一手反馈全在 CI。
+- 验证:桌面快车道 369 passed / 17 skipped;14 条画廊全部构建成功
+  (最慢 three_loop 1.7 s,总 blob 276 KB)。
+
 ## 2026-08-23 · Android Phase 1:Python 适配层就绪
 
 - 新增 `padpd_mobile/api.py`(句柄注册表 + JSON 门面)与 `chart_spec.py`

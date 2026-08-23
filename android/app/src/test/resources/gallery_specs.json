@@ -1,0 +1,680 @@
+{
+ "adaptive_evm": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "冻结批处理 DPD",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c8_b0",
+      "y": "c8_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "自适应 RLS",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.6,
+      "x": "c8_b0",
+      "y": "c8_b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "块(冷 → 热)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "EVM (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "amam": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "scatter",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "primary",
+      "label": "AM-AM",
+      "marker": ".",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c3_b0",
+      "y": "c3_b1"
+     }
+    ],
+    "title": "AM-AM",
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "|x|",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "|y|/|x|",
+    "ylim": null,
+    "yscale": "linear"
+   },
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "scatter",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "accent",
+      "label": "AM-PM",
+      "marker": ".",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c3_b0",
+      "y": "c3_b2"
+     }
+    ],
+    "title": "AM-PM",
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "|x|",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "相移 (°)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "bars": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "bar_width": 0.4,
+    "hlines": [],
+    "kind": "bar",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "ACLR",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c11_b0",
+      "y": "c11_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "EVM",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c11_b2",
+      "y": "c11_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": [
+     {
+      "label": "GMP-510 baseline",
+      "pos": 0.0
+     },
+     {
+      "label": "Spline-MP",
+      "pos": 1.0
+     },
+     {
+      "label": "Spline-GMP conj+dc",
+      "pos": 2.0
+     },
+     {
+      "label": "a deliberately overlong…",
+      "pos": 3.0
+     }
+    ],
+    "xlabel": "",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "dB",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "bitwidth": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "left",
+      "color_role": "muted",
+      "y": -53.87857429051118
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "GMP",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c6_b0",
+      "y": "c6_b1"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": [
+     {
+      "label": "W16",
+      "pos": 0.0
+     },
+     {
+      "label": "W12",
+      "pos": 1.0
+     },
+     {
+      "label": "W10",
+      "pos": 2.0
+     },
+     {
+      "label": "W8",
+      "pos": 3.0
+     }
+    ],
+    "xlabel": "",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "test NMSE (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "ccdf": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA in",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c2_b0",
+      "y": "c2_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA out",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c2_b2",
+      "y": "c2_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "高于平均功率 (dB)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "CCDF",
+    "ylim": null,
+    "yscale": "log"
+   }
+  ]
+ },
+ "codesign": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "y": 60.0
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "accent",
+      "label": "PAE (%)",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c13_b0",
+      "y": "c13_b1"
+     },
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "label": "DPD 系数",
+      "marker": "s",
+      "style": "dashed",
+      "width": 1.2,
+      "x": "c13_b0",
+      "y": "c13_b2"
+     }
+    ],
+    "title": null,
+    "vspans": [
+     {
+      "color_role": "warn",
+      "x0": 0.186,
+      "x1": 0.194
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.196,
+      "x1": 0.20400000000000001
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.20600000000000002,
+      "x1": 0.21400000000000002
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.216,
+      "x1": 0.224
+     }
+    ],
+    "x_ticks": null,
+    "xlabel": "PA drive",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "DPD 系数",
+    "ylabel": "PAE (%)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "constellation": {
+  "panels": [
+   {
+    "aspect_equal": true,
+    "hlines": [],
+    "kind": "scatter",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "ideal",
+      "marker": ".",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c4_b0",
+      "y": "c4_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "through PA",
+      "marker": ".",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c4_b2",
+      "y": "c4_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "I",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "Q",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "gain_modulation": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "升功率(加热)|G| τ=[4.9µs, 29.1µs]",
+      "marker": "",
+      "style": "solid",
+      "width": 1.5,
+      "x": "c7_b0",
+      "y": "c7_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "降功率(冷却)|G|",
+      "marker": "",
+      "style": "solid",
+      "width": 1.5,
+      "x": "c7_b0",
+      "y": "c7_b2"
+     },
+     {
+      "axis": "right",
+      "color_role": "muted",
+      "label": "加热相位漂移 (°)",
+      "marker": "",
+      "style": "dotted",
+      "width": 1.2,
+      "x": "c7_b0",
+      "y": "c7_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "阶跃后时间 (µs)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "相位漂移 (°)",
+    "ylabel": "增益变化 (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "grad": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "right",
+      "color_role": "muted",
+      "y": -38.0
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "accent",
+      "label": "drive",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c14_b0",
+      "y": "c14_b1"
+     },
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "label": "EVM (dB)",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c14_b0",
+      "y": "c14_b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "梯度步",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "EVM (dB)",
+    "ylabel": "drive",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "psd": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA in",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c1_b0",
+      "y": "c1_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA out",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c1_b2",
+      "y": "c1_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "频率 (MHz)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "PSD (dBr)",
+    "ylim": [
+     -90,
+     5
+    ],
+    "yscale": "linear"
+   }
+  ]
+ },
+ "three_loop": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "原始环回(无环)",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c9_b0",
+      "y": "c9_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "仅去嵌(无 QMC)",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c9_b0",
+      "y": "c9_b2"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "三环(去嵌+QMC+DPD)",
+      "marker": "d",
+      "style": "solid",
+      "width": 1.6,
+      "x": "c9_b0",
+      "y": "c9_b3"
+     },
+     {
+      "axis": "right",
+      "color_role": "muted",
+      "label": "镜像残差 (dBc)",
+      "marker": "",
+      "style": "dotted",
+      "width": 1.2,
+      "x": "c9_b0",
+      "y": "c9_b4"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "块(冷 → 热)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "镜像残差 (dBc)",
+    "ylabel": "在空口 EVM (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "time": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA in",
+      "marker": "",
+      "style": "solid",
+      "width": 0.9,
+      "x": "c5_b0",
+      "y": "c5_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "PA out",
+      "marker": "",
+      "style": "solid",
+      "width": 0.9,
+      "x": "c5_b2",
+      "y": "c5_b3"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "时间 (µs)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "|x|",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "train": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "primary",
+      "label": "loss",
+      "marker": "",
+      "style": "solid",
+      "width": 1.4,
+      "x": "c12_b0",
+      "y": "c12_b1"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "epoch",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "loss",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ },
+ "two_tone": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "下边带 IM3",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c10_b0",
+      "y": "c10_b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "上边带 IM3",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "c10_b0",
+      "y": "c10_b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "音间距 (MHz)",
+    "xlim": null,
+    "xscale": "log",
+    "y2label": null,
+    "ylabel": "IM3 (dBc)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

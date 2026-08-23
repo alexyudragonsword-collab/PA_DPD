@@ -12,9 +12,9 @@ name: Android dependency floor
 # at the commit that caused it. This job runs the suite against the exact
 # ceiling the platform imposes, so the break shows up here instead.
 #
-# Deliberately a separate workflow from android-spike.yml: the spike is
-# triggered by android/** and pulls an SDK and an emulator image, whereas
-# this needs to run whenever the Python code changes and costs two minutes.
+# Deliberately a separate workflow from android.yml: that one is triggered
+# by android/** and pulls an SDK and an emulator image, whereas this needs
+# to run whenever the Python code changes and costs two minutes.
 
 on:
   workflow_dispatch:

@@ -232,6 +232,18 @@ def call(fn: str, args_json: str = "{}") -> str:
                            "traceback": traceback.format_exc(limit=8)})
 
 
+def _build_chart(name: str, args, kwargs) -> dict:
+    from . import chart_spec
+    lang = kwargs.pop("lang", "zh")
+    spec, blobs = chart_spec.build(name, *args, lang=lang, **kwargs)
+    # chart_spec numbers its own keys from zero per chart; namespace them
+    # so two charts alive at once cannot collide.
+    prefix = _new_id("c")
+    remap = {k: f"{prefix}_{k}" for k in blobs}
+    _BLOBS.update({remap[k]: v for k, v in blobs.items()})
+    return _rekey(spec, remap)
+
+
 def chart(name: str, args_json: str = "{}") -> str:
     """Build a chart spec. Same calling convention as ``call``.
 
@@ -239,19 +251,37 @@ def chart(name: str, args_json: str = "{}") -> str:
     arrays already registered as blobs, fetchable with ``blob``.
     """
     try:
-        from . import chart_spec
         payload = json.loads(args_json) if args_json else {}
         args = _deref(payload.get("args", []))
         kwargs = _deref(payload.get("kwargs", {}))
-        lang = kwargs.pop("lang", "zh")
-        spec, blobs = chart_spec.build(name, *args, lang=lang, **kwargs)
-        # chart_spec numbers its own keys from zero per chart; namespace
-        # them so two charts alive at once cannot collide.
-        prefix = _new_id("c")
-        remap = {k: f"{prefix}_{k}" for k in blobs}
-        _BLOBS.update({remap[k]: v for k, v in blobs.items()})
-        return json.dumps({"ok": True,
-                           "spec": _rekey(spec, remap)})
+        return json.dumps({"ok": True, "spec": _build_chart(name, args, kwargs)})
+    except Exception as e:                       # noqa: BLE001
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
+                           "traceback": traceback.format_exc(limit=8)})
+
+
+def gallery_list() -> str:
+    """Index of the chart gallery. Metadata only - nothing is computed
+    until an entry is asked for."""
+    from . import gallery
+    return json.dumps({"ok": True, "entries": gallery.listing()})
+
+
+def gallery_chart(entry_id: str, lang: str = "zh") -> str:
+    """Build one gallery entry, running whatever computation it needs.
+
+    Separate from ``chart`` because the gallery supplies its own inputs:
+    some entries run a real service path, others carry a fixture because
+    their real producer is minutes of compute or needs torch. Which is
+    which is in ``gallery.listing()`` and shown in the UI - a plausible
+    chart is otherwise easy to mistake for a working pipeline.
+    """
+    try:
+        from . import gallery
+        name, args, kwargs = gallery.chart_args(entry_id)
+        kwargs = dict(kwargs, lang=lang)
+        return json.dumps({"ok": True, "id": entry_id,
+                           "spec": _build_chart(name, args, kwargs)})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
                            "traceback": traceback.format_exc(limit=8)})

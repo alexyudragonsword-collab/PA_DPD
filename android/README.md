@@ -1,16 +1,14 @@
-# Android 化 Phase 0：可行性 spike
+# padpd Android
 
-一个最小 Android 工程，**没有业务 UI**——一个按钮、一块文本。它存在的唯一
-目的，是把三个**只能在真机上回答**的未知变成数字：
+Kotlin 原生 UI + Chaquopy 嵌入的 Python 计算核。跑的是**和两个桌面 GUI
+同一份** `gui_core/services.py`，不是副本。
 
-1. Chaquopy 的 scipy 轮子是否含 padpd 实际用到的子模块；
-2. 这些建模操作在手机 SoC 上到底要多久；
-3. 带 numpy + scipy 的 APK 有多大。
-
-拿到数字之前不要往 Phase 1（Python 适配层）走——完整规划见
-`/root/.claude/plans/` 里的实施计划，能力边界与架构决策都在那。
-
----
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| Phase 0 | 可行性 spike | ✅ 五条验收全过（见下方「真机实测」） |
+| Phase 1 | Python 适配层（`padpd_mobile/`） | ✅ 44 条桌面测试 |
+| Phase 2 | Kotlin 图表渲染器 + 14 种规格画廊 | ✅ 本页「图表层」一节 |
+| Phase 3 | 9 个页面 | 未开始 |
 
 ## 怎么构建
 
@@ -23,8 +21,9 @@
 
 | job | 干什么 | 覆盖哪条验收 |
 |---|---|---|
-| **build** | arm64-v8a release 构建，量 APK 体积，超 120 MB 直接红 | 4 |
-| **probe** | x86_64 模拟器上跑 `ProbeTest` 这个 instrumented test | 1、2、5 |
+| **wheels** | 列出 Chaquopy 仓库里 numpy/scipy 的全部轮子 | — |
+| **build** | arm64-v8a release 构建 + JVM 单元测试，量 APK 体积，超 120 MB 直接红 | 4 |
+| **instrumented** | x86_64 模拟器上跑 `GalleryRenderTest`：14 种规格逐一构建、传输、绘制 | 1、2 |
 
 报告会贴进 job summary，同时作为 artifact 上传（`probe-report.txt` +
 logcat + APK）。
@@ -54,26 +53,25 @@ cd android
 ls -l app/build/outputs/apk/release/app-release.apk
 ```
 
-点 Run probe（第一次会慢，因为要解包 numpy/scipy），跑完点 Copy result 把
-报告复制出来。
+启动后是**图表画廊**：14 种图表规格各一条，点开即渲染。每条标了数据来源
+（见下方「图表层」）。
 
 ---
 
-## 这个工程里已经验证过什么
+## Kotlin 代码在哪里被验证
 
-作者环境无法访问 `dl.google.com` 与 `chaquo.com`（网络策略拦截），
-**所以这份工程在作者手里从未被构建过**。诚实区分：
+作者环境访问不了 `dl.google.com` 与 `chaquo.com`（网络策略拦截），
+**本地没有 Android SDK 也没有 Kotlin 编译器**。所以：
 
-| 项 | 状态 |
+| 层 | 在哪验证 |
 |---|---|
-| `padpd_spike/probe.py` 逻辑 | ✅ 已在桌面跑通（见下方基线） |
-| 三个 `*.gradle` 的 Groovy 语法 | ✅ 已用 Gradle 自带 Groovy 解析器验证 |
-| `settings.gradle` 的仓库配置 | ✅ Gradle 实际读取并尝试了全部四个仓库 |
-| workflow YAML | ✅ 已解析验证 |
-| `MainActivity.kt` / `ProbeTest.kt` | ❌ **未编译过**（环境无 Kotlin 编译器与 Android SDK） |
-| Gradle 依赖解析 / Chaquopy 打包 / APK | ❌ **未验证**——交给上面那条 CI |
+| Python 适配层、规格层、画廊 | 桌面 pytest（`tests/test_mobile_api.py`，44 条） |
+| `*.gradle` 语法 | 本地用 Gradle 自带的 Groovy 解析器 |
+| Kotlin 编译、Compose、Chaquopy 打包、APK | **只有 CI**——`build` job |
+| 渲染器真的画得出来 | **只有 CI/真机**——`instrumented` job |
 
-第一次 CI 跑红是**预期内**的，尤其是版本 pin。
+也就是说 Kotlin 侧的第一手反馈全部来自 CI。改 Kotlin 后不要凭"看着对"
+就下结论。
 
 ---
 
@@ -193,7 +191,7 @@ VERDICT: all probes passed in 6.6 s
   在 runner CPU 上原生执行,不模拟 ARM。**别把它当手机性能的代理指标。**
 
 
-### 这个 spike 已经挡掉的坑
+### 这条路上已经挡掉的坑
 
 按出现顺序，都是不真跑一次就不可能知道的：
 
@@ -243,27 +241,86 @@ python -m padpd_spike.probe
 
 ---
 
-## 拿到数字之后
+## 重新量真机时
 
-把真机报告贴进 `cairn/LOG.md` 顶部新条目（摘要 + 指针，≤ 20 行），并记下
-用的是哪台设备。若某条验收不过，把**为什么不过**也写进去——那正是
-`cairn/` 该装的过程知识。
+`padpd_mobile.api` 仍然导出 `boot()` / `capabilities()`，Phase 0 的探针脚本
+已随 spike 删除。换手机、换 Chaquopy 版本或怀疑性能时要重测，最省事的做法是
+在画廊里点开 `psd` 与 `three_loop` 并记录耗时——它们分别代表最便宜与最贵的
+路径。结果贴进 `cairn/LOG.md` 顶部新条目并记下设备型号。
 
 ---
+
+## 图表层（Phase 2）
+
+`gui_qt/figs.py` 有 15 个绘图函数，但它们只落在**四种原语**上：多线 XY、
+散点、柱状、带状/阈值叠加。所以 Python 侧把它们移植成**图表规格**
+（`padpd_mobile/chart_spec.py`），Kotlin 侧只写**一个**渲染器
+（`com.padpd.chart.ChartCanvas`）——Phase 3 加图表是加一个规格构造函数，
+不用碰渲染器。
+
+规格是纯 JSON，**数字不在里面**：数组按 key 单独走 float32 blob
+（`api.blob`）。一条 4096 点的曲线是 16 KB 二进制 vs 约 80 KB JSON 文本。
+
+配色不写死在规格里，只给语义角色（`primary` / `accent` / `muted` / `warn` /
+`seq`）。`figs.py` 钉死了一套暗色板，而手机有桌面 GUI 从来没有的浅色模式，
+所以由 `ChartTheme.kt` 按主题映射，取值对齐 `gui_qt/themes.py`。
+
+### 画廊与数据来源标注
+
+启动即是画廊，14 条覆盖了全部四种原语和所有难缠的坐标轴特性：双 Y 轴、
+log 轴、分类刻度、等比例、NaN 断口、阴影带。每条标了来源：
+
+- **computed** —— 真实服务路径跑出来的输出；
+- **fixture** —— 真实产出方太慢（`codesign_sweep` 是分钟级）、需要 torch
+  （训练曲线、梯度联合设计），或需要设备上没有的仪器 CSV（双音）。形状取自
+  真实运行，数字是代表性的，**不是实测**。
+
+这个标注是有意为之：**一屏看着像样的图表，非常容易被当成"整条链路能用"
+的证据**，而其中一半根本不是那种证据。
+
+### 跨语言契约怎么守
+
+三道守卫，坏的方向都是"静默画出空图"，所以都做成硬失败：
+
+| 守卫 | 位置 | 防什么 |
+|---|---|---|
+| `chart_spec` 的 builder 必须与 `figs.py` 的 `*_fig` 一一对应 | `tests/test_mobile_api.py`（AST 读，不 import） | 桌面加了图、移动端没跟 |
+| Kotlin 解析 **Python 真实产出**的规格 | `ChartSpecParseTest` + `app/src/test/resources/gallery_specs.json` | 字段改名 |
+| committed fixture 的键集必须与当前 Python 产出一致 | `tests/test_mobile_api.py` | fixture 过期后 Kotlin 测试对着昨天的形状继续通过 |
+
+schema 有意改动时重新生成 fixture：
+
+```bash
+PYTHONPATH=src:.:android/app/src/main/python python - <<'EOF'
+import json, os, tempfile, pathlib
+os.environ.setdefault("PADPD_DATA_DIR", tempfile.mkdtemp())
+from padpd_mobile import api, gallery
+specs = {e["id"]: json.loads(api.gallery_chart(e["id"]))["spec"]
+         for e in gallery.listing()}
+pathlib.Path("android/app/src/test/resources/gallery_specs.json").write_text(
+    json.dumps(specs, ensure_ascii=False, indent=1, sort_keys=True))
+EOF
+```
 
 ## 目录说明
 
 ```
 android/
-  settings.gradle          仓库配置（含 chaquo.com maven）
-  build.gradle             插件版本 pin
-  gradle.properties
-  app/build.gradle         Chaquopy 配置 + Python 源码暂存任务
+  settings.gradle / build.gradle / gradle.properties   版本 pin 与仓库
+  app/build.gradle                Chaquopy + Compose + Python 源码暂存
   app/src/main/
-    AndroidManifest.xml    无任何权限声明
-    java/com/padpd/spike/MainActivity.kt
-    python/padpd_spike/probe.py    ← 真正干活的地方
-    res/values/strings.xml
+    java/com/padpd/MainActivity.kt          画廊界面
+    java/com/padpd/chart/ChartSpec.kt       规格（typed，对齐 Python）
+    java/com/padpd/chart/ChartCanvas.kt     唯一的渲染器
+    java/com/padpd/chart/Scales.kt          坐标映射与刻度（纯算术）
+    java/com/padpd/chart/ChartTheme.kt      语义角色 → 配色
+    java/com/padpd/chart/Blobs.kt           float32 解码 + 缓存
+    java/com/padpd/chart/PyBridge.kt        Chaquopy 桥
+    python/padpd_mobile/api.py              句柄注册表 + JSON 门面
+    python/padpd_mobile/chart_spec.py       figs.py 的规格移植
+    python/padpd_mobile/gallery.py          14 条画廊条目
+  app/src/test/         JVM 单元测试（不需要模拟器）
+  app/src/androidTest/  GalleryRenderTest（需要设备）
 ```
 
 **`stagePythonSources`**（`app/build.gradle`）把 `../src/padpd` 与
@@ -271,5 +328,3 @@ android/
 是**和桌面 GUI 同一份代码**，而不是副本——`gui_core/services.py` 是共享契约，
 分叉了整个架构就塌了。同时避免把 `tests/`、`docs/`、2.9 MB 的 `manual/` 一并
 卷进去。
-
-这个 spike 是**一次性的**：`padpd_spike/` 不会被 Phase 1 之后的 app 引用。

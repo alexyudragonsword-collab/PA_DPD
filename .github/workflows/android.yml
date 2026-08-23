@@ -1,23 +1,23 @@
-name: Android spike (Phase 0)
+name: Android
 
-# Answers the Phase 0 feasibility questions that need a network and an
-# Android SDK - neither of which the authoring environment had. See
-# android/README.md for the five acceptance criteria this feeds.
+# Builds the app and runs its tests on an emulator. Phase 0 used this to
+# answer the feasibility questions (all five criteria passed - see
+# android/README.md); it now guards the chart pipeline.
 #
 # Deliberately not part of CI's push trigger: it downloads an Android
 # SDK, a Chaquopy toolchain and an emulator image, so it runs only when
-# the spike itself changes or someone asks for it.
+# the Android module changes or someone asks for it.
 
 on:
   workflow_dispatch:
   push:
     paths:
       - "android/**"
-      - ".github/workflows/android-spike.yml"
+      - ".github/workflows/android.yml"
   pull_request:
     paths:
       - "android/**"
-      - ".github/workflows/android-spike.yml"
+      - ".github/workflows/android.yml"
 
 permissions:
   contents: read
@@ -105,6 +105,21 @@ jobs:
         if: failure()
         run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-assemble.log"
 
+      # Scale mapping, blob decoding and spec parsing run on the JVM in
+      # seconds. Putting them here rather than behind the emulator keeps
+      # the feedback on the renderer's arithmetic fast.
+      - name: Unit tests (JVM)
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:testDebugUnitTest \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-unit.log"
+
+      - name: Surface unit test failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-unit.log"
+
       - name: Report APK size
         working-directory: android
         run: |
@@ -135,18 +150,18 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: padpd-spike-arm64-release
+          name: padpd-arm64-release
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
 
-  # Criteria 1, 2 and 5: scipy submodules, a torch-free service-layer
-  # import, and Python startup time.
+  # Every chart spec, built through the real bridge and drawn on a device.
+  # A renamed spec field, an empty blob or a renderer that throws on one
+  # panel shape would otherwise reach a phone before anyone noticed.
   #
-  # NOT criterion 3. GitHub runners only have x86_64 emulators, and
-  # emulated x86_64 timings say nothing about an arm64 phone. The
-  # benchmark budget still has to be checked on real hardware.
-  probe:
-    name: Run probe on emulator (x86_64)
+  # Timings from this job are NOT performance evidence: GitHub's x86_64
+  # emulator runs under KVM on the runner's own CPU and emulates no ARM.
+  instrumented:
+    name: Instrumented tests on emulator (x86_64)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -183,7 +198,7 @@ jobs:
       - name: Generate Gradle wrapper
         run: ./.github/scripts/gen-gradle-wrapper.sh android "$GRADLE_VERSION"
 
-      - name: Run probe as an instrumented test
+      - name: Run instrumented tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -193,34 +208,15 @@ jobs:
           # ONE line. The action runs each line of `script` in its own
           # shell, so nothing persists between lines - not variables, not
           # cd, not set +e. See the script's header comment.
-          script: .github/scripts/run-probe-on-emulator.sh "${{ steps.py.outputs.python-path }}"
+          script: .github/scripts/run-android-tests-on-emulator.sh "${{ steps.py.outputs.python-path }}"
 
       - name: Surface Gradle failure
         if: failure()
-        run: .github/scripts/surface-gradle-failure.sh probe-artifacts/gradle-test.log
-
-      - name: Publish probe report
-        if: always()
-        run: |
-          report=probe-artifacts/probe-report.txt
-          [ -s "$report" ] || report=probe-artifacts/probe-logcat.txt
-          {
-            echo "## Probe report (emulated x86_64)"
-            echo
-            echo "Criteria 1, 2 and 5 only — timings here are **not**"
-            echo "representative of an arm64 phone."
-            echo
-            echo '```'
-            cat "$report" 2>/dev/null || echo "(no report captured)"
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-          cat "$report" 2>/dev/null || true
+        run: .github/scripts/surface-gradle-failure.sh android-test-artifacts/gradle-test.log
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: probe-report
-          path: |
-            probe-artifacts/**
-            android/app/build/reports/androidTests/**
+          name: instrumented-test-reports
+          path: android-test-artifacts/**
           if-no-files-found: warn

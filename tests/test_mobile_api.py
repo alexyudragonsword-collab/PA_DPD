@@ -38,6 +38,16 @@ def _call(fn, *args, **kwargs):
     return out
 
 
+def _gallery_entries():
+    from padpd_mobile import gallery
+    return gallery.ENTRIES
+
+
+def _gallery_listing():
+    from padpd_mobile import gallery
+    return gallery.listing()
+
+
 def _floats(key):
     raw = api.blob(key)
     return np.array(struct.unpack(f"<{len(raw) // 4}f", raw))
@@ -291,3 +301,65 @@ def test_chart_api_reports_errors_as_data():
     out = json.loads(api.chart("psd", json.dumps({"args": []})))
     assert out["ok"] is False
     assert "traceback" in out
+
+
+# ---------------------------------------------------------------- gallery
+
+def test_gallery_covers_every_chart_type():
+    """The gallery is how each spec shape gets drawn at least once."""
+    from padpd_mobile import gallery
+    ids = {e["id"] for e in gallery.listing()}
+    assert ids == set(chart_spec.BUILDERS)
+
+
+def test_gallery_labels_provenance_honestly():
+    """Half these entries carry fixtures because their real producers are
+    minutes of compute or need torch. The UI shows which, so a plausible
+    chart is not mistaken for a working pipeline."""
+    from padpd_mobile import gallery
+    provenance = {e["id"]: e["provenance"] for e in gallery.listing()}
+    assert set(provenance.values()) <= {"computed", "sampled"}
+    # These four cannot be computed on a phone at all: codesign_sweep is
+    # minutes, train history and gradient co-design need torch, and the
+    # two-tone analysis needs an instrument CSV that is not on the device.
+    for fixture in ("codesign", "grad", "train", "two_tone"):
+        assert provenance[fixture] == "sampled"
+
+
+@pytest.mark.parametrize("entry_id", [e[0] for e in _gallery_entries()])
+def test_every_gallery_entry_builds(entry_id):
+    out = json.loads(api.gallery_chart(entry_id))
+    assert out["ok"], out.get("error", "") + out.get("traceback", "")
+    spec = out["spec"]
+    assert spec["panels"]
+    for panel in spec["panels"]:
+        assert panel["series"], f"{entry_id}: panel with no series"
+        for s in panel["series"]:
+            # Every referenced blob must resolve, or the phone draws a
+            # chart with an invisible curve and no error.
+            assert api.blob(s["x"]), f"{entry_id}: empty x blob"
+            assert api.blob(s["y"]), f"{entry_id}: empty y blob"
+
+
+def test_committed_spec_fixture_matches_what_python_emits():
+    """The Kotlin side parses `gallery_specs.json` as its contract test.
+
+    If the Python schema gains or loses a panel key, that fixture goes
+    stale and the Kotlin test keeps passing against yesterday's shape.
+    Compare keys - not values, which carry floats and would be brittle.
+    """
+    fixture_path = (ROOT / "android" / "app" / "src" / "test" / "resources"
+                    / "gallery_specs.json")
+    fixture = json.loads(fixture_path.read_text())
+    assert set(fixture) == set(e["id"] for e in _gallery_listing())
+
+    for entry_id, want in fixture.items():
+        got = json.loads(api.gallery_chart(entry_id))["spec"]
+        assert len(got["panels"]) == len(want["panels"]), entry_id
+        for gp, wp in zip(got["panels"], want["panels"]):
+            assert set(gp) == set(wp), (
+                f"{entry_id}: panel keys drifted from the committed "
+                f"fixture; regenerate it (see android/README.md). "
+                f"added={set(gp) - set(wp)} removed={set(wp) - set(gp)}")
+            for gs, ws in zip(gp["series"], wp["series"]):
+                assert set(gs) == set(ws), f"{entry_id}: series keys drifted"
