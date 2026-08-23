@@ -105,8 +105,18 @@ Compose 在横向滚动组件收到**无限宽约束**时抛 `IllegalStateExcept
     none of [head:psd] appeared within 20000ms.
     Tags present: [..., nav:gallery, ..., generate, cfr, 带宽(MHz):80, ...]
 
-点之前先 `performScrollTo()`。这是"节点存在 ≠ 可交互"的第二个变体
-(第一个是上面那条合并树)——两次都表现为"点了没反应"。
+点之前先 `performScrollTo()`。
+
+**这个坑出现过三个变体,根源相同:节点存在 ≠ 可见/可交互。**
+
+| 变体 | 症状 | 修法 |
+|---|---|---|
+| 合并语义树(`clickable` 吞子节点) | tag 根本查不到 | `useUnmergedTree = true` |
+| 横向滚动视口外 | 查得到、`performClick` 不报错、但没反应 | 点前 `performScrollTo()` |
+| 纵向滚动视口外 | 查得到、`assertIsDisplayed` 失败 | 断言前 `performScrollTo()` |
+
+前两个都表现为"点了没反应",第三个表现为"组件不可见"。写设备测试时:
+**查到 tag 只说明它被组合了,要交互或断言可见,先滚过去。**
 
 ## Kotlin 的块注释可以嵌套——注释里写 `/*` 会吃掉整个文件
 
