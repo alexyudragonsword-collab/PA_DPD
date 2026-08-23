@@ -105,6 +105,21 @@ numpy 1.23.3 + scipy 1.8.1 实测 292 passed / 20 skipped（跳过的是 torch �
 `app/build.gradle` 里的版本**必须钉死**：不钉的话 PyPI 的新版会在解析时赢过
 Chaquopy 的 Android 轮子，而 PyPI 没有 Android 构建。
 
+### buildPython 必须和目标 Python 同版本
+
+Chaquopy 用一个本机解释器（"buildPython"）跑 pip，而 **pip 是拿自己运行的
+版本去比 wheel 的 `Requires-Python`**，不是拿目标版本比。所以 buildPython
+是 3.11、目标是 3.10 时，会出现这种场面：
+
+```
+Downloading .../scipy-1.8.1-1-cp310-cp310-android_21_arm64_v8a.whl (20.3 MB)
+ERROR: Package 'scipy' requires a different Python: 3.11.16 not in '>=3.8,<3.11'
+```
+
+**正确的轮子下载完了，然后被否掉**，而报错只提 scipy，一个字不提 buildPython。
+CI 第五轮就栽在这儿。`app/build.gradle` 现在会在配置阶段核对两者并直接报错，
+所以这个坑只会踩一次——但本机构建时 `-PpadpdBuildPython` 也要给 3.10。
+
 ## 构建之前：先核实这几个 pin
 
 这些版本号是在**没有网络核实**的情况下填的，是起点不是定论：

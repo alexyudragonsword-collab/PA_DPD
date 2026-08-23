@@ -14,10 +14,39 @@ plugins {
 def targetAbis = (project.findProperty('padpdAbis') ?: 'arm64-v8a')
         .toString().split(',').collect { it.trim() }.findAll { it }
 
+// The Python version Chaquopy targets. 3.11 is the obvious choice and it
+// is wrong: Chaquopy's repository has no scipy wheel above cp310, so on
+// 3.11 pip finds nothing there, falls through to a PyPI source tarball,
+// and the build dies trying to cross-compile scipy for Android. 3.10 is
+// the newest Python with a complete numpy+scipy set, and still satisfies
+// padpd's requires-python = ">=3.10".
+def pythonVersion = '3.10'
+
 // Chaquopy needs a local Python 3 to run pip. It normally auto-detects
 // one; CI pins it so the build does not depend on which python happens
 // to be first on PATH.
 def buildPythonPath = project.findProperty('padpdBuildPython')
+
+// buildPython must be the SAME major.minor as the target, because pip
+// checks each wheel's Requires-Python against the interpreter it is
+// running under rather than against the target. A mismatch is
+// particularly nasty: pip downloads the correct cp310 Android wheels,
+// then rejects them ("Package 'scipy' requires a different Python:
+// 3.11.16 not in '>=3.8,<3.11'"), so the error names scipy and says
+// nothing about buildPython. Fail here instead, before the download.
+if (buildPythonPath) {
+    def proc = [buildPythonPath.toString(), '-c',
+                'import sys; print("%d.%d" % sys.version_info[:2])'].execute()
+    proc.waitFor()
+    def found = proc.in.text.trim()
+    if (found != pythonVersion) {
+        throw new GradleException(
+            "buildPython at ${buildPythonPath} is Python ${found}, but this " +
+            "build targets Python ${pythonVersion}. pip would download the " +
+            "right Android wheels and then reject them on Requires-Python. " +
+            "Point -PpadpdBuildPython at a ${pythonVersion} interpreter.")
+    }
+}
 
 android {
     namespace 'com.padpd.spike'
@@ -37,14 +66,7 @@ android {
         }
 
         python {
-            // 3.11 is the obvious choice and it is wrong. Chaquopy's
-            // repository has no scipy wheel above cp310, so on 3.11 pip
-            // finds nothing there, falls through to a PyPI source tarball
-            // and the build dies trying to cross-compile scipy for
-            // Android. 3.10 is the newest Python with a complete
-            // numpy+scipy set, and still satisfies padpd's
-            // requires-python = ">=3.10".
-            version "3.10"
+            version pythonVersion
 
             if (buildPythonPath) {
                 buildPython buildPythonPath.toString()

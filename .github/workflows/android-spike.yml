@@ -72,12 +72,16 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Chaquopy runs pip with a local interpreter ("buildPython"). Pin it
-      # rather than letting it pick whatever is first on PATH.
+      # Chaquopy runs pip with a local interpreter ("buildPython"), and pip
+      # checks each wheel's Requires-Python against the interpreter it is
+      # RUNNING under - not against the target. So this must match the
+      # `python version` in app/build.gradle. With 3.11 here, pip
+      # downloaded the correct cp310 Android wheels and then rejected
+      # scipy: "requires a different Python: 3.11.16 not in >=3.8,<3.11".
       - uses: actions/setup-python@v5
         id: py
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - uses: gradle/actions/setup-gradle@v4
 
@@ -153,10 +157,11 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Must match app/build.gradle's `python version` - see the build job.
       - uses: actions/setup-python@v5
         id: py
         with:
-          python-version: "3.11"
+          python-version: "3.10"
 
       - uses: gradle/actions/setup-gradle@v4
 
