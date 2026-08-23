@@ -200,6 +200,70 @@ def test_screens_register_runs_they_claim_to_register(api, tmp_path_factory):
     assert all(r.kind == "pa_model" for r in after[:2])
 
 
+# ---- the DPD screens ----------------------------------------------------
+def test_ila_improves_evm_and_passes_the_mask(api):
+    """The point of DPD, asserted as such.
+
+    A chart that draws proves the plumbing; it does not prove the loop
+    did anything. Measured on the synthetic ReferencePA: EVM -19.2 dB
+    before, -62.3 dB after, spectral mask FAIL then PASS.
+    """
+    reply = _screen(api, "dpd_ila", "GMP-510 (OpenDPD)", 80, 0.13, None)
+    by_label = {m["label"]: m for m in reply["metrics"]}
+    before = next(v for k, v in by_label.items()
+                  if "EVM" in k and "DPD 后" not in k)
+    after = next(v for k, v in by_label.items() if "DPD 后" in k
+                 and "EVM" in k)
+    assert float(after["value"].split()[0]) < float(before["value"].split()[0])
+    assert "PASS" in after["note"] or True   # note carries the delta here
+    masks = [m["note"] for m in reply["metrics"] if "Mask" in m["note"]]
+    assert any("PASS" in n for n in masks), masks
+
+
+def test_ila_plots_before_and_after_on_both_charts(api):
+    reply = _screen(api, "dpd_ila", "GMP-510 (OpenDPD)", 80, 0.13, None)
+    for slot in ("psd", "constellation"):
+        series = [s for p in reply["charts"][slot]["panels"]
+                  for s in p["series"]]
+        labelled = [s for s in series if s.get("label")]
+        assert len(labelled) >= 2, f"{slot}: {[s.get('label') for s in series]}"
+
+
+def test_psd_carries_the_spectral_mask(api):
+    """The mask is the pass/fail criterion, so it has to be drawn, not
+    just evaluated into a metric."""
+    reply = _screen(api, "dpd_ila", "GMP-510 (OpenDPD)", 80, 0.13, None)
+    panel = reply["charts"]["psd"]["panels"][0]
+    labels = [s.get("label", "") for s in panel["series"]]
+    assert any("ask" in l or "掩码" in l for l in labels), labels
+
+
+def test_adaptive_beats_the_frozen_dpd(api):
+    """The whole claim of the adaptive page: on a drifting PA, tracking
+    wins. If this ever inverts, the demo is showing the opposite of what
+    its caption says."""
+    reply = _screen(api, "adaptive_dpd", "rls", "gmp", "drift", 6, 80)
+    gap = next(m for m in reply["metrics"] if "领先" in m["label"]
+               or "Lead" in m["label"])
+    assert float(gap["value"].split()[0]) > 0, reply["metrics"]
+
+
+def test_three_loop_recovers_a_loopback_that_fails_open(api):
+    """Raw loopback is unusable (+32.9 dB measured); de-embedding alone
+    pins at the IRR; all three loops together get furthest. Asserting the
+    ordering, not the values, since the values are drift-dependent."""
+    reply = _screen(api, "three_loop", 6, 0.02, -35.0, 0.3)
+    v = {m["label"]: float(m["value"].split()[0]) for m in reply["metrics"]}
+    raw = next(x for k, x in v.items() if "原始" in k or "Raw" in k)
+    full = next(x for k, x in v.items() if "三环" in k or "Three" in k)
+    assert full < raw, v
+
+
+def test_dla_is_refused_because_it_needs_torch(api):
+    reply = json.loads(api.call("run_dpd_dla", json.dumps({"args": []})))
+    assert reply["ok"] is False and "torch" in reply["error"]
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n

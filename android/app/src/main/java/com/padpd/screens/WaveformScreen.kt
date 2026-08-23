@@ -113,40 +113,7 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
             modifier = Modifier.testTag("generate"),
         ) { Text(tr("生成波形")) }
 
-        when (val state = run) {
-            is ScreenRun.Idle -> Unit
-            is ScreenRun.Busy -> Text(
-                tr("计算中…"), fontSize = 12.sp,
-                modifier = Modifier.padding(top = 12.dp).testTag("busy"),
-            )
-            is ScreenRun.Failed -> Text(
-                state.message, fontSize = 11.sp,
-                fontFamily = FontFamily.Monospace,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(top = 12.dp).testTag("waveformError"),
-            )
-            is ScreenRun.Ready -> {
-                MetricRow(state.screen.metrics)
-                TabRow(tab, Modifier.testTag("chartTabs")) {
-                    CHART_TABS.forEachIndexed { i, (slot, label) ->
-                        Tab(
-                            selected = tab == i,
-                            onClick = { tab = i },
-                            modifier = Modifier.testTag("tab:$slot"),
-                            text = { Text(tr(label), fontSize = 12.sp) },
-                        )
-                    }
-                }
-                val slot = CHART_TABS[tab].first
-                val spec = state.screen.charts[slot]
-                if (spec != null) {
-                    ChartView(
-                        spec, state.blobs,
-                        Modifier.padding(top = 8.dp).testTag("chart:$slot"),
-                    )
-                }
-            }
-        }
+        RunResult(run, "wf", CHART_TABS, tab) { tab = it }
     }
 }
 

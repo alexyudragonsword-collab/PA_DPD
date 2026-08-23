@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.sp
 import com.padpd.chart.PyBridge
 import com.padpd.i18n.Strings
 import com.padpd.i18n.tr
+import com.padpd.screens.DpdScreen
 import com.padpd.screens.GalleryScreen
 import com.padpd.screens.ModelingScreen
 import com.padpd.screens.Placeholder
@@ -121,6 +122,8 @@ fun PadpdApp() {
                     Destination.WAVEFORM -> WaveformScreen(lang)
                     Destination.MODELING ->
                         ModelingScreen(lang, torchAvailable = caps!!.torch)
+                    Destination.DPD ->
+                        DpdScreen(lang, torchAvailable = caps!!.torch)
                     Destination.GALLERY -> GalleryScreen()
                     else -> Placeholder(tr(where.zh))
                 }

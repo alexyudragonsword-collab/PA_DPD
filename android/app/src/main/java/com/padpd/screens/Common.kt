@@ -20,6 +20,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.ui.text.font.FontFamily
+import com.padpd.chart.ChartView
+import com.padpd.i18n.tr
 import com.padpd.chart.BlobStore
 import com.padpd.chart.PyBridge
 import kotlinx.coroutines.Dispatchers
@@ -177,6 +182,63 @@ fun <T> OptionRow(
                     modifier = Modifier.testTag("opt:$label:$o")
                         .clickable { onPick(o) },
                 )
+            }
+        }
+    }
+}
+
+/**
+ * Metrics, notes and the chart tabs - the bottom half of every screen.
+ *
+ * Shared rather than written per screen: three copies of this `when`
+ * would be three chances for one screen to forget the error branch, or
+ * to render a chart while its blobs are still loading.
+ *
+ * [tagPrefix] namespaces the busy and error tags so a page with several
+ * sections can say which one is running, while the chart and tab tags
+ * stay keyed by chart slot - a test asking for chart:psd should not have
+ * to know which section drew it.
+ */
+@Composable
+fun RunResult(
+    run: ScreenRun,
+    tagPrefix: String,
+    tabs: List<Pair<String, String>>,
+    tab: Int,
+    onTab: (Int) -> Unit,
+) {
+    when (run) {
+        is ScreenRun.Idle -> Unit
+        is ScreenRun.Busy -> Text(
+            tr("计算中…"), fontSize = 12.sp,
+            modifier = Modifier.padding(top = 8.dp).testTag("$tagPrefix:busy"),
+        )
+        is ScreenRun.Failed -> Text(
+            run.message, fontSize = 11.sp,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(top = 8.dp).testTag("$tagPrefix:error"),
+        )
+        is ScreenRun.Ready -> {
+            MetricRow(run.screen.metrics)
+            for (note in run.screen.notes) {
+                Text(note, fontSize = 11.sp,
+                     modifier = Modifier.padding(bottom = 6.dp)
+                         .testTag("$tagPrefix:note"))
+            }
+            if (tabs.size > 1) {
+                TabRow(tab, Modifier.testTag("$tagPrefix:tabs")) {
+                    tabs.forEachIndexed { i, (slot, label) ->
+                        Tab(selected = tab == i, onClick = { onTab(i) },
+                            modifier = Modifier.testTag("tab:$slot"),
+                            text = { Text(tr(label), fontSize = 12.sp) })
+                    }
+                }
+            }
+            run.screen.charts[tabs[tab].first]?.let { spec ->
+                ChartView(spec, run.blobs,
+                          Modifier.padding(top = 8.dp)
+                              .testTag("chart:${tabs[tab].first}"))
             }
         }
     }

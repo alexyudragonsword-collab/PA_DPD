@@ -138,7 +138,7 @@ private fun FitSection(lang: String, torchAvailable: Boolean) {
     Button({ generation++ }, enabled = run !is ScreenRun.Busy && !neural,
            modifier = Modifier.testTag("fit")) { Text(tr("拟合模型")) }
 
-    ScreenResult(run, "fit", FIT_TABS, tab) { tab = it }
+    RunResult(run, "fit", FIT_TABS, tab) { tab = it }
 }
 
 @Composable
@@ -170,51 +170,5 @@ private fun GainModSection(lang: String) {
     Button({ generation++ }, enabled = run !is ScreenRun.Busy,
            modifier = Modifier.testTag("runGainMod")) { Text(tr("运行辨识")) }
 
-    ScreenResult(run, "gm", listOf("gain_modulation" to "增益调制"), 0) {}
-}
-
-/** Metrics, notes and the chart tabs, shared by both sections. */
-@Composable
-private fun ScreenResult(
-    run: ScreenRun,
-    tagPrefix: String,
-    tabs: List<Pair<String, String>>,
-    tab: Int,
-    onTab: (Int) -> Unit,
-) {
-    when (run) {
-        is ScreenRun.Idle -> Unit
-        is ScreenRun.Busy -> Text(
-            tr("计算中…"), fontSize = 12.sp,
-            modifier = Modifier.padding(top = 8.dp).testTag("$tagPrefix:busy"),
-        )
-        is ScreenRun.Failed -> Text(
-            run.message, fontSize = 11.sp,
-            fontFamily = FontFamily.Monospace,
-            color = MaterialTheme.colorScheme.error,
-            modifier = Modifier.padding(top = 8.dp).testTag("$tagPrefix:error"),
-        )
-        is ScreenRun.Ready -> {
-            MetricRow(run.screen.metrics)
-            for (note in run.screen.notes) {
-                Text(note, fontSize = 11.sp,
-                     modifier = Modifier.padding(bottom = 6.dp)
-                         .testTag("$tagPrefix:note"))
-            }
-            if (tabs.size > 1) {
-                TabRow(tab, Modifier.testTag("$tagPrefix:tabs")) {
-                    tabs.forEachIndexed { i, (slot, label) ->
-                        Tab(selected = tab == i, onClick = { onTab(i) },
-                            modifier = Modifier.testTag("tab:$slot"),
-                            text = { Text(tr(label), fontSize = 12.sp) })
-                    }
-                }
-            }
-            run.screen.charts[tabs[tab].first]?.let { spec ->
-                ChartView(spec, run.blobs,
-                          Modifier.padding(top = 8.dp)
-                              .testTag("chart:${tabs[tab].first}"))
-            }
-        }
-    }
+    RunResult(run, "gm", listOf("gain_modulation" to "增益调制"), 0) {}
 }

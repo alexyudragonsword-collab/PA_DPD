@@ -49,8 +49,8 @@ class WaveformScreenTest {
             .assertIsDisplayed()
 
         compose.onNodeWithTag("generate", useUnmergedTree = true).performClick()
-        val seen = awaitAny(RUN_TIMEOUT_MS, "chart:psd", "waveformError")
-        assertFalse("waveform run failed on device", seen == "waveformError")
+        val seen = awaitAny(RUN_TIMEOUT_MS, "chart:psd", "wf:error")
+        assertFalse("waveform run failed on device", seen == "wf:error")
 
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
             .assertIsDisplayed()
@@ -60,7 +60,7 @@ class WaveformScreenTest {
     fun everyChartTabDraws() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         compose.onNodeWithTag("generate", useUnmergedTree = true).performClick()
-        awaitAny(RUN_TIMEOUT_MS, "chart:psd", "waveformError")
+        awaitAny(RUN_TIMEOUT_MS, "chart:psd", "wf:error")
 
         // All four figures the desktop page shows. They exercise three of
         // the renderer's four primitives on real generated data rather
@@ -78,7 +78,7 @@ class WaveformScreenTest {
     fun metricsArriveFormattedFromPython() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         compose.onNodeWithTag("generate", useUnmergedTree = true).performClick()
-        awaitAny(RUN_TIMEOUT_MS, "chart:psd", "waveformError")
+        awaitAny(RUN_TIMEOUT_MS, "chart:psd", "wf:error")
 
         // PAPR is the metric whose label is language-independent, so it
         // can be asserted without deciding what language the app is in.

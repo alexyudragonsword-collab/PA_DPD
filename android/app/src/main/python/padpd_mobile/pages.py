@@ -200,6 +200,127 @@ def gain_modulation(dut: str, drive: float, fit_state: bool, *,
             "charts": {"gain_modulation": ("gain_modulation", (res,), {})}}
 
 
+def dpd_ila(basis: str, bandwidth_mhz: float, drive: float,
+            cfr_papr_db: float | None = None, *, lang: str = "zh") -> dict:
+    """DPD Lab, ILA branch: closed-loop indirect learning on the PA.
+
+    The DLA branch is not here for the same reason the neural model
+    family is not: it needs torch, which has no Android wheel. Both are
+    named in capabilities() and greyed out in the UI.
+
+    Constellation points are computed here rather than shipped raw. The
+    desktop calls services.constellation_points to demodulate before and
+    after; doing that in Kotlin would mean porting an OFDM demodulator to
+    draw a scatter plot.
+    """
+    import gui_core.services as services
+
+    src = services.cached_synthetic_source(
+        bandwidth_hz=bandwidth_mhz * 1e6, drive=drive,
+        cfr_papr_db=cfr_papr_db)
+    out = services.run_dpd_ila(src, basis=basis)
+    m = out["metrics"]
+
+    def _aclr(row):
+        return (f"{row['aclr_high']:.1f} dBc" if row["aclr_high"] is not None
+                else "—")
+
+    metrics = [
+        _metric(tr("无 DPD", lang) + " EVM", f"{m['no DPD']['evm_db']:.1f} dB"),
+        _metric(tr("DPD 后", lang) + " EVM", f"{m['DPD']['evm_db']:.1f} dB",
+                f"{m['DPD']['evm_db'] - m['no DPD']['evm_db']:+.1f} dB"),
+        _metric(tr("无 DPD", lang) + " ACLR", _aclr(m["no DPD"]),
+                f"Mask {m['no DPD']['mask']}"),
+        _metric(tr("DPD 后", lang) + " ACLR", _aclr(m["DPD"]),
+                f"Mask {m['DPD']['mask']}"),
+    ]
+
+    charts = {"psd": ("psd", ({tr("无 DPD", lang): out["y_before"],
+                               tr("DPD 后", lang): out["y_after"]},
+                              out["fs"]),
+                      {"mask": out.get("mask")})}
+    if out.get("wf") is not None:
+        charts["constellation"] = ("constellation", ({
+            tr("无 DPD", lang): services.constellation_points(
+                out["y_before"], out["wf"], out["gain"]),
+            tr("DPD 后", lang): services.constellation_points(
+                out["y_after"], out["wf"], out["gain"]),
+        },), {})
+
+    label = f"ILA-{basis}"
+    _record(f"{label} @ {src['name']}", "dpd",
+            {"algo": "ILA", "basis": basis, "source": src["name"]},
+            {"evm_db": m["DPD"]["evm_db"],
+             "evm_before_db": m["no DPD"]["evm_db"],
+             "aclr_high_dbc": m["DPD"]["aclr_high"],
+             "aclr_before_dbc": m["no DPD"]["aclr_high"],
+             "convention": out["convention"]})
+
+    return {"result": out, "metrics": metrics, "charts": charts, "lang": lang,
+            "notes": [tr("✅ {label} 完成({conv} 口径),已注册 run",
+                         lang).format(label=label,
+                                      conv=out["convention"])]}
+
+
+def adaptive_dpd(method: str, basis: str, dut: str, n_blocks: int,
+                 bandwidth_mhz: float, *, lang: str = "zh") -> dict:
+    """Drift tracking: an adaptive DPD against a frozen batch one."""
+    import gui_core.services as services
+
+    res = services.run_adaptive_dpd(method=method, basis=basis, dut=dut,
+                                    n_blocks=n_blocks,
+                                    bw=bandwidth_mhz * 1e6)
+    name, config, metrics = services.adaptive_run_record(res)
+    _record(name, "dpd", config, metrics)
+
+    return {
+        "result": res, "lang": lang,
+        "metrics": [
+            _metric(tr("冻结", lang), f"{res['final_frozen']:.1f} dB"),
+            _metric(res["method"].upper(), f"{res['final_adaptive']:.1f} dB"),
+            _metric(tr("领先", lang), f"{res['gap_db']:.1f} dB"),
+        ],
+        "charts": {"adaptive_evm": ("adaptive_evm", (res,), {})},
+        "notes": [tr("满漂移 EVM:冻结 {f:.1f} dB → 自适应 {m} {a:.1f} dB"
+                     "(领先 {g:.1f} dB);已注册为 run。", lang).format(
+                         f=res["final_frozen"], m=res["method"].upper(),
+                         a=res["final_adaptive"], g=res["gap_db"])],
+    }
+
+
+def three_loop(n_blocks: int, drift_span: float, lo_leakage_dbc: float,
+               iq_gain_db: float, *, lang: str = "zh") -> dict:
+    """QMC, observation de-embedding and adaptive DPD, all at once.
+
+    phase_deg tracks gain_db at ten times its value, exactly as the
+    desktop page does - one control drives both halves of the IQ
+    imbalance so the two cannot be set to an inconsistent pair.
+    """
+    import gui_core.services as services
+
+    res = services.run_three_loop_demo(
+        n_blocks=n_blocks, drift_span=drift_span, gain_db=iq_gain_db,
+        phase_deg=10.0 * iq_gain_db, lo_leakage_dbc=lo_leakage_dbc)
+    name, config, metrics = services.three_loop_run_record(res)
+    _record(name, "dpd", config, metrics)
+
+    return {
+        "result": res, "lang": lang,
+        "metrics": [
+            _metric(tr("原始环回", lang), f"{res['final_raw']:.1f} dB"),
+            _metric(tr("仅去嵌", lang), f"{res['final_deembed']:.1f} dB"),
+            _metric(tr("三环", lang), f"{res['final_full']:.1f} dB"),
+            _metric(tr("镜像残差", lang), f"{res['final_image_dbc']:.1f} dBc"),
+        ],
+        "charts": {"three_loop": ("three_loop", (res,), {})},
+        "notes": [tr("满漂移在空口 EVM:原始环回 {r:.1f} dB(失效)→ 仅去嵌 "
+                     "{d:.1f} dB(钉在 IRR)→ 三环 {f:.1f} dB;镜像残差 "
+                     "{i:.1f} dBc;已注册为 run。", lang).format(
+                         r=res["final_raw"], d=res["final_deembed"],
+                         f=res["final_full"], i=res["final_image_dbc"])],
+    }
+
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -207,6 +328,9 @@ SCREENS = {
     "waveform": waveform,
     "modeling": modeling,
     "gain_modulation": gain_modulation,
+    "dpd_ila": dpd_ila,
+    "adaptive_dpd": adaptive_dpd,
+    "three_loop": three_loop,
 }
 
 
@@ -225,4 +349,7 @@ _SLOTS = {
     "waveform": ("psd", "ccdf", "constellation", "time"),
     "modeling": ("psd", "amam"),
     "gain_modulation": ("gain_modulation",),
+    "dpd_ila": ("psd", "constellation"),
+    "adaptive_dpd": ("adaptive_evm",),
+    "three_loop": ("three_loop",),
 }
