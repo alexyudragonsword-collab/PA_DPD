@@ -9,7 +9,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.fail
@@ -52,20 +51,17 @@ class GalleryScreenTest {
         val hasOnClick =
             row.fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick) != null
 
+        // Exactly one click. The handler toggles, so a second attempt
+        // would undo a first that worked and make the two outcomes
+        // indistinguishable - which is what the previous run could not
+        // rule out. The screen now publishes `open` and its click count
+        // as test tags instead, so one click is enough to see both.
         row.performClick()
-        var expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
-        val viaTouch = expanded != null
-
-        if (expanded == null && hasOnClick) {
-            // Invoking the semantics action calls the same onClick lambda
-            // without going through touch injection.
-            row.performSemanticsAction(SemanticsActions.OnClick)
-            expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
-        }
+        val expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
 
         val seen = awaitAny(CHART_TIMEOUT_MS,
-                            "hasOnClick=$hasOnClick", "viaTouch=$viaTouch",
-                            "expanded=$expanded", "chart:psd", "error:psd")
+                            "hasOnClick=$hasOnClick", "expanded=$expanded",
+                            "chart:psd", "error:psd")
         assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
         compose.onNodeWithTag("chart:psd").assertIsDisplayed()
     }

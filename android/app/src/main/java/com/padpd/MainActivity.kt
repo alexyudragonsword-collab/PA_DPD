@@ -4,12 +4,14 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -79,6 +82,7 @@ fun GalleryScreen() {
     var bootError by remember { mutableStateOf<String?>(null) }
     val loaded = remember { mutableStateMapOf<String, Load>() }
     var open by remember { mutableStateOf<String?>(null) }
+    var clicks by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(Unit) {
         // Interpreter startup unpacks numpy and scipy; measured at 178 ms
@@ -108,16 +112,38 @@ fun GalleryScreen() {
     }
 
     LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
-        item { Header(caps, bootError) }
+        item {
+            Header(caps, bootError)
+            StateMarkers(open, clicks)
+        }
         items(entries, key = { it.id }) { entry ->
             EntryRow(
                 entry,
                 state = loaded[entry.id],
                 expanded = open == entry.id,
-                onClick = { open = if (open == entry.id) null else entry.id },
+                onClick = {
+                    clicks++
+                    open = if (open == entry.id) null else entry.id
+                },
             )
         }
     }
+}
+
+/**
+ * Zero-size nodes whose test tags carry the screen's own state.
+ *
+ * Diagnostic scaffolding for a failure that has so far only been
+ * observable from outside: a tap that reaches onClick (the semantics
+ * action is present and fires) but leaves the row collapsed. Encoding
+ * `open` and the click count as tags puts both in the tag list a failing
+ * test prints, which separates "onClick never ran" from "it ran and the
+ * state change did not reach the row".
+ */
+@Composable
+private fun StateMarkers(open: String?, clicks: Int) {
+    Box(Modifier.size(1.dp).testTag("open=${open ?: "none"}"))
+    Box(Modifier.size(1.dp).testTag("clicks=$clicks"))
 }
 
 @Composable
@@ -157,6 +183,10 @@ private fun EntryRow(
             .padding(10.dp)
             .testTag("entry:${entry.id}"),
     ) {
+        // Diagnostic: says what this row was actually handed, so a
+        // failure can tell a click that never happened from one whose
+        // state change never reached here.
+        Box(Modifier.size(1.dp).testTag("expanded:${entry.id}=$expanded"))
         Row(Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically) {
