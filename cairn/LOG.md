@@ -3,6 +3,23 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android Phase 1:Python 适配层就绪
+
+- 新增 `padpd_mobile/api.py`(句柄注册表 + JSON 门面)与 `chart_spec.py`
+  (figs.py 的 15 个绘图函数移植成图表规格)。**未改 `gui_core/` 与 `src/` 一行**。
+- 三个设计要点:活对象(模型/DPD/波形)留在 Python 侧只给字符串句柄;数组走
+  float32 blob 而非 JSON(4096 点 PSD 走 JSON 是 80 KB 文本换 16 KB 数据);
+  异常以数据返回而不是抛进 Java。
+- `call` 同时返回容器本身的句柄——服务函数常返回"数组+活对象"混合的 dict,
+  没有整体句柄的话 Kotlin 得逐字段重组。
+- `tests/test_mobile_api.py` 27 条,**核心是契约漂移守卫**:断言 DISPATCH 里
+  每个名字在 services.py 真实存在、chart_spec 的 builder 集合与 figs.py 的
+  `*_fig` 一一对应(用 AST 读,避免 CI 快车道没有 PySide6/matplotlib)。
+- 一处**故意偏离** figs.py:散点抽稀改用向上取整,使 `MAX_SCATTER_POINTS`
+  真的是上界(原式 200k 点会溢出到 15,385)。渲染无所谓,但传输上界必须是界。
+- 验证:全量快车道 352 passed / 17 skipped;适配层在 Android 版本天花板
+  (Python 3.10 / numpy 1.23.3 / scipy 1.8.1)上同样 27 passed。
+
 ## 2026-08-23 · Android Phase 0 通过(真机实测,五条全达成)
 
 - 真机(aarch64 / Linux 5.10.43):冷启动到 Python 就绪 **178 ms**(阈值 5 s),
