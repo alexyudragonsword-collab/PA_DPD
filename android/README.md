@@ -147,22 +147,48 @@ Android Studio 通常能自动找到；找不到就在 `python { }` 里显式给
 
 | # | 标准 | 谁来量 | 现状 |
 |---|---|---|---|
-| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | 构建侧已过（轮子能装能打包）；**设备侧 import 待测** |
-| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | 待测 |
-| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | 待测（CI 不算数） |
-| 4 | 单 ABI release APK < 120 MB | CI | ✅ **43.6 MB**（run 7） |
-| 5 | 冷启动到 Python 就绪 < 5 s | CI（真机复核） | 待测 |
+| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | ✅ **四个全过**（run 11） |
+| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | ✅ **0.02 s，无 torch**（run 11） |
+| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | ⏳ 待测——**CI 数字不作数，理由见下** |
+| 4 | 单 ABI release APK < 120 MB | CI | ✅ **43.6 MB**（run 7、11） |
+| 5 | 冷启动到 Python 就绪 < 5 s | **真机** | ⏳ 待测——instrumented test 不测这项 |
 
 标准 3 的阈值是留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍。
 
-### 构建侧已经确认的事（run 7）
+## CI 实测结果（run 11，模拟 x86_64 / API 34）
 
-arm64-v8a release APK 构建成功：Kotlin 编译通过，Chaquopy 装上 numpy 1.23.3
-与 scipy 1.8.1 的 Android 轮子并打包了 `libpython3.10.so`。**APK 43.6 MB**，
-预算余量很大——即便日后补上 armeabi-v7a 与 x86_64 走 App Bundle 分发也不紧张。
+```
+--- platform ---     python 3.10.15 · x86_64 · Linux 6.1.23-android14
+--- scipy submodules ---
+  ok  scipy.signal       1.37 s      ok  scipy.optimize     0.00 s
+  ok  scipy.interpolate  0.00 s      ok  scipy.io           0.04 s
+--- numpy / BLAS --- numpy 1.23.3 · scipy 1.8.1 · openblas · OMP_NUM_THREADS=1
+--- service layer ---  import gui_core.services 0.02 s · torch not imported
+--- data dir ---     /data/user/0/com.padpd.spike/files   writable=True
+--- benchmarks (160 MHz / 12 符号 / 104,448 样本) ---
+  ofdm generate 0.01   gmp fit 0.59 (52 系数)   gmp predict 0.22
+  spline-mp fit 0.50   spline-gmp fit 1.24      ila 3-iter 1.73   aclr 0.01
+VERDICT: all probes passed in 5.7 s
+```
 
-注意这只证明"能装能打包"，**不等于设备上 import 得起来**（标准 1 的另一半）,
-那要等模拟器上的 `ProbeTest` 跑出报告。
+**这些耗时不能当手机性能读。** 它们比桌面基线还快（GMP 拟合 0.59 s vs 桌面
+2.02 s），因为 GitHub 的 x86_64 模拟器走 KVM **在 runner 的 CPU 上原生执行**，
+根本没有模拟 ARM 指令。这是"runner CPU 的数字"，对 arm64 手机没有预测力。
+**标准 3 只能在真机上量。**
+
+三件顺带确认的事：
+
+- `gui_core/paths.py` 的 `PADPD_DATA_DIR` 覆写在设备上生效
+  （`/data/user/0/com.padpd.spike/files`，可写）——**那个文件确实一行没改**；
+- Chaquopy 的 numpy 链的是 **OpenBLAS**，不是 reference BLAS；
+- `scipy.signal` 首次 import 要 **1.37 s**，是所有 import 里最贵的一项。
+  UI 上应当预热或显示进度，否则用户会撞上一次莫名的卡顿。
+
+### 标准 5 为什么还没量
+
+instrumented test 里 `Python.start()` 在计时之外，所以报告的 5.7 s **不含**
+解释器启动与 numpy/scipy 解包。冷启动只有 `MainActivity` 那条路径会打印
+（输出首行 `python start + import`），要手动跑一次 app 才拿得到。
 
 ### 这个 spike 已经挡掉的坑
 
@@ -173,7 +199,11 @@ arm64-v8a release APK 构建成功：Kotlin 编译通过，Chaquopy 装上 numpy
 2. Chaquopy 的 scipy 只到 cp310；
 3. 依赖不钉版本会被 PyPI 的新版抢赢，而 PyPI 没有 Android 构建；
 4. buildPython 必须与目标 Python 同版本，否则正确的轮子会被 pip 否掉；
-5. `org.gradle.parallel` 会让 Kotlin 插件在 `friendPaths` 上撞项目状态锁。
+5. `org.gradle.parallel` 会让 Kotlin 插件在 `friendPaths` 上撞项目状态锁；
+6. **`android-emulator-runner` 把 `script:` 逐行放进独立的 `sh -c` 执行**——
+   变量、`cd`、`set +e` 一律不跨行。它让 `cd android` 静默失效、`./gradlew`
+   在仓库根目录跑，连续四轮都没产出过 gradle 日志。所以脚本逻辑要放进文件，
+   `script:` 只留一行调用（见 `.github/scripts/run-probe-on-emulator.sh`）。
 
 `data dir writable=True` 顺带验证了 `gui_core/paths.py` 的
 `PADPD_DATA_DIR` 覆写在 Android 上生效——这条通过意味着**那个文件一行都不用

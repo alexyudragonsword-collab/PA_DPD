@@ -3,6 +3,23 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android Phase 0:CI 侧五条验收过了三条
+
+- run 11 三个 job 全绿。**标准 1**(scipy 四个子模块全部 import)、**标准 2**
+  (服务层导入 0.02 s 且无 torch)、**标准 4**(APK 43.6 MB / 预算 120 MB)达成。
+- 顺带确认:`PADPD_DATA_DIR` 覆写在设备上生效(`/data/user/0/.../files` 可写),
+  Chaquopy 的 numpy 链的是 OpenBLAS,`scipy.signal` 首次 import 要 1.37 s
+  (UI 需预热)。
+- **标准 3、5 仍待真机**。CI 的耗时数字(GMP 拟合 0.59 s)比桌面基线还快,因为
+  x86_64 模拟器走 KVM 在 runner CPU 上原生跑,没模拟 ARM——**对手机零预测力**,
+  不能当性能结论用。标准 5 则是 instrumented test 根本没测(`Python.start()`
+  在计时之外)。
+- 教训:`android-emulator-runner` 把 `script:` **逐行**丢进独立 `sh -c`,变量、
+  `cd`、`set +e` 都不跨行。它让 `cd android` 静默失效、`./gradlew` 在错误目录
+  执行,连烧四轮。我有两轮是在修一段**根本没按我以为的方式执行**的脚本——
+  排障时应更早怀疑执行模型,而不是只怀疑脚本内容。
+- 详见 `android/README.md`「CI 实测结果」与「这个 spike 已经挡掉的坑」(六条)。
+
 ## 2026-08-23 · Android 依赖被平台锁在项目声明的下限以下
 
 - Chaquopy 仓库 **scipy 最高 1.8.1 且最高只有 cp310**;选 Python 3.11 时
