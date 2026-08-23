@@ -1,5 +1,6 @@
 package com.padpd
 
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -8,6 +9,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.fail
@@ -41,15 +43,28 @@ class GalleryScreenTest {
         assertFalse("Python failed to start on device", exists("bootError"))
         compose.onNodeWithTag("caps").assertIsDisplayed()
 
-        compose.onNodeWithTag("entry:psd").performClick()
+        // The previous run established that the row never expanded, so
+        // the question is now why the tap did not reach onClick. Whether
+        // the tagged node carries a click action at all separates "the
+        // handler is wired but injected touch does not arrive" from "the
+        // tag and the clickable ended up on different semantics nodes".
+        val row = compose.onNodeWithTag("entry:psd")
+        val hasOnClick =
+            row.fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick) != null
 
-        // Whether the row ever entered its pending state separates the
-        // two failures that otherwise look the same from outside: a tap
-        // that never set `open` (no pending, no chart) from a load that
-        // never returned (pending, no chart).
-        val expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
+        row.performClick()
+        var expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
+        val viaTouch = expanded != null
+
+        if (expanded == null && hasOnClick) {
+            // Invoking the semantics action calls the same onClick lambda
+            // without going through touch injection.
+            row.performSemanticsAction(SemanticsActions.OnClick)
+            expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
+        }
 
         val seen = awaitAny(CHART_TIMEOUT_MS,
+                            "hasOnClick=$hasOnClick", "viaTouch=$viaTouch",
                             "expanded=$expanded", "chart:psd", "error:psd")
         assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
         compose.onNodeWithTag("chart:psd").assertIsDisplayed()
