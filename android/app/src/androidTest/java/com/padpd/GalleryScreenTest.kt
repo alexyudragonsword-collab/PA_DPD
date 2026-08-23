@@ -1,5 +1,8 @@
 package com.padpd
 
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -7,8 +10,9 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
-import org.junit.Test
+import org.junit.Assert.fail
 import org.junit.Rule
+import org.junit.Test
 import org.junit.runner.RunWith
 
 /**
@@ -18,8 +22,12 @@ import org.junit.runner.RunWith
  * Only the first entry is exercised. The gallery is a LazyColumn, so
  * entries below the fold are not composed until scrolled to, and driving
  * all fourteen through the list would be testing scrolling rather than
- * charts - which is what PyBridgeTest and ChartRenderTest already cover
- * without it.
+ * charts - PyBridgeTest and ChartRenderTest cover those without it.
+ *
+ * Waits are hand-rolled rather than `compose.waitUntil` so that a timeout
+ * can say what the semantics tree actually contained. An earlier version
+ * timed out with nothing but "condition still not satisfied", which is
+ * consistent with a dozen different causes and distinguishes none of them.
  */
 @RunWith(AndroidJUnit4::class)
 class GalleryScreenTest {
@@ -29,22 +37,44 @@ class GalleryScreenTest {
 
     @Test
     fun startsAndDrawsTheFirstChart() {
-        compose.waitUntil(BOOT_TIMEOUT_MS) { exists("caps") || exists("bootError") }
+        awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
         compose.onNodeWithTag("caps").assertIsDisplayed()
 
         compose.onNodeWithTag("entry:psd").performClick()
-        compose.waitUntil(CHART_TIMEOUT_MS) { exists("chart:psd") || exists("error:psd") }
-        assertFalse("psd failed to build on device", exists("error:psd"))
+        val seen = awaitAny(CHART_TIMEOUT_MS, "chart:psd", "error:psd")
+        assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
         compose.onNodeWithTag("chart:psd").assertIsDisplayed()
+    }
+
+    /** Poll in real time for the first of [tags] to appear, and report
+     * what was there instead if none does. */
+    private fun awaitAny(timeoutMs: Long, vararg tags: String): String {
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            compose.waitForIdle()
+            tags.firstOrNull { exists(it) }?.let { return it }
+            Thread.sleep(POLL_MS)
+        }
+        fail("none of ${tags.toList()} appeared within ${timeoutMs}ms. " +
+             "Tags present: ${presentTags()}")
+        error("unreachable")
     }
 
     private fun exists(tag: String): Boolean =
         compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
 
+    private fun presentTags(): List<String> =
+        compose.onAllNodes(SemanticsMatcher("has a test tag") { node ->
+            node.config.getOrNull(SemanticsProperties.TestTag) != null
+        }).fetchSemanticsNodes()
+            .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
+            .sorted()
+
     private companion object {
         // First launch unpacks numpy and scipy.
         const val BOOT_TIMEOUT_MS = 120_000L
         const val CHART_TIMEOUT_MS = 60_000L
+        const val POLL_MS = 250L
     }
 }
