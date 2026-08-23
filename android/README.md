@@ -75,6 +75,25 @@ ls -l app/build/outputs/apk/release/app-release.apk
 
 ---
 
+## 共享控件不能自带滚动:嵌套横向滚动直接抛异常
+
+Compose 在横向滚动组件收到**无限宽约束**时抛 `IllegalStateException`,而
+`Row(horizontalScroll)` 里再放一个 `Row(horizontalScroll)` 正好制造这个约束:
+
+    Horizontally scrollable component was measured with an infinity
+    maximum width constraints, which is disallowed.
+
+这条是重构引入的回归:把波形页的 `Choice`(内部无滚动)与建模页的
+`ChoiceRow`(内部有滚动)合并成共享 `OptionRow` 时,保留了带滚动的那版,而
+波形页把它放在一个已经在滚动的外层 Row 里。**上一轮波形页三条设备测试是全过
+的,是合并把它们弄坏的。**
+
+约定:`screens/Common.kt` 里的共享控件**不带滚动修饰符**——它不知道会被嵌进
+什么容器。需要滚动由调用方在外面包一层。`MetricRow` 是例外(它自带横向滚动),
+所以它只能直接放在纵向容器里,这一点写在它的注释里。
+
+同轴嵌套才是问题:`Column(verticalScroll)` 里放 `Row(horizontalScroll)` 合法。
+
 ## 横向滚动条里的节点:composed ≠ 点得到
 
 导航栏是 10 项的 `Row` + `horizontalScroll`,最后一项(图表画廊)默认在视口外。

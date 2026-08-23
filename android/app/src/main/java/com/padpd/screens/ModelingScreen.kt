@@ -100,8 +100,14 @@ private fun FitSection(lang: String, torchAvailable: Boolean) {
             JsonPrimitive(frontend))
     }
 
-    OptionRow(tr("类型"), MODEL_TYPES, modelType) { modelType = it }
-    OptionRow(tr("前端"), FRONTENDS, frontend) { frontend = it }
+    Row(Modifier.fillMaxWidth()
+        .horizontalScroll(rememberScrollState())) {
+        OptionRow(tr("类型"), MODEL_TYPES, modelType) { modelType = it }
+    }
+    Row(Modifier.fillMaxWidth()
+        .horizontalScroll(rememberScrollState())) {
+        OptionRow(tr("前端"), FRONTENDS, frontend) { frontend = it }
+    }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)
         .horizontalScroll(rememberScrollState())) {
         IntStepper(tr("阶数"), order, 3, 9, 1) { order = it }
@@ -151,7 +157,10 @@ private fun GainModSection(lang: String) {
             JsonPrimitive(fitState))
     }
 
-    OptionRow(tr("虚拟 DUT"), GAIN_MOD_DUTS, dut) { dut = it }
+    Row(Modifier.fillMaxWidth()
+        .horizontalScroll(rememberScrollState())) {
+        OptionRow(tr("虚拟 DUT"), GAIN_MOD_DUTS, dut) { dut = it }
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         IntStepper("drive", driveHundredths, 6, 24, 1,
                    display = { "0.%02d".format(it) }) { driveHundredths = it }

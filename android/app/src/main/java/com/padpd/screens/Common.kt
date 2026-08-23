@@ -72,7 +72,13 @@ suspend fun loadScreen(
     }
 }.getOrElse { ScreenRun.Failed(it.message ?: it.toString()) }
 
-/** The metric cards. Values arrive already formatted - see pages.py. */
+/**
+ * The metric cards. Values arrive already formatted - see pages.py.
+ *
+ * This one does scroll horizontally, which is safe only because it is
+ * always placed directly in a vertical column. Do not nest it in a
+ * horizontally scrolling row - see the note on [OptionRow].
+ */
 @Composable
 fun MetricRow(metrics: List<PyBridge.Metric>) {
     Row(
@@ -140,7 +146,15 @@ fun IntStepper(
     }
 }
 
-/** A value picked from a fixed set - the phone form of a QComboBox. */
+/**
+ * A value picked from a fixed set - the phone form of a QComboBox.
+ *
+ * Deliberately not scrollable itself. A shared control cannot know what
+ * it will be nested in, and Compose throws when a horizontally
+ * scrollable component is measured with infinite width - which is what
+ * a scrolling row inside a scrolling row produces. Callers that need
+ * scrolling wrap this; callers already inside a scrolling row do not.
+ */
 @Composable
 fun <T> OptionRow(
     label: String,
@@ -151,8 +165,7 @@ fun <T> OptionRow(
     Column(Modifier.padding(vertical = 4.dp)) {
         Text(label, fontSize = 10.sp,
              color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Row(Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (o in options) {
                 val chosen = o == selected
                 Text(
