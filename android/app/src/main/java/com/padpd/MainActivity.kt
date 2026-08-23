@@ -114,7 +114,7 @@ fun GalleryScreen() {
     LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
         item {
             Header(caps, bootError)
-            StateMarkers(open, clicks)
+            StateMarkers(open, clicks, caps, entries.size)
         }
         items(entries, key = { it.id }) { entry ->
             EntryRow(
@@ -141,9 +141,22 @@ fun GalleryScreen() {
  * state change did not reach the row".
  */
 @Composable
-private fun StateMarkers(open: String?, clicks: Int) {
+private fun StateMarkers(
+    open: String?,
+    clicks: Int,
+    caps: PyBridge.Capabilities?,
+    entryCount: Int,
+) {
     Box(Modifier.size(1.dp).testTag("open=${open ?: "none"}"))
     Box(Modifier.size(1.dp).testTag("clicks=$clicks"))
+    // caps and entries are written together in one success branch, so
+    // capsNull=true alongside entries>0 cannot happen within a single
+    // composition. Run 8 showed the header on its "starting Python"
+    // branch while seven rows were on screen, which says one of those
+    // two beliefs is wrong. These read both states from the same place
+    // the header reads them.
+    Box(Modifier.size(1.dp).testTag("capsNull=${caps == null}"))
+    Box(Modifier.size(1.dp).testTag("entries=$entryCount"))
 }
 
 @Composable
