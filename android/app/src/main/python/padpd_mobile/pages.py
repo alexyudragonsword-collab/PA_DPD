@@ -321,6 +321,66 @@ def three_loop(n_blocks: int, drift_span: float, lo_leakage_dbc: float,
     }
 
 
+def compare(selected_ids: list | None = None, *,
+            lang: str = "zh") -> dict:
+    """Compare Runs: the registry every other screen writes to.
+
+    Returns rows rather than metrics - this screen is a table, not a
+    reading. Values are pre-formatted here for the same reason metrics
+    are: the desktop prints two decimals and Kotlin should not get a
+    second opinion about that.
+
+    Export to JSON is absent. On Android that needs the Storage Access
+    Framework, which is not wired up yet; offering a button that cannot
+    write anywhere would be worse than not offering one.
+    """
+    runs = _runstore().list()
+    rows = [{
+        "id": r.run_id,
+        "when": r.when,
+        "name": r.name,
+        "kind": r.kind,
+        **{k: (f"{v:.2f}" if isinstance(v, (int, float)) else "")
+           for k, v in ((k, r.metrics.get(k)) for k in _COMPARE_KEYS)},
+    } for r in runs]
+
+    picked = [r for r in runs if r.run_id in set(selected_ids or ())]
+    charts, notes = {}, []
+    if len(picked) < 2:
+        notes.append(tr("至少勾选 2 项", lang))
+    else:
+        # Only metrics at least one selected run actually carries: a bar
+        # group of empty values reads as "measured zero" rather than "not
+        # applicable to this kind of run".
+        keys = [k for k in _COMPARE_KEYS
+                if any(isinstance(r.metrics.get(k), (int, float))
+                       for r in picked)]
+        charts["bars"] = ("bars", ([r.name for r in picked],
+                                   {k: [r.metrics.get(k) for r in picked]
+                                    for k in keys}), {})
+        notes.append(tr("对比 {n} 项", lang).format(n=len(picked)))
+
+    return {"result": runs, "rows": rows, "metrics": [], "charts": charts,
+            "lang": lang, "notes": notes}
+
+
+_COMPARE_KEYS = ("nmse_db", "evm_db", "aclr_high_dbc")
+
+
+def delete_runs(ids: list) -> int:
+    """Delete runs by id, returning how many are left.
+
+    Not a screen, so not routed through page(): it changes the store
+    rather than describing it, and giving a mutation the same entry point
+    as a read would make "assemble the compare screen" a call that can
+    destroy data.
+    """
+    store = _runstore()
+    for run_id in ids:
+        store.delete(run_id)
+    return len(store.list())
+
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -331,6 +391,7 @@ SCREENS = {
     "dpd_ila": dpd_ila,
     "adaptive_dpd": adaptive_dpd,
     "three_loop": three_loop,
+    "compare": compare,
 }
 
 
@@ -352,4 +413,6 @@ _SLOTS = {
     "dpd_ila": ("psd", "constellation"),
     "adaptive_dpd": ("adaptive_evm",),
     "three_loop": ("three_loop",),
+    # Charts appear only once two runs are selected.
+    "compare": (),
 }

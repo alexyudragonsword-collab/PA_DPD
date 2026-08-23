@@ -5,6 +5,7 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonArray
@@ -66,6 +67,9 @@ object PyBridge {
         /** Sentences the screen wants shown verbatim - a verdict whose
          * wording depends on what was measured, for instance. */
         val notes: List<String> = emptyList(),
+        /** Tabular screens return rows instead of metric cards. Values
+         * are already formatted, as everything else from pages.py is. */
+        val rows: List<Map<String, String>> = emptyList(),
     )
 
     @Serializable
@@ -75,6 +79,7 @@ object PyBridge {
         val metrics: List<Metric> = emptyList(),
         val charts: Map<String, ChartSpec> = emptyMap(),
         val notes: List<String> = emptyList(),
+        val rows: List<Map<String, String>> = emptyList(),
         val error: String = "",
         val traceback: String = "",
     )
@@ -152,7 +157,7 @@ object PyBridge {
         if (!reply.ok) throw IllegalStateException(
             "${reply.error}\n${reply.traceback}")
         return Screen(reply.handle, reply.metrics, reply.charts,
-                      reply.notes)
+                      reply.notes, reply.rows)
     }
 
     /**
@@ -164,6 +169,26 @@ object PyBridge {
         val json = requireApi().callAttr("i18n_map", lang).toString()
         return ChartJson.decodeFromString(
             MapSerializer(String.serializer(), String.serializer()), json)
+    }
+
+    @Serializable
+    private data class DeleteReply(
+        val ok: Boolean, val remaining: Int = 0, val error: String = "",
+    )
+
+    /**
+     * Delete runs by id, returning how many remain.
+     *
+     * Not routed through [page]: assembling a screen must stay safe to
+     * call, and this destroys records.
+     */
+    fun deleteRuns(ids: List<String>): Int {
+        val payload = ChartJson.encodeToString(
+            ListSerializer(String.serializer()), ids)
+        val json = requireApi().callAttr("delete_runs", payload).toString()
+        val reply = ChartJson.decodeFromString(DeleteReply.serializer(), json)
+        if (!reply.ok) throw IllegalStateException(reply.error)
+        return reply.remaining
     }
 
     /** Raw float32 bytes for one blob key. */

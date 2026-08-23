@@ -264,6 +264,61 @@ def test_dla_is_refused_because_it_needs_torch(api):
     assert reply["ok"] is False and "torch" in reply["error"]
 
 
+# ---- the compare screen -------------------------------------------------
+def test_compare_reads_back_what_other_screens_registered(api):
+    """The loop the other pages' notes promise.
+
+    Modeling says "registered as a run"; this is where that becomes
+    visible. Asserting through the compare screen rather than the store
+    directly, so the screen's own reading of it is what is checked.
+    """
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    rows = _screen(api, "compare", [])["rows"]
+    assert rows, "no runs listed after fitting a model"
+    assert any("MP @" in r["name"] for r in rows), [r["name"] for r in rows]
+
+
+def test_compare_needs_two_runs_before_it_charts_anything(api):
+    """One run is not a comparison. The screen says so rather than
+    drawing a single bar, which would look like a result."""
+    one = _screen(api, "compare", [])
+    assert one["charts"] == {}
+    assert "2" in one["notes"][0]
+
+
+def test_compare_charts_only_metrics_someone_selected_carries(api):
+    """A bar group of blanks reads as "measured zero" rather than "not
+    applicable to this kind of run", so absent metrics are left out."""
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    _screen(api, "modeling", "GMP", 5, 4, 0.14, "none")
+    rows = _screen(api, "compare", [])["rows"]
+    ids = [r["id"] for r in rows][:2]
+    reply = _screen(api, "compare", ids)
+    assert "bars" in reply["charts"]
+    series = [s for p in reply["charts"]["bars"]["panels"]
+              for s in p["series"]]
+    assert series, "bars chart has no series"
+
+
+def test_deleting_a_run_removes_it(api):
+    from padpd_mobile import pages
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    rows = _screen(api, "compare", [])["rows"]
+    victim = rows[0]["id"]
+    remaining = json.loads(api.delete_runs(json.dumps([victim])))
+    assert remaining["ok"] and remaining["remaining"] == len(rows) - 1
+    after = [r["id"] for r in _screen(api, "compare", [])["rows"]]
+    assert victim not in after
+
+
+def test_row_values_are_formatted_strings(api):
+    """Same contract as metrics: the desktop's precision is the spec."""
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    row = next(r for r in _screen(api, "compare", [])["rows"]
+               if r["nmse_db"])
+    assert re.fullmatch(r"-?\d+\.\d{2}", row["nmse_db"]), row
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n

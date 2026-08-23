@@ -287,7 +287,25 @@ def page(name: str, args_json: str = "{}") -> str:
                            # the gain-modulation verdict, for one, whose
                            # wording depends on what was measured.
                            "notes": built.get("notes", []),
+                           # Tabular screens (Compare) return rows rather
+                           # than metric cards.
+                           "rows": built.get("rows", []),
                            "charts": charts})
+    except Exception as e:                       # noqa: BLE001
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
+                           "traceback": traceback.format_exc(limit=8)})
+
+
+def delete_runs(ids_json: str) -> str:
+    """Delete runs from the store. Returns how many remain.
+
+    Separate from ``page`` on purpose: page assembles a view and must
+    stay safe to call, while this destroys records.
+    """
+    try:
+        from . import pages
+        remaining = pages.delete_runs(json.loads(ids_json))
+        return json.dumps({"ok": True, "remaining": remaining})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
                            "traceback": traceback.format_exc(limit=8)})

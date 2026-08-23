@@ -51,6 +51,11 @@ _EN = {
     "原始环回": "Raw loopback",
     "仅去嵌": "De-embed only",
     "三环": "Three loops",
+    "勾选 run 进行对比;注册表持久化于 gui_runs/,与桌面版同一格式。":
+        "Tick runs to compare them; the registry persists in gui_runs/, "
+        "in the same format as the desktop build.",
+    "还没有 run。先在建模或 DPD 页跑一次。":
+        "No runs yet. Run something on the Modeling or DPD page first.",
     "自适应 DPD(漂移跟踪)": "Adaptive DPD (drift tracking)",
     "前端三环演示": "Front-end three-loop demo",
     "基": "Basis",
