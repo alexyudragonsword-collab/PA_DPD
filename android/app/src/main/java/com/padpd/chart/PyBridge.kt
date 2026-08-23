@@ -5,6 +5,13 @@ import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.MapSerializer
+import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 /**
  * The Kotlin half of the bridge to `padpd_mobile.api`.
@@ -43,6 +50,31 @@ object PyBridge {
         val ok: Boolean, val entries: List<GalleryEntry> = emptyList(),
     )
 
+    /** One metric card. Values arrive already formatted - see pages.py. */
+    @Serializable
+    data class Metric(
+        val label: String,
+        val value: String,
+        val note: String = "",
+    )
+
+    /** One assembled screen: what [page] returns. */
+    data class Screen(
+        val handle: String,
+        val metrics: List<Metric>,
+        val charts: Map<String, ChartSpec>,
+    )
+
+    @Serializable
+    private data class PageReply(
+        val ok: Boolean,
+        val handle: String = "",
+        val metrics: List<Metric> = emptyList(),
+        val charts: Map<String, ChartSpec> = emptyMap(),
+        val error: String = "",
+        val traceback: String = "",
+    )
+
     @Serializable
     private data class ChartReply(
         val ok: Boolean,
@@ -61,11 +93,15 @@ object PyBridge {
      * imported, and Java cannot portably set environment variables. So
      * the directory travels as an argument and Python sets it.
      */
-    fun boot(context: Context): Capabilities {
+    fun boot(context: Context, lang: String = "zh"): Capabilities {
         if (!Python.isStarted()) Python.start(AndroidPlatform(context))
         val module = Python.getInstance().getModule("padpd_mobile.api")
         api = module
-        val json = module.callAttr("boot", context.filesDir.absolutePath).toString()
+        // Re-callable: switching language boots again, and the Python
+        // side treats that as setting the language, not as restarting.
+        // Python.start would throw on a second call, hence the guard.
+        val json = module
+            .callAttr("boot", context.filesDir.absolutePath, lang).toString()
         return ChartJson.decodeFromString(Capabilities.serializer(), json)
     }
 
@@ -84,6 +120,45 @@ object PyBridge {
             throw IllegalStateException("${reply.error}\n${reply.traceback}")
         }
         return reply.spec
+    }
+
+    /**
+     * Assemble one screen: metrics and every chart, in a single call.
+     *
+     * The screen is composed on the Python side (`padpd_mobile/pages.py`)
+     * for two reasons that both bite here. Metrics are read off live
+     * objects - `wf.config.fft_size` and the like - which cannot cross
+     * the bridge without opening a general attribute reader. And their
+     * formatting is the desktop's, to the digit; duplicating "%.2f dB"
+     * in Kotlin would let the two front ends drift in a way that looks
+     * like a rounding difference rather than a bug.
+     */
+    fun page(
+        name: String,
+        args: List<JsonElement> = emptyList(),
+        kwargs: Map<String, JsonElement> = emptyMap(),
+    ): Screen {
+        val payload = buildJsonObject {
+            put("args", JsonArray(args))
+            put("kwargs", JsonObject(kwargs))
+        }
+        val json = requireApi().callAttr("page", name, payload.toString())
+            .toString()
+        val reply = ChartJson.decodeFromString(PageReply.serializer(), json)
+        if (!reply.ok) throw IllegalStateException(
+            "${reply.error}\n${reply.traceback}")
+        return Screen(reply.handle, reply.metrics, reply.charts)
+    }
+
+    /**
+     * The Chinese-to-target-language table, fetched once per language.
+     *
+     * Empty for zh, where the keys are already the displayed strings.
+     */
+    fun i18nMap(lang: String): Map<String, String> {
+        val json = requireApi().callAttr("i18n_map", lang).toString()
+        return ChartJson.decodeFromString(
+            MapSerializer(String.serializer(), String.serializer()), json)
     }
 
     /** Raw float32 bytes for one blob key. */

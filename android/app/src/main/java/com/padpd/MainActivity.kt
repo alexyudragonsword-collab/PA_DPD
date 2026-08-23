@@ -3,17 +3,15 @@ package com.padpd
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,35 +20,25 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.padpd.chart.BlobStore
-import com.padpd.chart.ChartSpec
-import com.padpd.chart.ChartView
 import com.padpd.chart.PyBridge
+import com.padpd.i18n.Strings
+import com.padpd.i18n.tr
+import com.padpd.screens.GalleryScreen
+import com.padpd.screens.Placeholder
+import com.padpd.screens.WaveformScreen
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-/**
- * Phase 2's deliverable: every chart specification, drawn.
- *
- * There are no product pages yet - Phase 3 builds those. What this proves
- * is that the spec layer plus one renderer covers all fourteen chart
- * shapes `gui_qt/figs.py` produces, including the awkward ones: twin axes,
- * log axes, categorical ticks, equal aspect, NaN gaps and shaded spans.
- */
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -59,138 +47,79 @@ class MainActivity : ComponentActivity() {
                 colorScheme = if (isSystemInDarkTheme()) darkColorScheme()
                               else lightColorScheme(),
             ) {
-                Surface(Modifier.fillMaxSize()) { GalleryScreen() }
+                Surface(Modifier.fillMaxSize()) { PadpdApp() }
             }
         }
     }
 }
 
-private sealed interface Load {
-    data object Pending : Load
-    data class Ready(val spec: ChartSpec, val blobs: BlobStore) : Load
-    data class Failed(val message: String) : Load
+/**
+ * The nine screens of the desktop workbench, plus the chart gallery.
+ *
+ * All ten are listed from the start even though eight are placeholders.
+ * A navigation bar that grows an entry per completed port would make a
+ * half-finished app look finished; this one shows the shape of the whole
+ * and what is still missing.
+ */
+private enum class Destination(val id: String, val zh: String) {
+    HOME("home", "总览"),
+    WAVEFORM("waveform", "波形工作台"),
+    MODELING("modeling", "PA 建模"),
+    DPD("dpd", "DPD 实验室"),
+    DATA("data", "数据管理"),
+    DEPLOY("deploy", "部署"),
+    COMPARE("compare", "结果比较"),
+    CODESIGN("codesign", "联合设计"),
+    MANUAL("manual", "用户手册"),
+    GALLERY("gallery", "图表画廊"),
 }
 
 @Composable
-fun GalleryScreen() {
-    val context = androidx.compose.ui.platform.LocalContext.current
+fun PadpdApp() {
+    val context = LocalContext.current
     var caps by remember { mutableStateOf<PyBridge.Capabilities?>(null) }
-    var entries by remember { mutableStateOf<List<PyBridge.GalleryEntry>>(emptyList()) }
     var bootError by remember { mutableStateOf<String?>(null) }
-    val loaded = remember { mutableStateMapOf<String, Load>() }
-    var open by remember { mutableStateOf<String?>(null) }
+    var lang by remember { mutableStateOf("zh") }
+    var where by remember { mutableStateOf(Destination.WAVEFORM) }
 
-    LaunchedEffect(Unit) {
-        // Interpreter startup unpacks numpy and scipy; measured at 178 ms
-        // on an arm64 device, but never on the UI thread regardless.
+    // The i18n table is refetched on every language change rather than
+    // both being cached: it is one call returning a few hundred short
+    // strings, and caching two of them would mean holding a copy of the
+    // table that Python already owns.
+    LaunchedEffect(lang) {
+        caps = null
         runCatching {
             withContext(Dispatchers.Default) {
-                val c = PyBridge.boot(context)
-                c to PyBridge.galleryList()
+                val c = PyBridge.boot(context, lang)
+                Strings.install(PyBridge.i18nMap(lang))
+                c
             }
-        }.onSuccess { (c, e) -> caps = c; entries = e }
+        }.onSuccess { caps = it }
             .onFailure { bootError = it.message ?: it.toString() }
     }
 
-    LaunchedEffect(open) {
-        val id = open ?: return@LaunchedEffect
-        if (loaded[id] is Load.Ready) return@LaunchedEffect
-        loaded[id] = Load.Pending
-        loaded[id] = runCatching {
-            withContext(Dispatchers.Default) {
-                val spec = PyBridge.galleryChart(id)
-                // Resolve every blob now, so panning later never crosses
-                // the bridge mid-frame.
-                val blobs = PyBridge.newBlobStore().apply { preload(spec) }
-                Load.Ready(spec, blobs)
-            }
-        }.getOrElse { Load.Failed(it.message ?: it.toString()) }
-    }
+    Column(Modifier.fillMaxSize()) {
+        TopBar(lang, onLang = { lang = it })
 
-    LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
-        item { Header(caps, bootError) }
-        items(entries, key = { it.id }) { entry ->
-            EntryRow(
-                entry,
-                state = loaded[entry.id],
-                expanded = open == entry.id,
-                onClick = { open = if (open == entry.id) null else entry.id },
-            )
-        }
-    }
-}
-
-@Composable
-private fun Header(caps: PyBridge.Capabilities?, error: String?) {
-    Column(Modifier.padding(bottom = 12.dp)) {
-        Text("padpd chart gallery", fontSize = 20.sp,
-             fontWeight = FontWeight.SemiBold)
+        val error = bootError
         when {
-            error != null -> Text("Python failed to start: $error",
-                                  color = MaterialTheme.colorScheme.error,
-                                  fontSize = 12.sp,
-                                  modifier = Modifier.testTag("bootError"))
-            caps == null -> Text("starting Python…", fontSize = 12.sp,
-                                 modifier = Modifier.testTag("bootPending"))
-            else -> Text(
-                "padpd ${caps.version} · ${caps.charts.size} chart types · " +
-                    "torch unavailable (${caps.unavailable.size} entry points)",
+            error != null -> Text(
+                tr("Python 启动失败:") + error,
+                color = MaterialTheme.colorScheme.error,
                 fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.testTag("caps"),
+                modifier = Modifier.padding(12.dp).testTag("bootError"),
             )
-        }
-    }
-}
-
-@Composable
-private fun EntryRow(
-    entry: PyBridge.GalleryEntry,
-    state: Load?,
-    expanded: Boolean,
-    onClick: () -> Unit,
-) {
-    Column(
-        Modifier.fillMaxWidth().padding(vertical = 4.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
-            .testTag("entry:${entry.id}"),
-    ) {
-        // The tap target is the caption only, deliberately not the whole
-        // row. With clickable on the outer column the chart sat inside
-        // the click target, so a tap on a chart collapsed its own row and
-        // a drag competed with the renderer's pan and zoom.
-        Column(
-            Modifier.fillMaxWidth()
-                .clickable(onClick = onClick)
-                .padding(10.dp)
-                .testTag("head:${entry.id}"),
-        ) {
-            Row(Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically) {
-                Text(entry.title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                ProvenanceChip(entry.provenance)
-            }
-            Text("${entry.primitive} primitive", fontSize = 11.sp,
-                 fontFamily = FontFamily.Monospace,
-                 color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-
-        if (expanded) {
-            Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
-                when (state) {
-                    null, is Load.Pending ->
-                        Text("computing…", fontSize = 12.sp,
-                             modifier = Modifier.testTag("pending:${entry.id}"))
-                    is Load.Failed ->
-                        Text(state.message, fontSize = 11.sp,
-                             fontFamily = FontFamily.Monospace,
-                             color = MaterialTheme.colorScheme.error,
-                             modifier = Modifier.testTag("error:${entry.id}"))
-                    is Load.Ready ->
-                        ChartView(state.spec, state.blobs,
-                                  Modifier.testTag("chart:${entry.id}"))
+            caps == null -> Text(
+                tr("正在启动 Python…"), fontSize = 12.sp,
+                modifier = Modifier.padding(12.dp).testTag("bootPending"),
+            )
+            else -> {
+                CapabilityLine(caps!!)
+                NavBar(where) { where = it }
+                when (where) {
+                    Destination.WAVEFORM -> WaveformScreen(lang)
+                    Destination.GALLERY -> GalleryScreen()
+                    else -> Placeholder(tr(where.zh))
                 }
             }
         }
@@ -198,22 +127,73 @@ private fun EntryRow(
 }
 
 /**
- * Says whether the chart is real output or a fixture.
+ * What this build can and cannot do, stated up front.
  *
- * Half these entries carry representative inputs because their real
- * producers are minutes of compute or need torch. A gallery of plausible
- * charts is otherwise very easy to read as proof that the pipeline works.
+ * torch has no Android wheel, so five entry points cannot run at all.
+ * Saying so here - rather than only greying controls where they appear -
+ * means the limitation is visible before someone plans work around it.
  */
 @Composable
-private fun ProvenanceChip(provenance: String) {
-    val computed = provenance == "computed"
+private fun CapabilityLine(caps: PyBridge.Capabilities) {
     Text(
-        if (computed) "computed" else "fixture",
-        fontSize = 10.sp,
-        color = if (computed) Color(0xFF37C978) else Color(0xFFE5B567),
-        modifier = Modifier
-            .clip(RoundedCornerShape(4.dp))
-            .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = 6.dp, vertical = 2.dp),
+        "padpd ${caps.version} · " +
+            tr("{n} 种图表", "n" to caps.charts.size) + " · " +
+            tr("torch 不可用({n} 个入口)", "n" to caps.unavailable.size),
+        fontSize = 11.sp,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 12.dp).testTag("caps"),
     )
+}
+
+@Composable
+private fun TopBar(lang: String, onLang: (String) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            tr("WiFi 7 PA + DPD 工作台"),
+            fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.testTag("appTitle"),
+        )
+        Row(Modifier.fillMaxWidth().padding(start = 12.dp)) {
+            for (code in listOf("zh", "en")) {
+                Text(
+                    code.uppercase(),
+                    fontSize = 12.sp,
+                    fontWeight = if (code == lang) FontWeight.Bold
+                                 else FontWeight.Normal,
+                    color = if (code == lang) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(end = 8.dp)
+                        .testTag("lang:$code")
+                        .clickable { onLang(code) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NavBar(current: Destination, onPick: (Destination) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .horizontalScroll(rememberScrollState())
+            .testTag("nav"),
+    ) {
+        for (d in Destination.entries) {
+            val here = d == current
+            Text(
+                tr(d.zh),
+                fontSize = 13.sp,
+                fontWeight = if (here) FontWeight.Bold else FontWeight.Normal,
+                color = if (here) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 14.dp)
+                    .testTag("nav:${d.id}")
+                    .clickable { onPick(d) },
+            )
+        }
+    }
 }

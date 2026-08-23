@@ -28,6 +28,17 @@ _EN = {
     "部署": "Deployment",
     "联合设计": "Co-Design",
     "语言": "Language",
+
+    # ---- Android front end -----------------------------------------
+    # The mobile app has no separate string table: Kotlin carries the
+    # Chinese key exactly as the Qt sources do and looks it up here.
+    "图表画廊": "Chart Gallery",
+    "尚未实现": "Not implemented yet",
+    "计算中…": "computing…",
+    "Python 启动失败:": "Python failed to start: ",
+    "正在启动 Python…": "starting Python…",
+    "{n} 种图表": "{n} chart types",
+    "torch 不可用({n} 个入口)": "torch unavailable ({n} entry points)",
     "主题": "Theme",
     "用户手册": "User Manual",
     "目录": "Contents",

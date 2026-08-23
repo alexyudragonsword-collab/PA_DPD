@@ -260,6 +260,57 @@ def chart(name: str, args_json: str = "{}") -> str:
                            "traceback": traceback.format_exc(limit=8)})
 
 
+def page(name: str, args_json: str = "{}") -> str:
+    """Assemble one screen. Same calling convention as ``call``.
+
+    Returns ``{"ok": true, "handle": ..., "metrics": [...],
+    "charts": {slot: spec}}``. One crossing per screen rather than one
+    per value: the alternative is Kotlin issuing a service call, several
+    attribute reads and four chart builds, each taking the GIL, to draw
+    a single view.
+    """
+    try:
+        payload = json.loads(args_json) if args_json else {}
+        args = _deref(payload.get("args", []))
+        kwargs = _deref(payload.get("kwargs", {}))
+        from . import pages
+        built = pages.build(name, *args, **kwargs)
+        lang = built.get("lang", "zh")
+        charts = {slot: _build_chart(spec_name, spec_args,
+                                     dict(spec_kwargs, lang=lang))
+                  for slot, (spec_name, spec_args, spec_kwargs)
+                  in built["charts"].items()}
+        return json.dumps({"ok": True,
+                           "handle": _register(built["result"]),
+                           "metrics": built["metrics"],
+                           "charts": charts})
+    except Exception as e:                       # noqa: BLE001
+        return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
+                           "traceback": traceback.format_exc(limit=8)})
+
+
+def i18n_map(lang: str = "en") -> str:
+    """The whole Chinese-to-English table, sent once at boot.
+
+    Kotlin sources carry the Chinese strings verbatim, exactly as the Qt
+    sources do, and translate by looking them up in this map. The
+    alternative - generating res/values/strings.xml - forces every string
+    to acquire a generated identifier, since Android resource names
+    cannot be Chinese, and Kotlin then reads
+    `stringResource(R.string.s_9f2a41)` where the desktop reads the
+    sentence. Resource files earn that cost by following the system
+    locale; this app does not, because the language is a control in the
+    UI on every front end.
+
+    Empty for ``zh``: the keys are already Chinese, so the lookup is the
+    identity and there is nothing to carry.
+    """
+    if lang == "zh":
+        return json.dumps({})
+    from gui_core import i18n
+    return json.dumps({k: i18n.tr(k, lang) for k in i18n._EN})
+
+
 def gallery_list() -> str:
     """Index of the chart gallery. Metadata only - nothing is computed
     until an entry is asked for."""

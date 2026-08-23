@@ -41,6 +41,11 @@ class GalleryScreenTest {
         assertFalse("Python failed to start on device", exists("bootError"))
         compose.onNodeWithTag("caps", useUnmergedTree = true).assertIsDisplayed()
 
+        // The gallery is no longer the launch screen - the app opens on
+        // Waveform Studio - so navigate to it first.
+        compose.onNodeWithTag("nav:gallery").performClick()
+        awaitAny(NAV_TIMEOUT_MS, "head:psd")
+
         // The caption, not the whole row: the chart sits outside the tap
         // target so it can be panned without collapsing its own row. One
         // click only, since the handler toggles.
@@ -87,6 +92,7 @@ class GalleryScreenTest {
         // First launch unpacks numpy and scipy.
         const val BOOT_TIMEOUT_MS = 120_000L
         const val CHART_TIMEOUT_MS = 60_000L
+        const val NAV_TIMEOUT_MS = 20_000L
         const val POLL_MS = 250L
     }
 }
