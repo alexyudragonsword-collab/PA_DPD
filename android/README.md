@@ -145,13 +145,35 @@ Android Studio 通常能自动找到；找不到就在 `python { }` 里显式给
 
 任何一条不过，**回到计划重新评估，不要进 Phase 1**：
 
-| # | 标准 | 谁来量 | 为什么是这个值 |
+| # | 标准 | 谁来量 | 现状 |
 |---|---|---|---|
-| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | 缺任何一个都会在某个页面里晚爆，而不是在这里 |
-| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | 服务层是整个架构的边界；torch 在 Android 无轮子 |
-| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | 留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍 |
-| 4 | 单 ABI release APK < 120 MB | CI | 超了就要考虑砍 scipy 依赖或改服务端架构 |
-| 5 | 冷启动到 Python 就绪 < 5 s | CI（真机复核） | 报告首行的 `python start + import` |
+| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | 构建侧已过（轮子能装能打包）；**设备侧 import 待测** |
+| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | 待测 |
+| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | 待测（CI 不算数） |
+| 4 | 单 ABI release APK < 120 MB | CI | ✅ **43.6 MB**（run 7） |
+| 5 | 冷启动到 Python 就绪 < 5 s | CI（真机复核） | 待测 |
+
+标准 3 的阈值是留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍。
+
+### 构建侧已经确认的事（run 7）
+
+arm64-v8a release APK 构建成功：Kotlin 编译通过，Chaquopy 装上 numpy 1.23.3
+与 scipy 1.8.1 的 Android 轮子并打包了 `libpython3.10.so`。**APK 43.6 MB**，
+预算余量很大——即便日后补上 armeabi-v7a 与 x86_64 走 App Bundle 分发也不紧张。
+
+注意这只证明"能装能打包"，**不等于设备上 import 得起来**（标准 1 的另一半）,
+那要等模拟器上的 `ProbeTest` 跑出报告。
+
+### 这个 spike 已经挡掉的坑
+
+按出现顺序，都是不真跑一次就不可能知道的：
+
+1. runner 预装 Gradle 9，AGP 8.7 引用了 Gradle 9 已删的
+   `org.gradle.util.VersionNumber`；
+2. Chaquopy 的 scipy 只到 cp310；
+3. 依赖不钉版本会被 PyPI 的新版抢赢，而 PyPI 没有 Android 构建；
+4. buildPython 必须与目标 Python 同版本，否则正确的轮子会被 pip 否掉；
+5. `org.gradle.parallel` 会让 Kotlin 插件在 `friendPaths` 上撞项目状态锁。
 
 `data dir writable=True` 顺带验证了 `gui_core/paths.py` 的
 `PADPD_DATA_DIR` 覆写在 Android 上生效——这条通过意味着**那个文件一行都不用
