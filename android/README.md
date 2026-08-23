@@ -12,20 +12,57 @@
 
 ---
 
+## 怎么构建
+
+两条路，**先走 CI**——它不需要你本地装任何东西。
+
+### 一、GitHub Actions（推荐）
+
+`.github/workflows/android-spike.yml`，改动 `android/**` 时自动跑，也可以
+在 Actions 页手动触发（workflow_dispatch）。两个 job：
+
+| job | 干什么 | 覆盖哪条验收 |
+|---|---|---|
+| **build** | arm64-v8a release 构建，量 APK 体积，超 120 MB 直接红 | 4 |
+| **probe** | x86_64 模拟器上跑 `ProbeTest` 这个 instrumented test | 1、2、5 |
+
+报告会贴进 job summary，同时作为 artifact 上传（`probe-report.txt` +
+logcat + APK）。
+
+**CI 替代不了真机**：runner 只有 x86_64 模拟器，模拟出来的耗时对 arm64 手机
+没有参考价值。**验收标准 3（基准耗时）必须在真机上量。**
+
+### 二、本地
+
+```bash
+cd android
+gradle wrapper --gradle-version 8.10.2   # 本仓库不提交 wrapper jar
+
+./gradlew :app:installDebug        # 装到已连接的 arm64 真机
+./gradlew :app:assembleRelease     # 量体积用
+ls -l app/build/outputs/apk/release/app-release.apk
+```
+
+点 Run probe（第一次会慢，因为要解包 numpy/scipy），跑完点 Copy result 把
+报告复制出来。
+
+---
+
 ## 这个工程里已经验证过什么
 
 作者环境无法访问 `dl.google.com` 与 `chaquo.com`（网络策略拦截），
-**所以这份工程从未被构建过**。诚实区分：
+**所以这份工程在作者手里从未被构建过**。诚实区分：
 
 | 项 | 状态 |
 |---|---|
 | `padpd_spike/probe.py` 逻辑 | ✅ 已在桌面跑通（见下方基线） |
 | 三个 `*.gradle` 的 Groovy 语法 | ✅ 已用 Gradle 自带 Groovy 解析器验证 |
 | `settings.gradle` 的仓库配置 | ✅ Gradle 实际读取并尝试了全部四个仓库 |
-| `MainActivity.kt` | ❌ **未编译过**（环境无 Kotlin 编译器与 Android SDK） |
-| Gradle 依赖解析 / Chaquopy 打包 / APK | ❌ **未验证**——这正是你要做的事 |
+| workflow YAML | ✅ 已解析验证 |
+| `MainActivity.kt` / `ProbeTest.kt` | ❌ **未编译过**（环境无 Kotlin 编译器与 Android SDK） |
+| Gradle 依赖解析 / Chaquopy 打包 / APK | ❌ **未验证**——交给上面那条 CI |
 
-第一次构建报错是**预期内**的，尤其是版本 pin。
+第一次 CI 跑红是**预期内**的，尤其是版本 pin。
 
 ---
 
@@ -49,42 +86,17 @@ Android Studio 通常能自动找到；找不到就在 `python { }` 里显式给
 
 ---
 
-## 构建与运行
-
-```bash
-cd android
-# 首次：把 Gradle wrapper 补全（本仓库不提交 wrapper jar）
-gradle wrapper --gradle-version 8.10.2
-
-./gradlew :app:installDebug        # 装到已连接的 arm64 真机
-./gradlew :app:assembleRelease     # 量体积用
-```
-
-APK 体积看：
-
-```bash
-ls -l app/build/outputs/apk/release/app-release.apk
-```
-
-**在真机上跑，不要只看模拟器。** x86_64 模拟器的耗时数字与 arm64 真机不是
-一回事，结论以真机为准。
-
-点 Run probe（第一次会慢，因为要解包 numpy/scipy），跑完点 Copy result 把
-报告复制出来。
-
----
-
 ## 验收标准
 
 任何一条不过，**回到计划重新评估，不要进 Phase 1**：
 
-| # | 标准 | 为什么是这个值 |
-|---|---|---|
-| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | 缺任何一个都会在某个页面里晚爆，而不是在这里 |
-| 2 | `import gui_core.services` 成功，且 `torch not imported` | 服务层是整个架构的边界；torch 在 Android 无轮子 |
-| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | 留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍 |
-| 4 | 单 ABI release APK < 120 MB | 超了就要考虑砍 scipy 依赖或改服务端架构 |
-| 5 | 冷启动到 Python 就绪 < 5 s | 报告首行的 `python start + import` |
+| # | 标准 | 谁来量 | 为什么是这个值 |
+|---|---|---|---|
+| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | 缺任何一个都会在某个页面里晚爆，而不是在这里 |
+| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | 服务层是整个架构的边界；torch 在 Android 无轮子 |
+| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | 留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍 |
+| 4 | 单 ABI release APK < 120 MB | CI | 超了就要考虑砍 scipy 依赖或改服务端架构 |
+| 5 | 冷启动到 Python 就绪 < 5 s | CI（真机复核） | 报告首行的 `python start + import` |
 
 `data dir writable=True` 顺带验证了 `gui_core/paths.py` 的
 `PADPD_DATA_DIR` 覆写在 Android 上生效——这条通过意味着**那个文件一行都不用

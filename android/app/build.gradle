@@ -4,6 +4,21 @@ plugins {
     id 'com.chaquo.python'
 }
 
+// Which ABIs to package. Defaults to arm64-v8a: the spike measures
+// whether this is viable on a real phone, and extra ABIs multiply APK
+// size and build time for no extra information.
+//
+// CI overrides it (-PpadpdAbis=x86_64) because GitHub's runners only
+// offer x86_64 emulators - an arm64-only APK will not install on one.
+// The size number still comes from a default (arm64-only) build.
+def targetAbis = (project.findProperty('padpdAbis') ?: 'arm64-v8a')
+        .toString().split(',').collect { it.trim() }.findAll { it }
+
+// Chaquopy needs a local Python 3 to run pip. It normally auto-detects
+// one; CI pins it so the build does not depend on which python happens
+// to be first on PATH.
+def buildPythonPath = project.findProperty('padpdBuildPython')
+
 android {
     namespace 'com.padpd.spike'
     compileSdk 35
@@ -15,12 +30,10 @@ android {
         versionCode 1
         versionName "0.1.0-spike"
 
-        // One ABI only. The spike measures whether this is viable at all;
-        // multi-ABI multiplies APK size and build time for no extra
-        // information, and arm64-v8a is what every device we care about
-        // runs. Phase 1+ adds the rest via an App Bundle.
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+
         ndk {
-            abiFilters 'arm64-v8a'
+            abiFilters.addAll(targetAbis)
         }
 
         python {
@@ -28,6 +41,10 @@ android {
             // version Chaquopy ships wheels for. Check both before the
             // first build - see README.
             version "3.11"
+
+            if (buildPythonPath) {
+                buildPython buildPythonPath.toString()
+            }
 
             pip {
                 // numpy and scipy come from Chaquopy's own repository as
@@ -73,6 +90,11 @@ android {
 dependencies {
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.appcompat:appcompat:1.7.0'
+
+    // The probe also runs as an instrumented test, so CI can execute it
+    // on an emulator without a human tapping the button.
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
 }
 
 // ---------------------------------------------------------------------------
