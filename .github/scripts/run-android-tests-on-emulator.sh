@@ -47,6 +47,28 @@ status=${PIPESTATUS[0]}
 adb logcat -d > "$out/logcat.txt"
 cp -r app/build/reports/androidTests "$out/reports" 2>/dev/null || true
 
+# Gradle's console prints only the exception class for a failing
+# instrumented test ("ComposeTimeoutException: Condition still not
+# satisfied"). The assertion message - which is where a test puts what it
+# actually observed - lands in the JUnit XML instead, inside an artifact.
+# Reading a failure should not require downloading a zip, so extract it
+# into the job log.
+if [ "$status" -ne 0 ]; then
+    echo "=== instrumented test failure messages ==="
+    for xml in app/build/outputs/androidTest-results/connected/*.xml \
+               app/build/outputs/androidTest-results/connected/*/*.xml; do
+        [ -f "$xml" ] || continue
+        python3 - "$xml" <<'PY'
+import sys, xml.etree.ElementTree as ET
+for case in ET.parse(sys.argv[1]).iter("testcase"):
+    for bad in list(case.iter("failure")) + list(case.iter("error")):
+        print(f"--- {case.get('classname')}.{case.get('name')} ---")
+        text = (bad.get("message") or "") + "\n" + (bad.text or "")
+        print(text.strip()[:4000])
+PY
+    done
+fi
+
 echo "--- collected ---"
 ls -l "$out"
 exit "$status"
