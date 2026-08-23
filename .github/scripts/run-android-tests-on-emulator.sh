@@ -47,12 +47,13 @@ status=${PIPESTATUS[0]}
 adb logcat -d > "$out/logcat.txt"
 cp -r app/build/reports/androidTests "$out/reports" 2>/dev/null || true
 
-# Gradle's console prints only the exception class for a failing
-# instrumented test ("ComposeTimeoutException: Condition still not
-# satisfied"). The assertion message - which is where a test puts what it
-# actually observed - lands in the JUnit XML instead, inside an artifact.
-# Reading a failure should not require downloading a zip, so extract it
-# into the job log.
+# Gradle's console does print the assertion message for a failing
+# instrumented test - an earlier note here claimed it printed only the
+# exception class, which was wrong and cost a round of blind fixing.
+# What it does not print is anything the app wrote to logcat, so a Python
+# traceback raised inside a coroutine is invisible unless it happens to
+# reach an assertion. Both are extracted below; the XML pass stays
+# because it also catches failures Gradle truncates.
 if [ "$status" -ne 0 ]; then
     echo "=== instrumented test failure messages ==="
     for xml in app/build/outputs/androidTest-results/connected/*.xml \
@@ -67,6 +68,12 @@ for case in ET.parse(sys.argv[1]).iter("testcase"):
         print(text.strip()[:4000])
 PY
     done
+
+    # Chaquopy routes Python stdout/stderr to logcat, so an exception in
+    # a background chart build shows up here and nowhere else.
+    echo "=== app-side logcat (python + crashes) ==="
+    grep -aE "python\.(stdout|stderr)|AndroidRuntime|com\.padpd" \
+        "$out/logcat.txt" | tail -n 200 || echo "(no matching lines)"
 fi
 
 echo "--- collected ---"

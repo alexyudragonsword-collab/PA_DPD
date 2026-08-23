@@ -170,8 +170,12 @@ private fun EntryRow(
         if (expanded) {
             when (state) {
                 null, is Load.Pending ->
+                    // Tagged so a test that sees no chart can tell "the
+                    // tap never registered" from "the load never
+                    // finished" - the two look identical otherwise.
                     Text("computing…", fontSize = 12.sp,
-                         modifier = Modifier.padding(top = 8.dp))
+                         modifier = Modifier.padding(top = 8.dp)
+                             .testTag("pending:${entry.id}"))
                 is Load.Failed ->
                     Text(state.message, fontSize = 11.sp,
                          fontFamily = FontFamily.Monospace,

@@ -42,23 +42,47 @@ class GalleryScreenTest {
         compose.onNodeWithTag("caps").assertIsDisplayed()
 
         compose.onNodeWithTag("entry:psd").performClick()
-        val seen = awaitAny(CHART_TIMEOUT_MS, "chart:psd", "error:psd")
+
+        // Whether the row ever entered its pending state separates the
+        // two failures that otherwise look the same from outside: a tap
+        // that never set `open` (no pending, no chart) from a load that
+        // never returned (pending, no chart).
+        val expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
+
+        val seen = awaitAny(CHART_TIMEOUT_MS,
+                            "expanded=$expanded", "chart:psd", "error:psd")
         assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
         compose.onNodeWithTag("chart:psd").assertIsDisplayed()
     }
 
     /** Poll in real time for the first of [tags] to appear, and report
-     * what was there instead if none does. */
+     * what was there instead if none does. The first vararg may be a
+     * "note=value" string rather than a tag; it is not polled for, only
+     * quoted in the failure. */
     private fun awaitAny(timeoutMs: Long, vararg tags: String): String {
+        val notes = tags.filter { it.contains('=') }
+        val real = tags.filterNot { it.contains('=') }
+        val deadline = System.currentTimeMillis() + timeoutMs
+        while (System.currentTimeMillis() < deadline) {
+            compose.waitForIdle()
+            real.firstOrNull { exists(it) }?.let { return it }
+            Thread.sleep(POLL_MS)
+        }
+        fail("none of $real appeared within ${timeoutMs}ms. " +
+             "Tags present: ${presentTags()}. $notes")
+        error("unreachable")
+    }
+
+    /** Like [awaitAny] but returns null on timeout instead of failing,
+     * for observations that are diagnostic rather than the assertion. */
+    private fun await(timeoutMs: Long, vararg tags: String): String? {
         val deadline = System.currentTimeMillis() + timeoutMs
         while (System.currentTimeMillis() < deadline) {
             compose.waitForIdle()
             tags.firstOrNull { exists(it) }?.let { return it }
             Thread.sleep(POLL_MS)
         }
-        fail("none of ${tags.toList()} appeared within ${timeoutMs}ms. " +
-             "Tags present: ${presentTags()}")
-        error("unreachable")
+        return null
     }
 
     private fun exists(tag: String): Boolean =
@@ -75,6 +99,7 @@ class GalleryScreenTest {
         // First launch unpacks numpy and scipy.
         const val BOOT_TIMEOUT_MS = 120_000L
         const val CHART_TIMEOUT_MS = 60_000L
+        const val EXPAND_TIMEOUT_MS = 10_000L
         const val POLL_MS = 250L
     }
 }
