@@ -14,10 +14,18 @@ on:
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
+      # The workflow shells out to these; a fix to one of them that does
+      # not also touch android/ would otherwise never be exercised.
+      - ".github/scripts/*android*"
+      - ".github/scripts/*gradle*"
   pull_request:
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
+      # The workflow shells out to these; a fix to one of them that does
+      # not also touch android/ would otherwise never be exercised.
+      - ".github/scripts/*android*"
+      - ".github/scripts/*gradle*"
 
 permissions:
   contents: read
