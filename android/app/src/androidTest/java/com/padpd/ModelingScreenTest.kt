@@ -50,8 +50,13 @@ class ModelingScreenTest {
 
         val seen = awaitAny(FIT_TIMEOUT_MS, "chart:psd", "fit:error")
         assertFalse("classical fit failed on device", seen == "fit:error")
+        // Scroll to it first. The screen is a vertical scroller and the
+        // chart sits below the fit controls, the metrics and the tabs, so
+        // on this viewport it composes off-screen. Third variant of the
+        // same thing in this module: a node existing says nothing about
+        // whether it is visible or reachable.
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
-            .assertIsDisplayed()
+            .performScrollTo().assertIsDisplayed()
 
         // The NMSE card is the one that says the fit meant something.
         assertTrue(

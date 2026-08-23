@@ -49,8 +49,9 @@ class DpdScreenTest {
         tap("runIla")
         val seen = awaitAny(RUN_TIMEOUT_MS, "chart:psd", "ila:error")
         assertFalse("ILA failed on device", seen == "ila:error")
+        // Same vertical-scroll reason as ModelingScreenTest.
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
-            .assertIsDisplayed()
+            .performScrollTo().assertIsDisplayed()
         // Four metric cards: EVM and ACLR, each before and after.
         assertTrue(
             "expected four metric cards; present: ${presentTags()}",
