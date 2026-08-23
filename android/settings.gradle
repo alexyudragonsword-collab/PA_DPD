@@ -1,0 +1,22 @@
+pluginManagement {
+    repositories {
+        google()
+        mavenCentral()
+        gradlePluginPortal()
+        // Chaquopy's plugin and its prebuilt native wheels (numpy, scipy)
+        // are not on Maven Central.
+        maven { url = uri("https://chaquo.com/maven") }
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
+    repositories {
+        google()
+        mavenCentral()
+        maven { url = uri("https://chaquo.com/maven") }
+    }
+}
+
+rootProject.name = "padpd-spike"
+include ':app'

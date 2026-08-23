@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Spike only. The real app generates its strings from
+         gui_core/i18n.py rather than hand-writing them here. -->
+    <string name="app_name">padpd spike</string>
+    <string name="run_probe">Run probe</string>
+    <string name="running">Running… (this blocks for ~10-60 s)</string>
+    <string name="idle">Press Run probe.\n\nMeasures scipy wheel completeness, service-layer import, and modeling benchmarks on this device.</string>
+</resources>

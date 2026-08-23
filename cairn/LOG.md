@@ -3,6 +3,23 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android 化 Phase 0 spike 已就位(未构建)
+
+- 结论修正:此前判断"不适合做 Android app",其中依赖与算力两条**不成立**。
+  Chaquopy 有官方 numpy/scipy 轮子;实测 GMP 拟合 2.02 s、ILA 三轮 3.07 s
+  (104,448 样本,单线程 BLAS),手机上按 1–3 倍算是可交互的。
+- 三个白捡的适配性事实(均已实测,非推断):`gui_core/services.py` 导入时
+  不加载 torch 也不导入 matplotlib;绘图数据以数组返回,故 Kotlin 可原生
+  绘图;`gui_core/paths.py` 的 `PADPD_DATA_DIR` 覆写在 Android 上直接可用,
+  **该文件一行不用改**。全项目无 `multiprocessing`。
+- 已知能力缺口:torch 在 Android Python 侧无轮子 → `fit_neural`、
+  `run_dpd_dla`、PTQ 位宽扫描、ONNX 导出、`codesign_torch` 五个入口跑不了,
+  处置为能力探测 + 灰显。
+- 新增 `android/`(spike 工程 + `padpd_spike/probe.py`)。**从未构建过**——
+  作者环境的网络策略拦截 `dl.google.com` 与 `chaquo.com`。已验证的只有:
+  probe 逻辑桌面跑通、三个 `.gradle` 语法合法;`MainActivity.kt` 未编译。
+- 五条验收标准与桌面基线见 `android/README.md`;真机数字回来后补一条 LOG。
+
 ## 2026-08-15 · Project Cairn 初始化
 
 - 初始化 Cairn 结构:`AGENTS.md`、`CLAUDE.md`(一行 `@AGENTS.md`)、

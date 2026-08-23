@@ -1,0 +1,119 @@
+plugins {
+    id 'com.android.application'
+    id 'org.jetbrains.kotlin.android'
+    id 'com.chaquo.python'
+}
+
+android {
+    namespace 'com.padpd.spike'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.padpd.spike"
+        minSdk 24
+        targetSdk 35
+        versionCode 1
+        versionName "0.1.0-spike"
+
+        // One ABI only. The spike measures whether this is viable at all;
+        // multi-ABI multiplies APK size and build time for no extra
+        // information, and arm64-v8a is what every device we care about
+        // runs. Phase 1+ adds the rest via an App Bundle.
+        ndk {
+            abiFilters 'arm64-v8a'
+        }
+
+        python {
+            // Must satisfy padpd's requires-python = ">=3.10" AND be a
+            // version Chaquopy ships wheels for. Check both before the
+            // first build - see README.
+            version "3.11"
+
+            pip {
+                // numpy and scipy come from Chaquopy's own repository as
+                // prebuilt Android wheels; they cannot be built from
+                // source here. Whether scipy's wheel is complete enough
+                // for padpd is precisely what probe.py measures.
+                install "numpy"
+                install "scipy"
+            }
+        }
+    }
+
+    sourceSets {
+        main {
+            python {
+                srcDirs = [
+                    "src/main/python",
+                    layout.buildDirectory.dir("python-src").get().asFile.path,
+                ]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            // Spike only, so `assembleRelease` yields an installable APK
+            // whose size can be measured. A real release build gets its
+            // own signing config.
+            signingConfig signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.13.1'
+    implementation 'androidx.appcompat:appcompat:1.7.0'
+}
+
+// ---------------------------------------------------------------------------
+// Stage the Python sources Chaquopy should package.
+//
+// The app must run the SAME padpd/gui_core code the desktop GUIs run -
+// a copy would drift, and the whole architecture rests on gui_core/services.py
+// being one shared contract. But pointing srcDirs at the repo root would
+// also sweep in tests/, docs/ and the 2.9 MB manual/, so stage exactly the
+// two packages instead.
+// ---------------------------------------------------------------------------
+def repoRoot = rootProject.projectDir.parentFile
+
+tasks.register('stagePythonSources', Sync) {
+    description = 'Copy padpd + gui_core from the repo into the Chaquopy source dir'
+    into layout.buildDirectory.dir("python-src")
+
+    from("$repoRoot/src") {
+        include 'padpd/**'
+    }
+    from(repoRoot) {
+        include 'gui_core/**'
+    }
+    exclude '**/__pycache__/**', '**/*.pyc', '**/*.pyo'
+
+    doFirst {
+        if (!file("$repoRoot/gui_core/services.py").exists()) {
+            throw new GradleException(
+                "Expected the padpd repo at ${repoRoot}. This project must " +
+                "stay inside the repo tree; it reads ../src and ../gui_core.")
+        }
+    }
+}
+
+// Chaquopy's task names vary across plugin versions, so bind by name
+// pattern rather than hardcoding one. Sync is up-to-date-checked, so the
+// broad match costs nothing on incremental builds.
+tasks.configureEach { t ->
+    if (t.name != 'stagePythonSources' &&
+        t.name.toLowerCase().contains('python')) {
+        t.dependsOn 'stagePythonSources'
+    }
+}
+tasks.named('preBuild') { dependsOn 'stagePythonSources' }
