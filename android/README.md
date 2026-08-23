@@ -34,10 +34,21 @@ logcat + APK）。
 
 ### 二、本地
 
+本仓库不提交 wrapper jar，先生成：
+
+```bash
+./.github/scripts/gen-gradle-wrapper.sh android 8.10.2
+```
+
+**不要**直接在 `android/` 里跑 `gradle wrapper`。AGP 8.7 还在引用
+`org.gradle.util.VersionNumber`，这个内部类 Gradle 9 已经删了；而
+`gradle wrapper` 会先配置工程、加载插件，于是你若本机装的是 Gradle 9，
+它会在"正要去钉 Gradle 版本"那一步就崩掉——先有鸡还是先有蛋。上面那个脚本
+在空目录里生成（没有 build 脚本就不加载插件）再拷进来，绕开这一环。
+CI 第一次跑就是栽在这儿的。
+
 ```bash
 cd android
-gradle wrapper --gradle-version 8.10.2   # 本仓库不提交 wrapper jar
-
 ./gradlew :app:installDebug        # 装到已连接的 arm64 真机
 ./gradlew :app:assembleRelease     # 量体积用
 ls -l app/build/outputs/apk/release/app-release.apk
