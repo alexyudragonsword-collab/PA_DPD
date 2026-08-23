@@ -156,7 +156,8 @@ private fun Header(caps: PyBridge.Capabilities?, error: String?) {
                                   color = MaterialTheme.colorScheme.error,
                                   fontSize = 12.sp,
                                   modifier = Modifier.testTag("bootError"))
-            caps == null -> Text("starting Python…", fontSize = 12.sp)
+            caps == null -> Text("starting Python…", fontSize = 12.sp,
+                                 modifier = Modifier.testTag("bootPending"))
             else -> Text(
                 "padpd ${caps.version} · ${caps.charts.size} chart types · " +
                     "torch unavailable (${caps.unavailable.size} entry points)",
@@ -179,43 +180,47 @@ private fun EntryRow(
         Modifier.fillMaxWidth().padding(vertical = 4.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .clickable(onClick = onClick)
-            .padding(10.dp)
             .testTag("entry:${entry.id}"),
     ) {
-        // Diagnostic: says what this row was actually handed, so a
-        // failure can tell a click that never happened from one whose
-        // state change never reached here.
-        Box(Modifier.size(1.dp).testTag("expanded:${entry.id}=$expanded"))
-        Row(Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically) {
-            Text(entry.title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-            ProvenanceChip(entry.provenance)
+        // The tap target is the caption only, deliberately not the whole
+        // row. With clickable on the outer column the chart sat inside
+        // the click target, so a tap on a chart collapsed its own row and
+        // a drag competed with the renderer's pan and zoom.
+        Column(
+            Modifier.fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(10.dp)
+                .testTag("head:${entry.id}"),
+        ) {
+            Row(Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically) {
+                Text(entry.title, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                ProvenanceChip(entry.provenance)
+            }
+            Text("${entry.primitive} primitive", fontSize = 11.sp,
+                 fontFamily = FontFamily.Monospace,
+                 color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text("${entry.primitive} primitive", fontSize = 11.sp,
-             fontFamily = FontFamily.Monospace,
-             color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+        // Diagnostic: says what this row was actually handed.
+        Box(Modifier.size(1.dp).testTag("expanded:${entry.id}=$expanded"))
 
         if (expanded) {
-            when (state) {
-                null, is Load.Pending ->
-                    // Tagged so a test that sees no chart can tell "the
-                    // tap never registered" from "the load never
-                    // finished" - the two look identical otherwise.
-                    Text("computing…", fontSize = 12.sp,
-                         modifier = Modifier.padding(top = 8.dp)
-                             .testTag("pending:${entry.id}"))
-                is Load.Failed ->
-                    Text(state.message, fontSize = 11.sp,
-                         fontFamily = FontFamily.Monospace,
-                         color = MaterialTheme.colorScheme.error,
-                         modifier = Modifier.padding(top = 8.dp)
-                             .testTag("error:${entry.id}"))
-                is Load.Ready ->
-                    ChartView(state.spec, state.blobs,
-                              Modifier.padding(top = 8.dp)
-                                  .testTag("chart:${entry.id}"))
+            Column(Modifier.padding(start = 10.dp, end = 10.dp, bottom = 10.dp)) {
+                when (state) {
+                    null, is Load.Pending ->
+                        Text("computing…", fontSize = 12.sp,
+                             modifier = Modifier.testTag("pending:${entry.id}"))
+                    is Load.Failed ->
+                        Text(state.message, fontSize = 11.sp,
+                             fontFamily = FontFamily.Monospace,
+                             color = MaterialTheme.colorScheme.error,
+                             modifier = Modifier.testTag("error:${entry.id}"))
+                    is Load.Ready ->
+                        ChartView(state.spec, state.blobs,
+                                  Modifier.testTag("chart:${entry.id}"))
+                }
             }
         }
     }

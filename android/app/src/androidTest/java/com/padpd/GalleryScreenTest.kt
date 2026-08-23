@@ -40,22 +40,16 @@ class GalleryScreenTest {
     fun startsAndDrawsTheFirstChart() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("caps").assertIsDisplayed()
+        compose.onNodeWithTag("caps", useUnmergedTree = true).assertIsDisplayed()
 
-        // The previous run established that the row never expanded, so
-        // the question is now why the tap did not reach onClick. Whether
-        // the tagged node carries a click action at all separates "the
-        // handler is wired but injected touch does not arrive" from "the
-        // tag and the clickable ended up on different semantics nodes".
-        val row = compose.onNodeWithTag("entry:psd")
+        // The caption, not the row: the chart is deliberately outside the
+        // tap target so it can be panned without collapsing its own row.
+        val row = compose.onNodeWithTag("head:psd")
         val hasOnClick =
             row.fetchSemanticsNode().config.getOrNull(SemanticsActions.OnClick) != null
 
         // Exactly one click. The handler toggles, so a second attempt
-        // would undo a first that worked and make the two outcomes
-        // indistinguishable - which is what the previous run could not
-        // rule out. The screen now publishes `open` and its click count
-        // as test tags instead, so one click is enough to see both.
+        // would undo a first that worked.
         row.performClick()
         val expanded = await(EXPAND_TIMEOUT_MS, "pending:psd", "chart:psd", "error:psd")
 
@@ -63,7 +57,8 @@ class GalleryScreenTest {
                             "hasOnClick=$hasOnClick", "expanded=$expanded",
                             "chart:psd", "error:psd")
         assertFalse("psd failed to build on device: see logcat", seen == "error:psd")
-        compose.onNodeWithTag("chart:psd").assertIsDisplayed()
+        compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
+            .assertIsDisplayed()
     }
 
     /** Poll in real time for the first of [tags] to appear, and report
@@ -96,13 +91,20 @@ class GalleryScreenTest {
         return null
     }
 
+    // Unmerged, and that is the whole point. Modifier.clickable merges
+    // its descendants into one semantics node, so anything tagged inside
+    // a clickable row is absent from the merged tree no matter what the
+    // app does. Searching the merged tree made this test unable to see
+    // the chart it was asserting on, and made the failure look like a
+    // product bug for four runs.
     private fun exists(tag: String): Boolean =
-        compose.onAllNodes(hasTestTag(tag)).fetchSemanticsNodes().isNotEmpty()
+        compose.onAllNodes(hasTestTag(tag), useUnmergedTree = true)
+            .fetchSemanticsNodes().isNotEmpty()
 
     private fun presentTags(): List<String> =
         compose.onAllNodes(SemanticsMatcher("has a test tag") { node ->
             node.config.getOrNull(SemanticsProperties.TestTag) != null
-        }).fetchSemanticsNodes()
+        }, useUnmergedTree = true).fetchSemanticsNodes()
             .mapNotNull { it.config.getOrNull(SemanticsProperties.TestTag) }
             .sorted()
 
