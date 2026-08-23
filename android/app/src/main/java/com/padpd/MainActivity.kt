@@ -108,15 +108,36 @@ fun GalleryScreen() {
     }
 
     LazyColumn(Modifier.fillMaxSize().padding(12.dp)) {
-        item {
-            Header(caps, bootError)
-        }
+        item { Header(caps, bootError) }
         items(entries, key = { it.id }) { entry ->
             EntryRow(
                 entry,
                 state = loaded[entry.id],
                 expanded = open == entry.id,
                 onClick = { open = if (open == entry.id) null else entry.id },
+            )
+        }
+    }
+}
+
+@Composable
+private fun Header(caps: PyBridge.Capabilities?, error: String?) {
+    Column(Modifier.padding(bottom = 12.dp)) {
+        Text("padpd chart gallery", fontSize = 20.sp,
+             fontWeight = FontWeight.SemiBold)
+        when {
+            error != null -> Text("Python failed to start: $error",
+                                  color = MaterialTheme.colorScheme.error,
+                                  fontSize = 12.sp,
+                                  modifier = Modifier.testTag("bootError"))
+            caps == null -> Text("starting Python…", fontSize = 12.sp,
+                                 modifier = Modifier.testTag("bootPending"))
+            else -> Text(
+                "padpd ${caps.version} · ${caps.charts.size} chart types · " +
+                    "torch unavailable (${caps.unavailable.size} entry points)",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("caps"),
             )
         }
     }
