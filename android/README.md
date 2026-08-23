@@ -143,52 +143,55 @@ Android Studio 通常能自动找到；找不到就在 `python { }` 里显式给
 
 ## 验收标准
 
-任何一条不过，**回到计划重新评估，不要进 Phase 1**：
+五条全部达成，Phase 0 的门槛已清。
 
-| # | 标准 | 谁来量 | 现状 |
-|---|---|---|---|
-| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 四个子模块全部 import 成功 | CI | ✅ **四个全过**（run 11） |
-| 2 | `import gui_core.services` 成功，且 `torch not imported` | CI | ✅ **0.02 s，无 torch**（run 11） |
-| 3 | GMP 拟合 < 15 s，ILA 三轮 < 30 s | **真机** | ⏳ 待测——**CI 数字不作数，理由见下** |
-| 4 | 单 ABI release APK < 120 MB | CI | ✅ **43.6 MB**（run 7、11） |
-| 5 | 冷启动到 Python 就绪 < 5 s | **真机** | ⏳ 待测——instrumented test 不测这项 |
+| # | 标准 | 阈值 | 真机实测 | |
+|---|---|---|---|---|
+| 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 可导入 | 四个全过 | 全过（`signal` 0.98 s） | ✅ |
+| 2 | `import gui_core.services` 且 `torch not imported` | — | 0.01 s，无 torch | ✅ |
+| 3 | GMP 拟合 / ILA 三轮 | < 15 s / < 30 s | **0.63 s / 2.31 s** | ✅ |
+| 4 | 单 ABI release APK | < 120 MB | 43.6 MB | ✅ |
+| 5 | 冷启动到 Python 就绪 | < 5 s | **178 ms** | ✅ |
 
-标准 3 的阈值是留足余量的**上限**，不是目标值；目标是桌面基线的 1–3 倍。
+**Phase 0 通过。** 标准 3 余量 24 倍，标准 5 余量 28 倍。
 
-## CI 实测结果（run 11，模拟 x86_64 / API 34）
+## 真机实测（aarch64 / Linux 5.10.43）
 
 ```
---- platform ---     python 3.10.15 · x86_64 · Linux 6.1.23-android14
+python start + import: 178 ms
+
 --- scipy submodules ---
-  ok  scipy.signal       1.37 s      ok  scipy.optimize     0.00 s
-  ok  scipy.interpolate  0.00 s      ok  scipy.io           0.04 s
+  ok  scipy.signal       0.98 s      ok  scipy.optimize     0.00 s
+  ok  scipy.interpolate  0.00 s      ok  scipy.io           0.02 s
 --- numpy / BLAS --- numpy 1.23.3 · scipy 1.8.1 · openblas · OMP_NUM_THREADS=1
---- service layer ---  import gui_core.services 0.02 s · torch not imported
+--- service layer ---  import gui_core.services 0.01 s · torch not imported
 --- data dir ---     /data/user/0/com.padpd.spike/files   writable=True
 --- benchmarks (160 MHz / 12 符号 / 104,448 样本) ---
-  ofdm generate 0.01   gmp fit 0.59 (52 系数)   gmp predict 0.22
-  spline-mp fit 0.50   spline-gmp fit 1.24      ila 3-iter 1.73   aclr 0.01
-VERDICT: all probes passed in 5.7 s
+  ofdm generate 0.01   gmp fit 0.63 (52 系数)   gmp predict 0.06
+  spline-mp fit 0.59   spline-gmp fit 1.98      ila 3-iter 2.31   aclr 0.00
+VERDICT: all probes passed in 6.6 s
 ```
 
-**这些耗时不能当手机性能读。** 它们比桌面基线还快（GMP 拟合 0.59 s vs 桌面
-2.02 s），因为 GitHub 的 x86_64 模拟器走 KVM **在 runner 的 CPU 上原生执行**，
-根本没有模拟 ARM 指令。这是"runner CPU 的数字"，对 arm64 手机没有预测力。
-**标准 3 只能在真机上量。**
+### 一处预测偏差，方向记反了
 
-三件顺带确认的事：
+计划里估"手机约为桌面基线的 1–3 倍慢"，实测**手机比桌面基线还快**：
 
-- `gui_core/paths.py` 的 `PADPD_DATA_DIR` 覆写在设备上生效
-  （`/data/user/0/com.padpd.spike/files`，可写）——**那个文件确实一行没改**；
-- Chaquopy 的 numpy 链的是 **OpenBLAS**，不是 reference BLAS；
-- `scipy.signal` 首次 import 要 **1.37 s**，是所有 import 里最贵的一项。
-  UI 上应当预热或显示进度，否则用户会撞上一次莫名的卡顿。
+| | 桌面基线 | 真机 | 比值 |
+|---|---|---|---|
+| GMP 拟合 | 2.02 s | 0.63 s | 0.31× |
+| Spline-GMP 拟合 | 2.76 s | 1.98 s | 0.72× |
+| ILA 三轮 | 3.07 s | 2.31 s | 0.75× |
 
-### 标准 5 为什么还没量
+原因是那份"桌面基线"取自一颗受限的共享云 vCPU，不是真工作站。现代 arm64
+大核把它比下去了。**教训:基线要标明是什么机器测的**，否则"1–3 倍"这种外推
+会连方向都错——这次错在保守一侧，下次未必。
 
-instrumented test 里 `Python.start()` 在计时之外，所以报告的 5.7 s **不含**
-解释器启动与 numpy/scipy 解包。冷启动只有 `MainActivity` 那条路径会打印
-（输出首行 `python start + import`），要手动跑一次 app 才拿得到。
+### 仍需注意
+
+- 以上是**单次冷跑**。连续跑多个长作业会热节流，UI 应串行化作业并显示进度。
+- CI 的模拟器数字（GMP 0.59 s）碰巧与真机接近,那是巧合:x86_64 模拟器走 KVM
+  在 runner CPU 上原生执行,不模拟 ARM。**别把它当手机性能的代理指标。**
+
 
 ### 这个 spike 已经挡掉的坑
 
