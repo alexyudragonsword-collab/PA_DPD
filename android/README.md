@@ -23,7 +23,7 @@ Kotlin 原生 UI + Chaquopy 嵌入的 Python 计算核。跑的是**和两个桌
 |---|---|---|
 | **wheels** | 列出 Chaquopy 仓库里 numpy/scipy 的全部轮子 | — |
 | **build** | arm64-v8a release 构建 + JVM 单元测试，量 APK 体积，超 120 MB 直接红 | 4 |
-| **instrumented** | x86_64 模拟器上跑 `GalleryRenderTest`：14 种规格逐一构建、传输、绘制 | 1、2 |
+| **instrumented** | x86_64 模拟器上跑 7 条设备测试：`PyBridgeTest`（14 种规格构建 + blob 传输）、`ChartRenderTest`（14 种规格绘制）、`GalleryScreenTest`（启动 → 点开 → 出图） | 1、2 |
 
 报告会贴进 job summary，同时作为 artifact 上传（`probe-report.txt` +
 logcat + APK）。
@@ -74,6 +74,32 @@ ls -l app/build/outputs/apk/release/app-release.apk
 就下结论。
 
 ---
+
+## Compose 测试：`clickable` 会把子节点的 testTag 吞掉
+
+`Modifier.clickable` 隐含 `mergeDescendants = true`，把整个子树合并成**一个**
+语义节点。`onNodeWithTag` / `onAllNodes` 默认查的是合并树,所以**放在可点击
+容器里的 testTag 一个都查不到**。
+
+代价是七轮 CI。`GalleryScreenTest` 等 `chart:psd`,而 `chart:` / `pending:` /
+`error:` 全在行的 `clickable` 里——**无论 app 表现如何,这个节点都不可能出现**。
+失败信息看上去完全像产品 bug（"点了没反应"),于是连续几轮都在查点击分发、
+协程、状态传播,查的全是好的代码。
+
+两条结论:
+
+- 设备测试里查 tag 一律带 `useUnmergedTree = true`。否则失败模式是**测试静默
+  地什么都没断言**——比断言失败危险得多。
+- 定位这类问题要看**该出现而没出现的东西**。真正的线索是每行都会合成的
+  `expanded:` 标记一个都不在列表里,不是任何一条出现了的信息。
+
+顺带修掉一个真 bug:图表原本在行的点击区**内部**,点图表会把自己那行收起来,
+拖动图表会和渲染器的平移缩放抢手势。现在点击区只有标题行。
+
+**尚未解释**:run 7、8 的语义树里同时有"正在启动 Python"和七行条目,而
+`caps` 与 `entries` 在源码里由同一个 `onSuccess` 分支一起赋值,不该共存。
+run 9 起没再复现,原因不明——记为悬案,不当作已修。`bootPending` 标签保留,
+以便复发时一眼看出来。
 
 ## 依赖版本天花板（已实测，别改回去）
 
@@ -319,8 +345,9 @@ android/
     python/padpd_mobile/api.py              句柄注册表 + JSON 门面
     python/padpd_mobile/chart_spec.py       figs.py 的规格移植
     python/padpd_mobile/gallery.py          14 条画廊条目
-  app/src/test/         JVM 单元测试（不需要模拟器）
-  app/src/androidTest/  GalleryRenderTest（需要设备）
+  app/src/test/         JVM 单元测试 26 条（不需要模拟器）
+  app/src/androidTest/  设备测试 7 条：PyBridgeTest / ChartRenderTest /
+                        GalleryScreenTest
 ```
 
 **`stagePythonSources`**（`app/build.gradle`）把 `../src/padpd` 与

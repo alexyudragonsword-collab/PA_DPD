@@ -3,6 +3,29 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android CI 全绿;一个查了七轮的假产品 bug
+
+- Android workflow 三个 job 全绿:26 条 JVM 单元测试 + 7 条设备测试
+  (`PyBridgeTest` 14 规格构建/传输、`ChartRenderTest` 14 规格绘制、
+  `GalleryScreenTest` 启动→点开→出图)。
+- **根因是测试查错了树**:`Modifier.clickable` 隐含 `mergeDescendants`,把子树
+  并成一个语义节点;`onNodeWithTag` 默认查合并树,于是行内的 `chart:` /
+  `pending:` / `error:` 标签**一个都查不到**。失败信息完全像"点了没反应",
+  连烧几轮去查点击分发、协程、状态传播——查的全是好代码。
+- **教训:定位要看该出现而没出现的东西**。真正的线索是每行都会合成的
+  `expanded:` 标记一个都不在 tag 列表里,而不是任何一条已出现的信息。
+- 顺带修掉一个真 bug:图表原本在行的点击区**内部**,点图表会收起自己那行,
+  拖图表与渲染器的平移缩放抢手势。点击区改为只有标题行。
+- 另一个自伤:诊断用的第二次点击把 toggle 又拨回去,使"点击无效"与"点击有效
+  但没渲染"输出相同——**加观测点不能改变被观测的状态**。
+- 还有一处 CI 空洞:workflow 的 `paths` 没包含 `.github/scripts/`,而 emulator
+  job 的全部逻辑都在那个脚本里,导致一次纯脚本修复**根本没触发 CI**,而"没有
+  run"看起来很像"排队中"。
+- **悬案**:run 7、8 语义树里同时存在"正在启动 Python"与七行条目,而 `caps`
+  与 `entries` 由同一个 `onSuccess` 一起赋值,不该共存;run 9 起未复现,原因
+  不明,记为未解释而非已修复。
+- 详见 `android/README.md`「Compose 测试:`clickable` 会把子节点的 testTag 吞掉」。
+
 ## 2026-08-23 · Android Phase 2:Kotlin 渲染器 + 14 种规格画廊
 
 - 模块从 `com.padpd.spike` 改名 `com.padpd`,删除 Phase 0 的探针屏与
