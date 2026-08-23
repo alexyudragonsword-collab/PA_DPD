@@ -26,6 +26,37 @@ env:
   GRADLE_VERSION: "8.10.2"
 
 jobs:
+  # Acceptance criterion 1 starts here, before any build: does Chaquopy's
+  # Android wheel repository actually carry the packages padpd needs?
+  #
+  # Run 3 showed it carries numpy (numpy-1.26.2 ... android_21_arm64_v8a)
+  # but that an unpinned `install "scipy"` fell through to a PyPI SOURCE
+  # tarball, which cannot cross-compile for Android. Two very different
+  # causes - no scipy at all, versus a scipy too old to win the version
+  # race against PyPI - so list the repo rather than guess at a pin.
+  wheels:
+    name: List Chaquopy's Android wheels
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query the Chaquopy package index
+        run: |
+          # Index path is tied to the Chaquopy version; 16.0.0 serves
+          # pypi-13.1, as seen in the build log's download URLs.
+          idx=https://chaquo.com/pypi-13.1
+          for pkg in numpy scipy; do
+            echo "## $pkg"
+            if body=$(curl -sSf "$idx/$pkg/"); then
+              echo "$body" \
+                | grep -oE '[A-Za-z0-9_.+-]+\.whl' \
+                | sort -u -V \
+                | sed 's/^/  /'
+            else
+              echo "  NOT IN THE REPOSITORY (curl failed for $idx/$pkg/)"
+            fi
+            echo
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+
   # Criterion 4 (APK size), plus the things a build proves on its own:
   # that the plugin versions resolve, that Chaquopy has arm64 numpy and
   # scipy wheels, and that the Kotlin compiles.
