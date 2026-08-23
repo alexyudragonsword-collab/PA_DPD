@@ -75,6 +75,20 @@ ls -l app/build/outputs/apk/release/app-release.apk
 
 ---
 
+## 横向滚动条里的节点:composed ≠ 点得到
+
+导航栏是 10 项的 `Row` + `horizontalScroll`,最后一项(图表画廊)默认在视口外。
+`Row` 不是 lazy,所以那个节点**已经 composed、tag 查得到**;
+`performClick` 因此不报错,它把触摸注入到视口外的坐标,没有任何人收到。
+
+失败长这样——标签列表里全是导航项和当前页的控件,一个目标页的标签都没有:
+
+    none of [head:psd] appeared within 20000ms.
+    Tags present: [..., nav:gallery, ..., generate, cfr, 带宽(MHz):80, ...]
+
+点之前先 `performScrollTo()`。这是"节点存在 ≠ 可交互"的第二个变体
+(第一个是上面那条合并树)——两次都表现为"点了没反应"。
+
 ## Kotlin 的块注释可以嵌套——注释里写 `/*` 会吃掉整个文件
 
 Java 的块注释不嵌套,Kotlin 的**嵌套**。所以在 KDoc 里写一个 glob 路径

@@ -8,6 +8,7 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.fail
@@ -43,7 +44,14 @@ class GalleryScreenTest {
 
         // The gallery is no longer the launch screen - the app opens on
         // Waveform Studio - so navigate to it first.
-        compose.onNodeWithTag("nav:gallery").performClick()
+        //
+        // performScrollTo before the click, and not defensively: the nav
+        // bar scrolls horizontally and the gallery is the tenth and last
+        // entry, so it starts off-screen. The node is composed either way
+        // (a Row is not lazy), so performClick does not complain - it
+        // injects a touch at coordinates outside the viewport and nothing
+        // receives it. Composed is not the same as reachable.
+        compose.onNodeWithTag("nav:gallery").performScrollTo().performClick()
         awaitAny(NAV_TIMEOUT_MS, "head:psd")
 
         // The caption, not the whole row: the chart sits outside the tap
