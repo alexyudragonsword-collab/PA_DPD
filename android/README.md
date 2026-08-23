@@ -75,6 +75,24 @@ ls -l app/build/outputs/apk/release/app-release.apk
 
 ---
 
+## Kotlin 的块注释可以嵌套——注释里写 `/*` 会吃掉整个文件
+
+Java 的块注释不嵌套,Kotlin 的**嵌套**。所以在 KDoc 里写一个 glob 路径
+(例如 `gui_qt/pages/` 加通配符 `.py`)等于开了一层内层注释,文件末尾的
+`*/` 只闭合内层,外层一路吃到文件结束,把后面所有声明吞掉。
+
+`Strings.kt` 里的一处这样的写法产出的报错是:
+
+    Strings.kt:56:1 Syntax error: Unclosed comment.
+    MainActivity.kt:34:23 Unresolved reference 'Strings'.
+    ...(另外 19 条 Unresolved reference,分布在三个文件)
+
+**20 条错误指向三个无辜文件,真凶那条排在中间。** 按"报错最多的文件"去查
+会查错方向。
+
+`tests/test_mobile_pages.py::test_kotlin_block_comments_are_balanced` 守这条:
+本地没有 Kotlin 编译器,但这个错误不需要编译器,数深度就够了。
+
 ## Compose 测试：`clickable` 会把子节点的 testTag 吞掉
 
 `Modifier.clickable` 隐含 `mergeDescendants = true`，把整个子树合并成**一个**

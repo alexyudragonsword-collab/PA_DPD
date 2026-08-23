@@ -143,6 +143,40 @@ def _kotlin_literals() -> dict:
     return found
 
 
+def test_kotlin_block_comments_are_balanced():
+    """Kotlin block comments nest; Java's do not.
+
+    So a `/*` inside a comment - which is what writing a glob like
+    `pages/<star>.py` in prose amounts to - opens an inner comment, and
+    the closing `*/` shuts only that one. The outer comment then runs to
+    the end of the file and swallows every declaration after it.
+
+    That is a five-minute CI round trip to learn, and the failure it
+    produces names the symbols that went missing rather than the comment
+    that ate them: one unclosed comment in Strings.kt produced twenty
+    "Unresolved reference 'tr'" errors across three other files. There is
+    no Kotlin compiler here, but this particular error needs no compiler
+    to find - depth tracking is the whole of it.
+    """
+    bad = {}
+    for f in sorted(KOTLIN.parent.rglob("*.kt")):
+        text = f.read_text(encoding="utf-8")
+        depth = i = 0
+        while i < len(text) - 1:
+            two = text[i:i + 2]
+            if two == "/*":
+                depth += 1
+                i += 2
+            elif two == "*/":
+                depth -= 1
+                i += 2
+            else:
+                i += 1
+        if depth:
+            bad[f.name] = depth
+    assert not bad, f"unbalanced Kotlin block comments: {bad}"
+
+
 def test_every_chinese_string_in_kotlin_has_a_translation():
     """The Kotlin half of AGENTS.md's i18n rule.
 

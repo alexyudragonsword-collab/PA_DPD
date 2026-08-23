@@ -4,7 +4,7 @@ package com.padpd.i18n
  * Translation by lookup, with the Chinese string as the key.
  *
  * This mirrors `gui_core/i18n.py` exactly: Kotlin sources carry the
- * Chinese sentence verbatim, the same way `gui_qt/pages/*.py` carry it,
+ * Chinese sentence verbatim, the same way the Qt page sources carry it,
  * and translation is a dictionary hit that falls back to the key. One
  * table, in Python, for all three front ends.
  *
