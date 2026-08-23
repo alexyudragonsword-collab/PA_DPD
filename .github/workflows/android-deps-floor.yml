@@ -1,0 +1,63 @@
+name: Android dependency floor
+
+# The Android port cannot have the dependency versions padpd asks for.
+# Chaquopy's newest scipy wheel is 1.8.1 (cp310 at the highest), which
+# caps numpy at <1.25 - while pyproject.toml declares numpy>=1.24 and
+# scipy>=1.10. The suite passes on the older pair, so those floors are
+# conservative rather than load-bearing, and the port is viable.
+#
+# That is a measured fact with a shelf life: the first use of a numpy 1.24+
+# or scipy 1.10+ API would quietly break the Android build, and the failure
+# would surface as a Chaquopy build error rather than as anything pointing
+# at the commit that caused it. This job runs the suite against the exact
+# ceiling the platform imposes, so the break shows up here instead.
+#
+# Deliberately a separate workflow from android-spike.yml: the spike is
+# triggered by android/** and pulls an SDK and an emulator image, whereas
+# this needs to run whenever the Python code changes and costs two minutes.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "src/**"
+      - "gui_core/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/android-deps-floor.yml"
+  pull_request:
+    paths:
+      - "src/**"
+      - "gui_core/**"
+      - "tests/**"
+      - "pyproject.toml"
+      - ".github/workflows/android-deps-floor.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  floor:
+    name: Test on the versions Chaquopy can supply
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # 3.10 because Chaquopy has no scipy wheel above cp310.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+
+      - name: Install the Android ceiling
+        run: |
+          # Exactly what android/app/build.gradle pins, plus matplotlib
+          # for the plotting tests. No torch, PySide6 or streamlit: none
+          # of them exist on Android, and the tests that need them skip.
+          pip install "numpy==1.23.3" "scipy==1.8.1" matplotlib pytest
+          pip install -e . --no-deps
+          python -c "import numpy, scipy; print(numpy.__version__, scipy.__version__)"
+
+      - name: Test (fast lane)
+        run: pytest tests/ -q -m "not slow"

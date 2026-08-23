@@ -77,16 +77,45 @@ ls -l app/build/outputs/apk/release/app-release.apk
 
 ---
 
-## 构建之前：先核实三个 pin
+## 依赖版本天花板（已实测，别改回去）
 
-这三个版本号是在**没有网络核实**的情况下填的，是起点不是定论。开工第一件事
-是去对一遍，不对就改：
+Chaquopy 仓库里 **scipy 最高只到 1.8.1，且最高只有 cp310**——没有
+cp311/cp312/cp313。选 Python 3.11 时 pip 在那儿找不到 scipy，会**静默掉回
+PyPI 的源码包**去交叉编译，然后死在 `meson executable "meson" not found`。
+CI 第三轮就是这么挂的。
+
+于是这套组合是被平台锁死的：
+
+| | `pyproject.toml` 声明 | Android 能给的 | 依据 |
+|---|---|---|---|
+| Python | `>=3.10` | **3.10** | Chaquopy 无 cp311+ 的 scipy |
+| scipy | `>=1.10` | **1.8.1** | 仓库最高版 |
+| numpy | `>=1.24` | **1.23.3** | scipy 1.8.1 要求 `numpy<1.25` |
+
+**两个都低于项目声明的下限，但测试套件在这套版本上是过的**——Python 3.10 +
+numpy 1.23.3 + scipy 1.8.1 实测 292 passed / 20 skipped（跳过的是 torch 与
+两个 GUI 的测试，那些依赖在 Android 上本来就不存在）。也就是说
+`pyproject.toml` 那两个下限是保守值，不是真实约束。
+
+这条结论有保质期：一旦有人用上 numpy 1.24+ 或 scipy 1.10+ 的 API，Android
+构建就会悄悄断掉，而且报错会以 Chaquopy 构建失败的面目出现，指不回肇事的那次
+提交。`.github/workflows/android-deps-floor.yml` 就是守这条的——它在这个天花板
+版本上跑测试套件。
+
+`app/build.gradle` 里的版本**必须钉死**：不钉的话 PyPI 的新版会在解析时赢过
+Chaquopy 的 Android 轮子，而 PyPI 没有 Android 构建。
+
+## 构建之前：先核实这几个 pin
+
+这些版本号是在**没有网络核实**的情况下填的，是起点不是定论：
 
 | 位置 | 当前值 | 要核实什么 |
 |---|---|---|
-| `build.gradle` | Chaquopy `16.0.0` | 当前发布版；同时确认它与 AGP 的兼容矩阵 |
-| `build.gradle` | AGP `8.7.2` / Kotlin `2.0.21` | 与你本机 Android Studio 匹配 |
-| `app/build.gradle` | `python version "3.11"` | **必须同时满足**：Chaquopy 支持该版本，且 ≥ 3.10（`pyproject.toml` 的 `requires-python`） |
+| `build.gradle` | Chaquopy `16.0.0` | 当前发布版；与 AGP 的兼容矩阵。**换版本会换仓库路径**（16.0.0 用的是 `pypi-13.1`），可用轮子也可能跟着变 |
+| `build.gradle` | AGP `8.7.2` / Kotlin `2.0.21` | 与你本机 Android Studio 匹配。注意 AGP 8.7 跑不了 Gradle 9 |
+
+CI 里的 **List Chaquopy's Android wheels** job 会列出仓库中 numpy/scipy 的
+全部轮子——换 Chaquopy 版本后先看它，再决定 pin 什么。
 
 顺带确认 **Chaquopy 的许可**。近年它已转为免费，但本项目是 MIT，**请自己去
 看一眼当前条款**，不要照抄这句话。

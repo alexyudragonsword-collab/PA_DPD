@@ -37,22 +37,32 @@ android {
         }
 
         python {
-            // Must satisfy padpd's requires-python = ">=3.10" AND be a
-            // version Chaquopy ships wheels for. Check both before the
-            // first build - see README.
-            version "3.11"
+            // 3.11 is the obvious choice and it is wrong. Chaquopy's
+            // repository has no scipy wheel above cp310, so on 3.11 pip
+            // finds nothing there, falls through to a PyPI source tarball
+            // and the build dies trying to cross-compile scipy for
+            // Android. 3.10 is the newest Python with a complete
+            // numpy+scipy set, and still satisfies padpd's
+            // requires-python = ">=3.10".
+            version "3.10"
 
             if (buildPythonPath) {
                 buildPython buildPythonPath.toString()
             }
 
             pip {
-                // numpy and scipy come from Chaquopy's own repository as
-                // prebuilt Android wheels; they cannot be built from
-                // source here. Whether scipy's wheel is complete enough
-                // for padpd is precisely what probe.py measures.
-                install "numpy"
-                install "scipy"
+                // Pinned rather than floating, for the same reason: an
+                // unpinned install lets PyPI's newer versions win the
+                // resolution over Chaquopy's Android wheels, and PyPI has
+                // no Android build. These are the newest versions the
+                // platform can actually supply - Chaquopy's top scipy is
+                // 1.8.1, which in turn caps numpy at <1.25.
+                //
+                // Both sit BELOW padpd's declared floors (numpy>=1.24,
+                // scipy>=1.10). The suite passes on them anyway - measured,
+                // not assumed - and android-deps-floor.yml keeps that true.
+                install "numpy==1.23.3"
+                install "scipy==1.8.1"
             }
         }
     }

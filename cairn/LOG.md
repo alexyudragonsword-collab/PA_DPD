@@ -3,6 +3,21 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-23 · Android 依赖被平台锁在项目声明的下限以下
+
+- Chaquopy 仓库 **scipy 最高 1.8.1 且最高只有 cp310**;选 Python 3.11 时
+  pip 找不到轮子会**静默掉回 PyPI 源码包**交叉编译,死在 meson 缺失。
+- 由此锁死:Python 3.10 / scipy 1.8.1 / numpy 1.23.3(scipy 1.8.1 要求
+  `numpy<1.25`)。而 `pyproject.toml` 声明 numpy>=1.24、scipy>=1.10。
+- **实测这套旧版本套件是过的**(292 passed / 20 skipped),说明那两个下限
+  是保守值而非真实约束——Android 路线在依赖上可行。
+- 结论有保质期:用上 numpy 1.24+/scipy 1.10+ 的 API 会让 Android 构建断掉,
+  且报错指不回肇事提交。新增 `.github/workflows/android-deps-floor.yml`
+  在天花板版本上跑套件来守。
+- 方法论:**不猜版本,让 CI 去列仓库**。加一个几秒的 job 列出 Chaquopy 的
+  全部 numpy/scipy 轮子,一次拿到确定答案,省掉反复试 pin 的多轮 CI。
+- 详见 `android/README.md`「依赖版本天花板」。
+
 ## 2026-08-23 · Android 化 Phase 0 spike 已就位(未构建)
 
 - 结论修正:此前判断"不适合做 Android app",其中依赖与算力两条**不成立**。
