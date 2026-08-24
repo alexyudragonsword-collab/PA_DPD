@@ -29,12 +29,21 @@ fun ComposeTestRule.goTo(id: String, timeoutMs: Long = 20_000) {
     if (hasTag("drawerToggle")) {
         onNodeWithTag("drawerToggle").performClick()
         awaitTag("drawer", timeoutMs)
+        // Two separate things are needed here, and the first run only
+        // needed one of them badly enough to fail.
+        //
         // useUnmergedTree because NavigationDrawerItem is clickable, and
         // a clickable merges its descendants - the same trap that hid
-        // the gallery's chart tags. The tag is on the item itself, so
-        // the merged tree would find it too; asking for the unmerged
-        // one is what keeps that true if the tag ever moves inward.
-        onNodeWithTag("nav:$id", useUnmergedTree = true).performClick()
+        // the gallery's chart tags.
+        //
+        // performScrollTo because the drawer's own list of ten entries
+        // scrolls, and the tenth sits below the fold on a 320x640
+        // screen. It is composed, so the tag resolves and performClick
+        // reports success while injecting a touch nobody receives - the
+        // gallery, last in the list, was the one test that noticed.
+        // Opening the drawer is not the same as reaching into it.
+        onNodeWithTag("nav:$id", useUnmergedTree = true)
+            .performScrollTo().performClick()
     } else {
         onNodeWithTag("nav:$id").performScrollTo().performClick()
     }
