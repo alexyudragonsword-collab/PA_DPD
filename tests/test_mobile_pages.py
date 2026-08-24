@@ -465,6 +465,60 @@ def test_codesign_budget_is_actually_enforced(api):
     assert loose["value"].startswith("PAE"), loose
 
 
+# ---- the manual screen --------------------------------------------------
+def test_manual_lists_all_eight_chapters(api):
+    """gui_core/manual.py works unchanged on the phone: MANUAL_DIR
+    resolves as gui_core's parent, and the Gradle task stages manual/
+    there. Same chapters, same Markdown, same module."""
+    from gui_core import manual as manual_mod
+    reply = _screen(api, "manual")
+    assert [r["id"] for r in reply["rows"]] == manual_mod.chapter_ids()
+
+
+def test_manual_chapters_are_translated(api):
+    zh = _screen(api, "manual", "", lang="zh")["rows"][5]["title"]
+    en = _screen(api, "manual", "", lang="en")["rows"][5]["title"]
+    assert zh != en, (zh, en)
+    assert en == "Performance Benchmarks", en
+
+
+def test_manual_slices_prose_and_images(api):
+    """Compose has no Markdown renderer, so images are lifted out of the
+    text - the same split the Streamlit build needs for its own reason."""
+    reply = _screen(api, "manual", "01_intro")
+    kinds = {s["kind"] for s in reply["segments"]}
+    assert kinds == {"md", "img"}, kinds
+
+
+def test_manual_images_arrive_as_real_image_bytes(api):
+    """Through the blob channel, not base64 inside the JSON: the largest
+    is 300 KB and base64 would add a third to that."""
+    reply = _screen(api, "manual", "01_intro")
+    images = [s for s in reply["segments"] if s["kind"] == "img"]
+    assert images, "01_intro has figures; none came through"
+    for image in images:
+        data = api.blob(image["blob"])
+        assert data[:4] == b"\x89PNG", data[:8]
+
+
+def test_a_missing_figure_is_reported_not_dropped(api, monkeypatch):
+    """Silently omitting it would leave a chapter looking complete while
+    a figure its text refers to is simply gone."""
+    from padpd_mobile import pages
+    from gui_core import manual as manual_mod
+
+    real_split = manual_mod.split_segments
+
+    def with_a_missing_image(md):
+        segments = real_split(md)
+        return segments + [("img", "/nonexistent/figure.png", "gone")]
+
+    monkeypatch.setattr(manual_mod, "split_segments", with_a_missing_image)
+    reply = pages.manual("01_intro")
+    assert any(s["kind"] == "md" and "missing image" in s["text"]
+               for s in reply["segments"]), reply["segments"][-1]
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n

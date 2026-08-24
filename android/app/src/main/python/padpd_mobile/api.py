@@ -191,6 +191,13 @@ def _encode(value):
             "type": type(value).__name__}
 
 
+def _put_bytes(data: bytes) -> str:
+    """Register raw bytes under a blob key. See ``blob``."""
+    key = _new_id("b")
+    _BLOBS[key] = bytes(data)
+    return key
+
+
 def _put_blob(arr) -> str:
     key = _new_id("b")
     _BLOBS[key] = np.ascontiguousarray(
@@ -294,6 +301,11 @@ def page(name: str, args_json: str = "{}") -> str:
                            # discovered at runtime rather than fixed -
                            # models fitted this session, for one.
                            "options": built.get("options", []),
+                           # Manual chapters: alternating prose and
+                           # images, since Compose has no Markdown
+                           # renderer and the images cannot be inlined.
+                           "segments": _register_segments(
+                               built.get("segments", [])),
                            "charts": charts})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
@@ -313,6 +325,21 @@ def delete_runs(ids_json: str) -> str:
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
                            "traceback": traceback.format_exc(limit=8)})
+
+
+def _register_segments(segments: list) -> list:
+    """Turn image bytes in a manual chapter into blob keys.
+
+    pages.py hands over the bytes and knows nothing about how they
+    travel; registering them is transport, which is this module's job.
+    """
+    out = []
+    for seg in segments:
+        if seg.get("kind") == "img" and "data" in seg:
+            seg = {"kind": "img", "blob": _put_bytes(seg["data"]),
+                   "caption": seg.get("caption", "")}
+        out.append(seg)
+    return out
 
 
 def i18n_map(lang: str = "en") -> str:
@@ -383,6 +410,12 @@ def blob(key: str) -> bytes:
     arr = _BLOBS.get(key)
     if arr is None:
         return b""
+    # Manual images are stored as raw bytes rather than arrays. They ride
+    # the same channel because the alternative - base64 inside the JSON -
+    # would inflate a 300 KB screenshot by a third and make the screen's
+    # metadata carry its payload.
+    if isinstance(arr, (bytes, bytearray)):
+        return bytes(arr)
     return arr.astype("<f4", copy=False).tobytes()
 
 

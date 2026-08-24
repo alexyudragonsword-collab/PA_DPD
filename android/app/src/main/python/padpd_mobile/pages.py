@@ -613,6 +613,55 @@ def codesign(spec_db: float, budget: int, bandwidth_mhz: float, *,
     }
 
 
+def manual(chapter_id: str = "", *, lang: str = "zh") -> dict:
+    """The built-in bilingual manual.
+
+    gui_core/manual.py needs no change for this: MANUAL_DIR resolves as
+    gui_core's parent directory, and the Gradle staging task copies
+    manual/ there alongside it. The same eight chapters the desktop
+    shows, from the same Markdown.
+
+    Images ride the blob channel rather than being inlined as base64.
+    They are 162 KB on average and 300 KB at the largest; base64 would
+    add a third to that and put the payload inside the screen's own JSON.
+
+    split_segments() exists because Streamlit could not reference local
+    image files from Markdown. Compose has the same limitation for a
+    different reason - it has no Markdown renderer at all - so the same
+    slicing serves here.
+    """
+    from gui_core import manual as manual_mod
+
+    chapters = [{"id": cid,
+                 "title": manual_mod.chapter_title(cid, lang)}
+                for cid in manual_mod.chapter_ids()]
+    current = chapter_id or chapters[0]["id"]
+
+    segments = []
+    for seg in manual_mod.split_segments(manual_mod.load(current, lang)):
+        if seg[0] == "md":
+            segments.append({"kind": "md", "text": seg[1]})
+        else:
+            path = Path(seg[1])
+            # A missing image is reported in place rather than dropped:
+            # silently omitting it would make the chapter look complete
+            # while a figure its text refers to is simply gone.
+            if path.is_file():
+                # Raw bytes; api.page registers them as a blob. This
+                # module does not touch the transport, the same way it
+                # names a chart builder rather than building the spec.
+                segments.append({"kind": "img",
+                                 "data": path.read_bytes(),
+                                 "caption": seg[2]})
+            else:
+                segments.append({"kind": "md",
+                                 "text": f"*[missing image: {path.name}]*"})
+
+    return {"result": None, "metrics": [], "charts": {}, "lang": lang,
+            "notes": [], "rows": chapters, "segments": segments,
+            "options": [current]}
+
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -628,6 +677,7 @@ SCREENS = {
     "lut_depth": lut_depth,
     "home": home,
     "codesign": codesign,
+    "manual": manual,
 }
 
 
@@ -655,4 +705,5 @@ _SLOTS = {
     "lut_depth": (),
     "home": (),
     "codesign": ("codesign",),
+    "manual": (),
 }

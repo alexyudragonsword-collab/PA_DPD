@@ -39,6 +39,7 @@ import com.padpd.screens.DeployScreen
 import com.padpd.screens.DpdScreen
 import com.padpd.screens.GalleryScreen
 import com.padpd.screens.HomeScreen
+import com.padpd.screens.ManualScreen
 import com.padpd.screens.ModelingScreen
 import com.padpd.screens.Placeholder
 import com.padpd.screens.WaveformScreen
@@ -133,6 +134,7 @@ fun PadpdApp() {
                     Destination.CODESIGN ->
                         CodesignScreen(lang, torchAvailable = caps!!.torch)
                     Destination.COMPARE -> CompareScreen(lang)
+                    Destination.MANUAL -> ManualScreen(lang)
                     Destination.GALLERY -> GalleryScreen()
                     else -> Placeholder(tr(where.zh))
                 }

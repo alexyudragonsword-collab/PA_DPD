@@ -180,6 +180,10 @@ tasks.register('stagePythonSources', Sync) {
     }
     from(repoRoot) {
         include 'gui_core/**'
+        // manual.py resolves MANUAL_DIR as gui_core's parent directory,
+        // so staging manual/ alongside it makes that module work on the
+        // phone with no change at all. 2.9 MB of Markdown and PNGs.
+        include 'manual/**'
     }
     exclude '**/__pycache__/**', '**/*.pyc', '**/*.pyo'
 

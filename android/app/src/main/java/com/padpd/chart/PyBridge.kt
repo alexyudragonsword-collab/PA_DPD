@@ -74,6 +74,18 @@ object PyBridge {
          * for instance - as opposed to the fixed lists a screen hard
          * codes because they come from the standard. */
         val options: List<String> = emptyList(),
+        /** Manual chapters: alternating prose and images. Compose has no
+         * Markdown renderer, so the Python side slices the source and
+         * this walks the pieces. */
+        val segments: List<Segment> = emptyList(),
+    )
+
+    @Serializable
+    data class Segment(
+        val kind: String,           // "md" | "img"
+        val text: String = "",
+        val blob: String = "",
+        val caption: String = "",
     )
 
     @Serializable
@@ -85,6 +97,7 @@ object PyBridge {
         val notes: List<String> = emptyList(),
         val rows: List<Map<String, String>> = emptyList(),
         val options: List<String> = emptyList(),
+        val segments: List<Segment> = emptyList(),
         val error: String = "",
         val traceback: String = "",
     )
@@ -162,7 +175,8 @@ object PyBridge {
         if (!reply.ok) throw IllegalStateException(
             "${reply.error}\n${reply.traceback}")
         return Screen(reply.handle, reply.metrics, reply.charts,
-                      reply.notes, reply.rows, reply.options)
+                      reply.notes, reply.rows, reply.options,
+                      reply.segments)
     }
 
     /**

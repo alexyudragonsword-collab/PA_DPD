@@ -58,6 +58,7 @@ _EN = {
         "writable directory (SAF), ONNX export (torch) and iverilog for "
         "the RTL bit-true check.",
     "已拟合模型": "Models fitted",
+    "[图片解码失败]": "[image failed to decode]",
     "以上为项目已发布的实测结果,不是本机运行所得。":
         "The figures above are the project's published measurements, not "
         "results computed on this device.",
