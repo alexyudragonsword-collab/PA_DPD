@@ -290,6 +290,10 @@ def page(name: str, args_json: str = "{}") -> str:
                            # Tabular screens (Compare) return rows rather
                            # than metric cards.
                            "rows": built.get("rows", []),
+                           # Choices the screen offers, when they are
+                           # discovered at runtime rather than fixed -
+                           # models fitted this session, for one.
+                           "options": built.get("options", []),
                            "charts": charts})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",

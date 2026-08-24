@@ -56,6 +56,17 @@ def _record(name: str, kind: str, config: dict, metrics: dict) -> None:
                         metrics=metrics))
 
 
+# Fitted models, by the name the Modeling screen gave them. The desktop
+# keeps this in gui_qt's shared state; the Deployment screen sweeps over
+# whatever is in it, so without it that screen has nothing to act on.
+#
+# Process-lifetime only, exactly as on the desktop: a model is a live
+# object, and the run store holds the metrics rather than the object. Kill
+# the app and the sweep list is empty again, which is the same behaviour
+# as closing the desktop GUI.
+_MODELS: dict = {}
+
+
 def _metric(label: str, value: str, note: str = "") -> dict:
     """A metric card. Values arrive pre-formatted, for the reason above."""
     return {"label": label, "value": value, "note": note}
@@ -138,6 +149,8 @@ def modeling(model_type: str, order: int, memory: int, drive: float,
         "amam": ("amam", (res["x_eval"][:n], res["pred"][:n]), {}),
     }
     name = f"{model_type} @ {src['name']}"
+    _MODELS[name] = {"model": res["model"],
+                     "meta": {"source": src["name"]}}
     _record(name, "pa_model",
             {"family": "classical", "type": model_type,
              "order": order, "memory": memory,
@@ -381,6 +394,105 @@ def delete_runs(ids: list) -> int:
     return len(store.list())
 
 
+DEPLOY_BITS = (16, 14, 12, 10, 8)
+
+
+def _eval_source(entry: dict) -> dict:
+    """The source a fitted model should be evaluated on.
+
+    services.eval_source_for rebuilds the exact synthetic source from the
+    name when it was never registered, which is the only case here: the
+    Data screen is not ported, so every source on this side is synthetic.
+    """
+    import gui_core.services as services
+    return services.eval_source_for(entry["meta"], {})
+
+
+def deploy(model_names: list | None = None, bits: list | None = None, *,
+           lang: str = "zh") -> dict:
+    """Deployment: fixed-point bit-width sweep over fitted models.
+
+    Lists what the Modeling screen has fitted this session and sweeps the
+    selected ones. With nothing fitted it returns an empty table and says
+    so - the desktop shows the same empty list rather than an error.
+
+    Export of hand-off artefacts is not offered. It needs a writable
+    directory (Storage Access Framework, not wired up), ONNX export
+    (torch, no Android wheel) and an iverilog run for the RTL bit-true
+    check (no toolchain on a phone). Three independent blockers, so the
+    screen states the reason rather than presenting a button.
+    """
+    import gui_core.services as services
+
+    available = list(_MODELS)
+    picked = [n for n in (model_names or []) if n in _MODELS]
+    chosen_bits = [b for b in (bits or []) if b in DEPLOY_BITS] or [16, 12, 8]
+
+    rows, charts, notes = [], {}, []
+    if not available:
+        notes.append(tr("先在建模页拟合模型", lang))
+    elif not picked:
+        notes.append(tr("请先勾选至少一个模型和位宽", lang))
+    else:
+        sweeps = {}
+        for name in picked:
+            entry = _MODELS[name]
+            sweeps[name.split(" @")[0]] = services.bitwidth_sweep(
+                entry["model"], _eval_source(entry), bits=tuple(chosen_bits))
+
+        charts["bitwidth"] = ("bitwidth", (sweeps,), {})
+        for label, sweep in sweeps.items():
+            row = {"name": label, "float": f"{sweep['float']:.2f}"}
+            row.update({f"W{b}": f"{sweep['bits'][b]:.2f}"
+                        for b in chosen_bits})
+            if sweep.get("macs"):
+                row["macs"] = str(sweep["macs"]["real_macs_per_sample"])
+                row["gmac"] = f"{sweep['macs']['real_gmac_per_s']:.0f}"
+            rows.append(row)
+            _record(f"deploy {label}", "deploy", {"bits": chosen_bits},
+                    {"float_nmse_db": sweep["float"],
+                     **{f"w{b}_nmse_db": v
+                        for b, v in sweep["bits"].items()}})
+        notes.append(tr("✅ 扫描完成({n} 模型),已注册 run",
+                        lang).format(n=len(sweeps)))
+
+    return {"result": {"available": available}, "rows": rows,
+            "metrics": [_metric(tr("已拟合模型", lang), str(len(available)))],
+            "charts": charts, "lang": lang, "notes": notes,
+            "options": available}
+
+
+def lut_depth(model_name: str, *, lang: str = "zh") -> dict:
+    """LUT-depth axis of the same trade-off.
+
+    Only branch-gain models carry a gain curve to tabulate, so a model
+    without one is reported as unsupported rather than raising - picking
+    the wrong model from a list is a normal thing to do.
+    """
+    import gui_core.services as services
+
+    entry = _MODELS.get(model_name)
+    if entry is None:
+        return {"result": None, "rows": [], "metrics": [], "charts": {},
+                "lang": lang, "notes": [tr("先在建模页拟合模型", lang)]}
+    if not hasattr(entry["model"], "gain_curve"):
+        return {"result": None, "rows": [], "metrics": [], "charts": {},
+                "lang": lang,
+                "notes": [tr("该模型不支持 LUT 提取(需要样条/MP 增益曲线)",
+                             lang)]}
+
+    res = services.lut_sweep(entry["model"], _eval_source(entry))
+    rows = [{"depth": "float", "nmse_db": f"{res['float']:.2f}"}]
+    rows += [{"depth": str(n), "nmse_db": f"{v:.2f}"}
+             for n, v in res["entries"].items()]
+    return {
+        "result": res, "rows": rows, "charts": {}, "lang": lang,
+        "metrics": [_metric(tr("LUT MAC/样本", lang),
+                            str(res["macs"]["real_macs_per_sample_lut"]))],
+        "notes": [],
+    }
+
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -392,6 +504,8 @@ SCREENS = {
     "adaptive_dpd": adaptive_dpd,
     "three_loop": three_loop,
     "compare": compare,
+    "deploy": deploy,
+    "lut_depth": lut_depth,
 }
 
 
@@ -415,4 +529,6 @@ _SLOTS = {
     "three_loop": ("three_loop",),
     # Charts appear only once two runs are selected.
     "compare": (),
+    "deploy": ("bitwidth",),
+    "lut_depth": (),
 }

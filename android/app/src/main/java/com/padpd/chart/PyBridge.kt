@@ -70,6 +70,10 @@ object PyBridge {
         /** Tabular screens return rows instead of metric cards. Values
          * are already formatted, as everything else from pages.py is. */
         val rows: List<Map<String, String>> = emptyList(),
+        /** Choices discovered at runtime - models fitted this session,
+         * for instance - as opposed to the fixed lists a screen hard
+         * codes because they come from the standard. */
+        val options: List<String> = emptyList(),
     )
 
     @Serializable
@@ -80,6 +84,7 @@ object PyBridge {
         val charts: Map<String, ChartSpec> = emptyMap(),
         val notes: List<String> = emptyList(),
         val rows: List<Map<String, String>> = emptyList(),
+        val options: List<String> = emptyList(),
         val error: String = "",
         val traceback: String = "",
     )
@@ -157,7 +162,7 @@ object PyBridge {
         if (!reply.ok) throw IllegalStateException(
             "${reply.error}\n${reply.traceback}")
         return Screen(reply.handle, reply.metrics, reply.charts,
-                      reply.notes, reply.rows)
+                      reply.notes, reply.rows, reply.options)
     }
 
     /**

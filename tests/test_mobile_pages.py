@@ -319,6 +319,81 @@ def test_row_values_are_formatted_strings(api):
     assert re.fullmatch(r"-?\d+\.\d{2}", row["nmse_db"]), row
 
 
+# ---- the deployment screen ----------------------------------------------
+def test_deploy_lists_models_the_modeling_screen_fitted(api):
+    """The Modeling screen keeps fitted models for this screen to sweep.
+
+    The run store holds their metrics, not the objects, so this is real
+    session state - the same coupling the desktop has between its two
+    pages.
+    """
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    assert not _screen(api, "deploy", [], [])["options"]
+
+    _screen(api, "modeling", "Spline-MP (K8,M4)", 5, 4, 0.14, "none")
+    options = _screen(api, "deploy", [], [])["options"]
+    assert any("Spline-MP" in o for o in options), options
+
+
+def test_bitwidth_sweep_degrades_with_fewer_bits(api):
+    """The point of the sweep. Measured on a Spline-MP: float -51.41 dB,
+    W16 -51.41, W12 -51.03, W8 -35.82 - so quantisation error grows as
+    the word shrinks. A sweep where it did not would mean the fixed-point
+    path is not actually quantising."""
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    _screen(api, "modeling", "Spline-MP (K8,M4)", 5, 4, 0.14, "none")
+    name = _screen(api, "deploy", [], [])["options"][0]
+
+    row = _screen(api, "deploy", [name], [16, 12, 8])["rows"][0]
+    w16, w12, w8 = (float(row[k]) for k in ("W16", "W12", "W8"))
+    assert w16 <= w12 <= w8, row
+    assert w8 > w16 + 5, f"W8 barely differs from W16: {row}"
+
+
+def test_bitwidth_sweep_reports_hardware_cost(api):
+    """NMSE alone does not decide a bit width; the MAC cost is the other
+    half of that trade-off and the desktop table carries it."""
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    _screen(api, "modeling", "GMP", 5, 4, 0.14, "none")
+    name = _screen(api, "deploy", [], [])["options"][0]
+    row = _screen(api, "deploy", [name], [16, 8])["rows"][0]
+    assert row.get("macs") and row.get("gmac"), row
+
+
+def test_lut_depth_sweep_reports_a_cheaper_mac_count(api):
+    """A LUT trades memory for arithmetic. Measured: 160 MAC/sample for
+    the Spline-MP itself, 24 through its table."""
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    _screen(api, "modeling", "Spline-MP (K8,M4)", 5, 4, 0.14, "none")
+    name = _screen(api, "deploy", [], [])["options"][0]
+    reply = _screen(api, "lut_depth", name)
+    assert reply["rows"][0]["depth"] == "float"
+    assert reply["metrics"][0]["value"].isdigit(), reply["metrics"]
+
+
+def test_lut_on_a_model_without_a_gain_curve_says_so(api):
+    """Picking the wrong model from a list is normal, so it reports
+    rather than raising."""
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    _screen(api, "modeling", "DDR", 5, 4, 0.14, "none")
+    name = _screen(api, "deploy", [], [])["options"][0]
+    reply = _screen(api, "lut_depth", name)
+    assert reply["rows"] == []
+    assert reply["notes"], "no explanation for the unsupported model"
+
+
+def test_deploy_with_nothing_fitted_explains_rather_than_failing(api):
+    from padpd_mobile import pages
+    pages._MODELS.clear()
+    reply = _screen(api, "deploy", [], [])
+    assert reply["rows"] == [] and reply["notes"]
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n
@@ -335,6 +410,13 @@ def _kotlin_literals() -> dict:
     That is sound for this purpose: it over-collects if anything (a
     Chinese comment would be caught), and over-collecting only ever asks
     for a translation that already exists.
+
+    It does impose one rule on the Kotlin side: a translatable string
+    must be a single literal. Python's AST folds adjacent literals into
+    one constant, so tr() over a wrapped string is one key there; Kotlin
+    concatenation does not, so a key split across a `+` becomes two keys
+    and neither is ever found. Wrapping a long line is fine everywhere
+    except inside tr().
     """
     found = {}
     for f in sorted(KOTLIN.rglob("*.kt")):

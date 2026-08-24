@@ -34,6 +34,7 @@ import com.padpd.chart.PyBridge
 import com.padpd.i18n.Strings
 import com.padpd.i18n.tr
 import com.padpd.screens.CompareScreen
+import com.padpd.screens.DeployScreen
 import com.padpd.screens.DpdScreen
 import com.padpd.screens.GalleryScreen
 import com.padpd.screens.ModelingScreen
@@ -125,6 +126,7 @@ fun PadpdApp() {
                         ModelingScreen(lang, torchAvailable = caps!!.torch)
                     Destination.DPD ->
                         DpdScreen(lang, torchAvailable = caps!!.torch)
+                    Destination.DEPLOY -> DeployScreen(lang)
                     Destination.COMPARE -> CompareScreen(lang)
                     Destination.GALLERY -> GalleryScreen()
                     else -> Placeholder(tr(where.zh))

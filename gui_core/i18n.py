@@ -51,6 +51,13 @@ _EN = {
     "原始环回": "Raw loopback",
     "仅去嵌": "De-embed only",
     "三环": "Three loops",
+    "定点位宽扫描(bit-true)+ 硬件成本估计。":
+        "Bit-true fixed-point sweep plus hardware cost estimate.",
+    "导出交接产物在 Android 上不可用:需要可写目录(SAF)、ONNX 导出(torch)与 iverilog 做 RTL bit-true 校验。":
+        "Hand-off artefact export is unavailable on Android: it needs a "
+        "writable directory (SAF), ONNX export (torch) and iverilog for "
+        "the RTL bit-true check.",
+    "已拟合模型": "Models fitted",
     "勾选 run 进行对比;注册表持久化于 gui_runs/,与桌面版同一格式。":
         "Tick runs to compare them; the registry persists in gui_runs/, "
         "in the same format as the desktop build.",

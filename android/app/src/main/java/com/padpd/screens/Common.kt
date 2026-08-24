@@ -243,3 +243,65 @@ fun RunResult(
         }
     }
 }
+
+/**
+ * A simple key/value table, for screens whose result is rows rather than
+ * a reading - deployment sweeps, LUT depths.
+ *
+ * Columns come from the first row's keys, in insertion order, because
+ * pages.py builds those rows in the order the desktop table shows them.
+ * Scrolls horizontally, so like [MetricRow] it belongs directly in a
+ * column and not inside another horizontal scroller.
+ */
+@Composable
+fun RowTable(rows: List<Map<String, String>>, tag: String) {
+    if (rows.isEmpty()) return
+    val columns = rows.first().keys.toList()
+    Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag)) {
+        Row(Modifier.horizontalScroll(rememberScrollState())) {
+            for (c in columns) {
+                Text(c, fontSize = 10.sp,
+                     fontWeight = FontWeight.Medium,
+                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                     modifier = Modifier.width(104.dp))
+            }
+        }
+        for ((i, row) in rows.withIndex()) {
+            Row(Modifier.horizontalScroll(rememberScrollState())
+                .testTag("$tag:row$i")) {
+                for (c in columns) {
+                    Text(row[c].orEmpty(), fontSize = 12.sp,
+                         fontFamily = FontFamily.Monospace,
+                         modifier = Modifier.width(104.dp))
+                }
+            }
+        }
+    }
+}
+
+/** Several values picked from a fixed set. Not scrollable - see [OptionRow]. */
+@Composable
+fun <T> MultiOptionRow(
+    label: String,
+    options: List<T>,
+    selected: Collection<T>,
+    onToggle: (T) -> Unit,
+) {
+    Column(Modifier.padding(vertical = 4.dp)) {
+        Text(label, fontSize = 10.sp,
+             color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (o in options) {
+                val chosen = o in selected
+                Text(
+                    (if (chosen) "☑ " else "☐ ") + o.toString(),
+                    fontSize = 12.sp,
+                    color = if (chosen) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.testTag("multi:$label:$o")
+                        .clickable { onToggle(o) },
+                )
+            }
+        }
+    }
+}
