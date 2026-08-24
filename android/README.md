@@ -250,11 +250,24 @@ first"——报错把修法写出来了,但那是花一轮构建换来的。
 会画错**的情形:对数轴、双轴、类别轴、bar 里的 NaN 断口、掩码带。gallery 的
 那套输入本来就是为了跑遍每种绘图原语而存在的。
 
-fixture 放在 `src/debug/assets/`,**不是** screenshotTest 源集的 `resources/`。
-放后者能编译、渲染时却不存在:layoutlib 在自己的进程里跑预览,自己的 classpath,
-screenshotTest 的 java 资源不在上面。第一版就放在那儿,28 张预览**全部渲染成空图**
-(每张约 800 字节),日志里是 `fixture ... is not on the classpath`。用 debug 而非
-main,是为了让这 412 KB 测试数据不进 release APK。
+**渲染时没有文件可读**——这条花了三轮 CI 才认清。layoutlib 在自己的进程里跑
+预览,两条取文件的路都不通:
+
+| 放法 | 结果 |
+|---|---|
+| `src/screenshotTest/resources/` | `fixture ... is not on the classpath` |
+| `src/debug/assets/` | `assets=true, classpath=false`——AssetManager 在,但打不开 |
+
+两次都是 28 张预览**全部渲染成空图**(每张约 800 字节)。所以 fixture 现在
+**编进 Kotlin 源码**(`ChartFixtures.kt`,由 `tests/test_chart_fixtures.py` 生成):
+没有文件、没有 classpath、没有 AssetManager,不依赖渲染器怎么找东西。
+
+两个实现细节:class 文件里单个字符串字面量上限 65535 字节,所以按 30000 字符
+切块;**块必须在运行时拼**,因为编译器会把常量 `+` 折回成一个字面量,上限照样撞。
+
+序列在冻结前抽稀到 **800 点**:380dp 宽的图画不出四千个点,而金图要放进源码树。
+spec 一个字节都不动(label/范围/轴归属是契约,精确比对),绘图特性也全都在——
+NaN 断口、类别刻度、掩码带要么是元数据要么本来就只有几个点。
 
 **明暗都画**:`@Preview` 的 `uiMode` 驱动 `isSystemInDarkTheme()`,而
 `ChartTheme` 读的是同一个信号。深色配色在代码里躺了很久,在这之前**没有任何
