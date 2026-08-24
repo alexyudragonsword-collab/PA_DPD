@@ -23,6 +23,13 @@ app 有两套导航外壳,**功能页完全共用**,只是怎么到达它们不�
 (`project.findProperty`),值只能是这两个之一,写错**在配置期就抛**——
 拼错了不该悄悄退回默认值然后发出错的 UI。
 
+CI 侧不需要选:构建 job **两套都装配**,分别上传成
+`padpd-arm64-release`(classic)和 `padpd-arm64-release-drawer`,下载哪个就是
+哪套壳。顺序是有讲究的——两次 `assembleRelease` 写的是**同一个**
+`apk/release/` 路径,所以 classic 的上传必须排在抽屉装配之前。第一版把抽屉
+装配放在了上传之前,于是那个叫 `padpd-arm64-release` 的产物装的是抽屉版、
+报告的体积也是抽屉版的,而 CI 一路绿:**没有任何东西检查一个 APK 穿的是哪套壳。**
+
 **为什么不用 productFlavors**:那更正统,但会把 `assembleRelease`、
 `connectedDebugAndroidTest`、`updateDebugScreenshotTest` 等任务名全部改掉,
 而 workflow 与 `run-android-tests-on-emulator.sh` 里这些名字、以及

@@ -247,22 +247,6 @@ jobs:
           path: golden-images/**
           if-no-files-found: warn
 
-      # The drawer shell is only reached when built with it, so a build
-      # that never passes -PpadpdNav=drawer never compiles that half.
-      # Assembling it here is what stops the parallel scheme rotting
-      # while the default keeps passing.
-      - name: Assemble the drawer shell too
-        working-directory: android
-        run: |
-          set -o pipefail
-          ./gradlew :app:assembleRelease -PpadpdNav=drawer \
-            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-            2>&1 | tee "$RUNNER_TEMP/gradle-drawer.log"
-
-      - name: Surface drawer build failure
-        if: failure()
-        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-drawer.log"
-
       - name: Report APK size
         working-directory: android
         run: |
@@ -290,10 +274,40 @@ jobs:
           find app/build -name 'requirements*.txt' -exec sh -c \
             'echo "--- {} ---"; cat "{}"' \; || true
 
+      # The default shell's APK, and the size reported above. Uploaded
+      # before the drawer is assembled, because both write to the same
+      # apk/release path: assembling the drawer first made this artifact
+      # the drawer's while still calling it the release build, and
+      # nothing checked which shell an APK wore, so CI stayed green.
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: padpd-arm64-release
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: warn
+
+      # The drawer shell is only reached when built with it, so a build
+      # that never passes -PpadpdNav=drawer never compiles that half.
+      # Assembling it here is what stops the parallel scheme rotting
+      # while the default keeps passing - and uploading it separately is
+      # what makes the build-time choice reachable from CI at all,
+      # rather than only from a local Gradle invocation.
+      - name: Assemble the drawer shell
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PpadpdNav=drawer \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-drawer.log"
+
+      - name: Surface drawer build failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-drawer.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: padpd-arm64-release-drawer
           path: android/app/build/outputs/apk/release/*.apk
           if-no-files-found: warn
 
