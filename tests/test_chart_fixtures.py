@@ -26,6 +26,7 @@ from __future__ import annotations
 import base64
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -170,7 +171,7 @@ internal val CHART_FIXTURES: Map<String, Array<String>> = mapOf(
                           sort_keys=True)
         pieces = [text[i:i + chunks] for i in range(0, len(text), chunks)]
         assert all(len(p.encode()) < 65_000 for p in pieces), entry_id
-        joined = ",\n".join(f'        "{p}"' for p in pieces)
+        joined = ",\n".join(f'        "{_kotlin_escape(p)}"' for p in pieces)
         parts.append(f'    "{entry_id}" to arrayOf(\n{joined},\n    ),\n')
     parts.append(")\n")
     generated = "".join(parts)
@@ -185,6 +186,38 @@ internal val CHART_FIXTURES: Map<String, Array<String>> = mapOf(
     assert KOTLIN_FIXTURES.read_text(encoding="utf-8") == generated, (
         "the compiled-in fixtures have drifted from chart_spec.py; "
         "regenerate with PADPD_UPDATE_FIXTURES=1")
+
+    # Round-trip the literals back out. JSON is made of the two
+    # characters a Kotlin string literal cares about, plus the one that
+    # starts a template - the first version escaped none of them and
+    # produced a file whose every line was a syntax error. Checking here
+    # costs nothing; finding out from the Kotlin compiler costs a CI
+    # round trip.
+    for entry_id in _entries():
+        assert _unescaped_chunks(generated, entry_id) == json.dumps(
+            _build(entry_id), ensure_ascii=False, sort_keys=True), entry_id
+
+
+def _kotlin_escape(text: str) -> str:
+    """Escape for a Kotlin string literal: backslash, quote, and the
+    dollar sign that would otherwise open a string template."""
+    return (text.replace("\\", "\\\\")
+                .replace('"', '\\"')
+                .replace("$", "\\$"))
+
+
+def _unescaped_chunks(generated: str, entry_id: str) -> str:
+    """The chunks of one entry, read back out of the generated Kotlin."""
+    head = f'    "{entry_id}" to arrayOf(\n'
+    start = generated.index(head) + len(head)
+    end = generated.index("\n    ),\n", start)
+    out = []
+    for literal in re.findall(r'"((?:[^"\\]|\\.)*)"',
+                              generated[start:end]):
+        out.append(literal.replace('\\"', '"')
+                          .replace("\\$", "$")
+                          .replace("\\\\", "\\"))
+    return "".join(out)
 
 
 def test_every_drawing_primitive_is_covered():
