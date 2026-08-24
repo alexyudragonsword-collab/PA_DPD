@@ -238,6 +238,12 @@ emulator 用的是 `-gpu swiftshader_indirect` 软件渲染,跑在
 凭印象本来要钉 alpha08,**差了两个版本**。workflow 里那个查询 job 就是为这个
 留着的,和查 Chaquopy 轮子的那个同理。
 
+启用要**两处**,少一处就是一整轮构建:`gradle.properties` 的
+`android.experimental.enableScreenshotTest=true`,**加上**模块 `android {}` 块里的
+`experimentalProperties["android.experimental.enableScreenshotTest"] = true`。
+只设前者会配置到一半然后报 "Please enable screenshotTest source set in module
+first"——报错把修法写出来了,但那是花一轮构建换来的。
+
 **数据是真的**:每个 preview 读的是 `chart_spec.py` 自己产出的 fixture
 (`tests/test_chart_fixtures.py` 既生成又守),不是在 Kotlin 里手写的
 `ChartSpec`。手写的会拿虚构数据去测渲染器,而且会悄悄漏掉那些**渲染器真正

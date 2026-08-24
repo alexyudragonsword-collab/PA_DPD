@@ -61,6 +61,17 @@ android {
     namespace 'com.padpd'
     compileSdk 35
 
+    // Both halves are required, and the module-level one is the half
+    // that is easy to miss. Setting only the gradle.properties flag gets
+    // you as far as configuration and then:
+    //
+    //   > Please enable screenshotTest source set in module first to
+    //     apply the screenshot test plugin.
+    //
+    // which is a good error - it names the fix - but it is a whole
+    // build to find out.
+    experimentalProperties["android.experimental.enableScreenshotTest"] = true
+
     defaultConfig {
         applicationId "com.padpd"
         minSdk 24
