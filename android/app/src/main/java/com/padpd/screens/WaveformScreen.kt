@@ -97,10 +97,10 @@ fun WaveformScreen(lang: String, modifier: Modifier = Modifier) {
                 .horizontalScroll(rememberScrollState()),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OptionRow(tr("带宽(MHz)"), BANDWIDTHS, bandwidth) { bandwidth = it }
-            OptionRow("QAM", QAM_ORDERS, qam) { qam = it }
-            IntStepper(tr("符号数"), symbols, 2, 40, 2) { symbols = it }
-            IntStepper(tr("种子"), seed, 0, 9999, 1) { seed = it }
+            OptionRow(tr("带宽(MHz)"), "bw", BANDWIDTHS, bandwidth) { bandwidth = it }
+            OptionRow("QAM", "qam", QAM_ORDERS, qam) { qam = it }
+            IntStepper(tr("符号数"), "symbols", symbols, 2, 40, 2) { symbols = it }
+            IntStepper(tr("种子"), "seed", seed, 0, 9999, 1) { seed = it }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(tr("CFR 削峰"), fontSize = 12.sp)
                 Switch(cfrOn, { cfrOn = it }, Modifier.testTag("cfr"))

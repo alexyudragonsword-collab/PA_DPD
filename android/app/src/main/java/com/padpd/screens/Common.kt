@@ -34,7 +34,14 @@ import kotlinx.serialization.json.JsonPrimitive
 
 /**
  * What every ported screen shares: how a run is represented, how it is
- * fetched, and the two controls that recur on every page.
+ * fetched, and the controls that recur on every page.
+ *
+ * Every control takes an explicit `tag` separate from its `label`. The
+ * label is translated, so building a test tag out of it would mean the
+ * identifiers change when the user switches language - a device test
+ * written against the Chinese UI would stop finding anything in English,
+ * and the failure would look like a broken screen rather than a renamed
+ * tag. Tags are ASCII and fixed; labels are for people.
  *
  * The desktop has gui_qt/common.py for the same reason. Keeping these
  * here rather than copying them per screen matters more than usual on
@@ -125,6 +132,7 @@ fun MetricRow(metrics: List<PyBridge.Metric>) {
 @Composable
 fun IntStepper(
     label: String,
+    tag: String,
     value: Int,
     min: Int,
     max: Int,
@@ -140,12 +148,12 @@ fun IntStepper(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Text("−", fontSize = 16.sp,
-                 modifier = Modifier.testTag("$label:-")
+                 modifier = Modifier.testTag("$tag:-")
                      .clickable { onSet((value - step).coerceAtLeast(min)) })
             Text(display(value), fontSize = 13.sp,
-                 modifier = Modifier.testTag("$label:value"))
+                 modifier = Modifier.testTag("$tag:value"))
             Text("+", fontSize = 16.sp,
-                 modifier = Modifier.testTag("$label:+")
+                 modifier = Modifier.testTag("$tag:+")
                      .clickable { onSet((value + step).coerceAtMost(max)) })
         }
     }
@@ -163,6 +171,7 @@ fun IntStepper(
 @Composable
 fun <T> OptionRow(
     label: String,
+    tag: String,
     options: List<T>,
     selected: T,
     onPick: (T) -> Unit,
@@ -179,7 +188,7 @@ fun <T> OptionRow(
                                  else FontWeight.Normal,
                     color = if (chosen) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.testTag("opt:$label:$o")
+                    modifier = Modifier.testTag("opt:$tag:$o")
                         .clickable { onPick(o) },
                 )
             }
@@ -283,6 +292,7 @@ fun RowTable(rows: List<Map<String, String>>, tag: String) {
 @Composable
 fun <T> MultiOptionRow(
     label: String,
+    tag: String,
     options: List<T>,
     selected: Collection<T>,
     onToggle: (T) -> Unit,
@@ -298,7 +308,7 @@ fun <T> MultiOptionRow(
                     fontSize = 12.sp,
                     color = if (chosen) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.testTag("multi:$label:$o")
+                    modifier = Modifier.testTag("multi:$tag:$o")
                         .clickable { onToggle(o) },
                 )
             }

@@ -102,19 +102,19 @@ private fun FitSection(lang: String, torchAvailable: Boolean) {
 
     Row(Modifier.fillMaxWidth()
         .horizontalScroll(rememberScrollState())) {
-        OptionRow(tr("类型"), MODEL_TYPES, modelType) { modelType = it }
+        OptionRow(tr("类型"), "modelType", MODEL_TYPES, modelType) { modelType = it }
     }
     Row(Modifier.fillMaxWidth()
         .horizontalScroll(rememberScrollState())) {
-        OptionRow(tr("前端"), FRONTENDS, frontend) { frontend = it }
+        OptionRow(tr("前端"), "frontend", FRONTENDS, frontend) { frontend = it }
     }
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)
         .horizontalScroll(rememberScrollState())) {
-        IntStepper(tr("阶数"), order, 3, 9, 1) { order = it }
-        IntStepper(tr("记忆"), memory, 1, 30, 1) { memory = it }
+        IntStepper(tr("阶数"), "order", order, 3, 9, 1) { order = it }
+        IntStepper(tr("记忆"), "memory", memory, 1, 30, 1) { memory = it }
         // drive is 0.06..0.24 in 0.01 steps; held as hundredths so the
         // stepper stays integer arithmetic and cannot drift.
-        IntStepper("drive", driveHundredths, 6, 24, 1,
+        IntStepper("drive", "fitDrive", driveHundredths, 6, 24, 1,
                    display = { "0.%02d".format(it) }) { driveHundredths = it }
     }
 
@@ -159,10 +159,10 @@ private fun GainModSection(lang: String) {
 
     Row(Modifier.fillMaxWidth()
         .horizontalScroll(rememberScrollState())) {
-        OptionRow(tr("虚拟 DUT"), GAIN_MOD_DUTS, dut) { dut = it }
+        OptionRow(tr("虚拟 DUT"), "gmDut", GAIN_MOD_DUTS, dut) { dut = it }
     }
     Row(verticalAlignment = Alignment.CenterVertically) {
-        IntStepper("drive", driveHundredths, 6, 24, 1,
+        IntStepper("drive", "gmDrive", driveHundredths, 6, 24, 1,
                    display = { "0.%02d".format(it) }) { driveHundredths = it }
         Text(tr("拟合状态样条"), fontSize = 12.sp)
         Switch(fitState, { fitState = it }, Modifier.testTag("fitState"))

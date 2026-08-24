@@ -50,7 +50,12 @@ class DeployScreenTest {
 
         // Pick the model, then sweep. The default bit widths are already
         // selected, matching the desktop.
-        val model = presentTags().first { it.startsWith("multi:") }
+        //
+        // "multi:model:" rather than the first tag starting "multi:":
+        // that picked the bit-width row instead, because the tags were
+        // built from translated labels and 位 sorts before 模. Control
+        // tags are ASCII and explicit now, so this names what it means.
+        val model = presentTags().first { it.startsWith("multi:model:") }
         compose.onNodeWithTag(model, useUnmergedTree = true)
             .performScrollTo().performClick()
         compose.onNodeWithTag("sweep", useUnmergedTree = true)

@@ -90,14 +90,14 @@ fun DeployScreen(lang: String, modifier: Modifier = Modifier) {
         } else {
             Row(Modifier.fillMaxWidth()
                 .horizontalScroll(rememberScrollState())) {
-                MultiOptionRow(tr("模型(勾选)"), available, models) { name ->
+                MultiOptionRow(tr("模型(勾选)"), "model", available, models) { name ->
                     if (name in models) models.remove(name)
                     else models.add(name)
                 }
             }
             Row(Modifier.fillMaxWidth()
                 .horizontalScroll(rememberScrollState())) {
-                MultiOptionRow(tr("位宽"), ALL_BITS, bits) { b ->
+                MultiOptionRow(tr("位宽"), "bits", ALL_BITS, bits) { b ->
                     if (b in bits) bits.remove(b) else bits.add(b)
                 }
             }
@@ -117,7 +117,7 @@ fun DeployScreen(lang: String, modifier: Modifier = Modifier) {
                  modifier = Modifier.padding(top = 20.dp))
             Row(Modifier.fillMaxWidth()
                 .horizontalScroll(rememberScrollState())) {
-                OptionRow(tr("模型"), available, lutFor ?: available.first()) {
+                OptionRow(tr("模型"), "lutModel", available, lutFor ?: available.first()) {
                     lutFor = it
                 }
             }

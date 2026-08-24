@@ -97,13 +97,13 @@ private fun IlaSection(lang: String, torchAvailable: Boolean) {
             if (cfrOn) JsonPrimitive(CFR_PAPR_DB) else JsonNull)
     }
 
-    Scrollable { OptionRow(tr("基函数"), ILA_BASES, basis) { basis = it } }
+    Scrollable { OptionRow(tr("基函数"), "ilaBasis", ILA_BASES, basis) { basis = it } }
     Scrollable {
-        OptionRow(tr("带宽(MHz)"), BANDWIDTHS, bandwidth) { bandwidth = it }
+        OptionRow(tr("带宽(MHz)"), "ilaBw", BANDWIDTHS, bandwidth) { bandwidth = it }
     }
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically) {
-        IntStepper("drive", driveHundredths, 6, 24, 1,
+        IntStepper("drive", "ilaDrive", driveHundredths, 6, 24, 1,
                    display = { "0.%02d".format(it) }) { driveHundredths = it }
         Text(tr("CFR 削峰"), fontSize = 12.sp)
         Switch(cfrOn, { cfrOn = it }, Modifier.testTag("dpdCfr"))
@@ -142,15 +142,15 @@ private fun AdaptiveSection(lang: String) {
     }
 
     Scrollable {
-        OptionRow(tr("方法"), ADAPTIVE_METHODS, method) { method = it }
+        OptionRow(tr("方法"), "adMethod", ADAPTIVE_METHODS, method) { method = it }
     }
     Scrollable {
-        OptionRow(tr("基"), ADAPTIVE_BASES, basis) { basis = it }
-        OptionRow(tr("虚拟 DUT"), ADAPTIVE_DUTS, dut) { dut = it }
+        OptionRow(tr("基"), "adBasis", ADAPTIVE_BASES, basis) { basis = it }
+        OptionRow(tr("虚拟 DUT"), "adDut", ADAPTIVE_DUTS, dut) { dut = it }
     }
     Scrollable {
-        IntStepper(tr("块数"), blocks, 4, 30, 2) { blocks = it }
-        OptionRow(tr("带宽(MHz)"), BANDWIDTHS, bandwidth) { bandwidth = it }
+        IntStepper(tr("块数"), "adBlocks", blocks, 4, 30, 2) { blocks = it }
+        OptionRow(tr("带宽(MHz)"), "adBw", BANDWIDTHS, bandwidth) { bandwidth = it }
     }
 
     Button({ generation++ }, enabled = run !is ScreenRun.Busy,
@@ -178,16 +178,16 @@ private fun ThreeLoopSection(lang: String) {
     }
 
     Scrollable {
-        IntStepper(tr("块数"), blocks, 4, 30, 2) { blocks = it }
-        IntStepper(tr("漂移幅度"), spanThousandths, 5, 60, 5,
+        IntStepper(tr("块数"), "tlBlocks", blocks, 4, 30, 2) { blocks = it }
+        IntStepper(tr("漂移幅度"), "tlSpan", spanThousandths, 5, 60, 5,
                    display = { "0.%03d".format(it) }) { spanThousandths = it }
     }
     Scrollable {
-        IntStepper(tr("LO 泄漏(dBc)"), loDbc, -50, -20, 5) { loDbc = it }
+        IntStepper(tr("LO 泄漏(dBc)"), "tlLo", loDbc, -50, -20, 5) { loDbc = it }
         // One control drives both halves of the IQ imbalance: pages.py
         // sets phase_deg to ten times gain_db, as the desktop does, so
         // the pair cannot be made inconsistent from the UI.
-        IntStepper(tr("IQ 增益失衡(dB)"), iqTenths, 1, 10, 1,
+        IntStepper(tr("IQ 增益失衡(dB)"), "tlIq", iqTenths, 1, 10, 1,
                    display = { "0.%d".format(it) }) { iqTenths = it }
     }
 
