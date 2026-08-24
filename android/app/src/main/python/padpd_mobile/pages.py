@@ -26,6 +26,8 @@ this one knows about screens and nothing about transport.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from gui_core.i18n import tr
 
 
@@ -493,6 +495,124 @@ def lut_depth(model_name: str, *, lang: str = "zh") -> dict:
     }
 
 
+def home(*, lang: str = "zh") -> dict:
+    """Overview: what padpd has achieved, what this device can do, and
+    what has been run here.
+
+    The headline figures are the project's own measured results, carried
+    over from the desktop page verbatim. They are documentation, not
+    something this screen computes - and they say so through the note
+    rather than by looking like a live reading.
+    """
+    import gui_core.services as services
+    from gui_core.paths import user_data_dir
+
+    metrics = [
+        _metric(tr("合成链路 DPD 后 EVM", lang), "-57.4 dB",
+                "160 MHz/1024-QAM"),
+        _metric(tr("TCN vs GMP(真实数据)", lang), "-34.9 dB",
+                tr("超经典基线", lang)),
+        _metric("DPA_160 DLA DPD", "-53.1 dBc", tr("过 -52 验收线", lang)),
+        _metric(tr("APA 代理重评", lang), "-38.56 dBc",
+                tr("≈发表值 -38.80", lang)),
+    ]
+
+    # Environment self-check, the desktop's three lines. Two of them are
+    # foregone conclusions on Android and are reported as such rather
+    # than probed with a try/import that can only fail.
+    env = [tr("⚠️ PyTorch 未安装(神经功能不可用)", lang)]
+    opendpd = Path(services.default_opendpd_dir())
+    env.append(tr("✅ OpenDPD 数据集:{path}", lang).format(path=opendpd)
+               if opendpd.is_dir()
+               else tr("ℹ️ OpenDPD 未找到(可在数据页指定)", lang))
+
+    model_dir = user_data_dir() / "models"
+    n_models = len(list(model_dir.glob("*"))) if model_dir.is_dir() else 0
+    runs = _runstore().list()
+    env.append("ℹ️ " + tr("模型 checkpoint × {n}", lang).format(n=n_models)
+               + " · " + tr("实验 run × {n}", lang).format(n=len(runs)))
+
+    rows = [{
+        "when": r.when,
+        "name": r.name,
+        "kind": r.kind,
+        "metrics": " · ".join(f"{k}={v:.1f}" for k, v in r.metrics.items()
+                              if isinstance(v, float))[:60],
+    } for r in runs[:8]]
+
+    return {"result": None, "metrics": metrics, "rows": rows, "charts": {},
+            "lang": lang, "notes": env}
+
+
+CODESIGN_DRIVES = (0.08, 0.10, 0.12, 0.14, 0.17, 0.20, 0.24)
+
+
+def codesign(spec_db: float, budget: int, bandwidth_mhz: float, *,
+             lang: str = "zh") -> dict:
+    """Co-design: the discrete Pareto sweep over PA drive.
+
+    The gradient tab is not here - padpd.codesign_torch needs torch. This
+    half is pure numpy and runs on the phone, which is the more
+    interesting half anyway: it is the one that shows a sequential design
+    hitting a wall a joint design can walk around.
+
+    The desktop labels this "about a minute". It is the slowest thing in
+    the app by a wide margin.
+    """
+    from padpd.codesign import codesign_sweep
+    from padpd.waveform import OFDMConfig, generate_ofdm
+
+    bw = bandwidth_mhz * 1e6
+    cfg = OFDMConfig(bandwidth_hz=bw, qam_order=1024, n_symbols=6, seed=0)
+    train = generate_ofdm(cfg)
+    val = generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=1024,
+                                   n_symbols=6, seed=1))
+    sweep = codesign_sweep(list(CODESIGN_DRIVES), train.x, val.x, val,
+                           float(spec_db), cfg.sample_rate_hz, bw)
+
+    # Sequential design: chase efficiency first, then see whether DPD can
+    # rescue it. Joint design: the best efficiency that is still feasible
+    # inside the coefficient budget. The gap between them is the point of
+    # the whole page.
+    sequential = max(sweep, key=lambda r: r["pae"])
+    seq_ok = sequential["feasible"] and sequential["dpd_cost"] <= budget
+    feasible = [r for r in sweep
+                if r["feasible"] and r["dpd_cost"] <= budget]
+
+    metrics = [
+        _metric(tr("顺序设计(先冲效率)", lang),
+                f"PAE {100 * sequential['pae']:.1f}%",
+                tr("可行", lang) if seq_ok
+                else tr("撞墙:不可逆/超预算", lang)),
+    ]
+    if feasible:
+        joint = max(feasible, key=lambda r: r["pae"])
+        metrics.append(_metric(
+            tr("联合设计(预算内最高效率)", lang),
+            f"PAE {100 * joint['pae']:.1f}%",
+            tr("drive {drive:.2f} · {cost} 系数 · EVM {evm:.1f} dB",
+               lang).format(drive=joint["drive"], cost=joint["dpd_cost"],
+                            evm=joint["evm_dpd"])))
+    else:
+        metrics.append(_metric(tr("联合设计(预算内最高效率)", lang), "—",
+                               tr("预算内无可行点", lang)))
+
+    rows = [{
+        "drive": f"{r['drive']:.2f}",
+        "PAE %": f"{100 * r['pae']:.1f}",
+        "EVM": f"{r['evm_nodpd']:.1f}",
+        "coeffs": str(r["dpd_cost"]),
+        "EVM DPD": f"{r['evm_dpd']:.1f}",
+        "ok": "✅" if r["feasible"] else "❌",
+    } for r in sweep]
+
+    return {
+        "result": sweep, "metrics": metrics, "rows": rows, "lang": lang,
+        "charts": {"codesign": ("codesign", (sweep, budget), {})},
+        "notes": [tr("✅ 扫描完成({n} 个工作点)", lang).format(n=len(sweep))],
+    }
+
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -506,6 +626,8 @@ SCREENS = {
     "compare": compare,
     "deploy": deploy,
     "lut_depth": lut_depth,
+    "home": home,
+    "codesign": codesign,
 }
 
 
@@ -531,4 +653,6 @@ _SLOTS = {
     "compare": (),
     "deploy": ("bitwidth",),
     "lut_depth": (),
+    "home": (),
+    "codesign": ("codesign",),
 }

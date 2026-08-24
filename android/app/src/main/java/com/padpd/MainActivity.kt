@@ -33,10 +33,12 @@ import androidx.compose.ui.unit.sp
 import com.padpd.chart.PyBridge
 import com.padpd.i18n.Strings
 import com.padpd.i18n.tr
+import com.padpd.screens.CodesignScreen
 import com.padpd.screens.CompareScreen
 import com.padpd.screens.DeployScreen
 import com.padpd.screens.DpdScreen
 import com.padpd.screens.GalleryScreen
+import com.padpd.screens.HomeScreen
 import com.padpd.screens.ModelingScreen
 import com.padpd.screens.Placeholder
 import com.padpd.screens.WaveformScreen
@@ -121,12 +123,15 @@ fun PadpdApp() {
                 CapabilityLine(caps!!)
                 NavBar(where) { where = it }
                 when (where) {
+                    Destination.HOME -> HomeScreen(lang)
                     Destination.WAVEFORM -> WaveformScreen(lang)
                     Destination.MODELING ->
                         ModelingScreen(lang, torchAvailable = caps!!.torch)
                     Destination.DPD ->
                         DpdScreen(lang, torchAvailable = caps!!.torch)
                     Destination.DEPLOY -> DeployScreen(lang)
+                    Destination.CODESIGN ->
+                        CodesignScreen(lang, torchAvailable = caps!!.torch)
                     Destination.COMPARE -> CompareScreen(lang)
                     Destination.GALLERY -> GalleryScreen()
                     else -> Placeholder(tr(where.zh))

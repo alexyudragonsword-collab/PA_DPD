@@ -394,6 +394,77 @@ def test_deploy_with_nothing_fitted_explains_rather_than_failing(api):
     assert reply["rows"] == [] and reply["notes"]
 
 
+# ---- home and co-design -------------------------------------------------
+def test_home_headline_figures_are_documentation_not_readings(api):
+    """The four cards carry the project's published results. They look
+    exactly like the live metric cards on every other screen, so the
+    screen labels their provenance - and this asserts they are the
+    figures the desktop shows, not something recomputed."""
+    reply = _screen(api, "home")
+    values = {m["value"] for m in reply["metrics"]}
+    assert {"-57.4 dB", "-34.9 dB", "-53.1 dBc", "-38.56 dBc"} <= values
+
+
+def test_home_environment_check_reports_torch_as_absent(api):
+    """A foregone conclusion on Android, stated rather than probed with
+    an import that can only fail."""
+    reply = _screen(api, "home")
+    assert any("PyTorch" in n for n in reply["notes"]), reply["notes"]
+    assert any("run ×" in n or "run x" in n or "runs" in n.lower()
+               for n in reply["notes"]), reply["notes"]
+
+
+def test_home_lists_recent_runs(api):
+    _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
+    rows = _screen(api, "home")["rows"]
+    assert rows and "name" in rows[0] and rows[0]["when"]
+    assert len(rows) <= 8, "home shows at most eight, as the desktop does"
+
+
+def test_codesign_shows_sequential_hitting_a_wall_joint_walks_around(api):
+    """The argument the page exists to make.
+
+    Measured at 80 MHz with a 90-coefficient budget: chasing efficiency
+    alone reaches PAE 43.3% at drive 0.24, which needs 149 coefficients
+    and lands at EVM -20.1 dB - infeasible. Designing jointly takes 28.2%
+    at drive 0.14, inside budget at 23 coefficients and EVM -50.0 dB.
+
+    Asserted as a relation, not as those numbers: the sequential pick is
+    the highest PAE in the sweep, and the joint pick is feasible where it
+    is not.
+    """
+    reply = _screen(api, "codesign", -40, 90, 80)
+    rows = reply["rows"]
+    assert len(rows) == 7, rows
+
+    top = max(rows, key=lambda r: float(r["PAE %"]))
+    assert top["ok"] == "❌" or int(top["coeffs"]) > 90, (
+        f"sequential design did not hit a wall, so the page has no point: "
+        f"{top}")
+
+    labels = [m["label"] for m in reply["metrics"]]
+    assert len(labels) == 2, labels
+    joint = reply["metrics"][1]
+    assert joint["value"] != "—", joint
+
+
+def test_codesign_budget_is_actually_enforced(api):
+    """A budget below the cheapest feasible point leaves nothing to pick.
+
+    First written as "a bigger budget moves the answer", which failed -
+    and the sweep says why: every feasible point costs 23 coefficients
+    and every infeasible one costs 149, so any budget from 23 up chooses
+    identically. Feasibility here is bounded by the EVM spec, not by the
+    budget. The budget only binds below 23, and that is where its effect
+    is observable.
+    """
+    tight = _screen(api, "codesign", -40, 20, 20)["metrics"][1]
+    assert tight["value"] == "—", tight
+
+    loose = _screen(api, "codesign", -40, 200, 20)["metrics"][1]
+    assert loose["value"].startswith("PAE"), loose
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n

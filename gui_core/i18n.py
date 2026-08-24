@@ -58,6 +58,12 @@ _EN = {
         "writable directory (SAF), ONNX export (torch) and iverilog for "
         "the RTL bit-true check.",
     "已拟合模型": "Models fitted",
+    "以上为项目已发布的实测结果,不是本机运行所得。":
+        "The figures above are the project's published measurements, not "
+        "results computed on this device.",
+    "可微梯度寻优页签需要 torch,在 Android 上不可用;此处只有离散扫描。":
+        "The differentiable-gradient tab needs torch, which is unavailable "
+        "on Android; only the discrete sweep is offered here.",
     "勾选 run 进行对比;注册表持久化于 gui_runs/,与桌面版同一格式。":
         "Tick runs to compare them; the registry persists in gui_runs/, "
         "in the same format as the desktop build.",
