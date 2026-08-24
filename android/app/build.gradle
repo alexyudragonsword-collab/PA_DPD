@@ -10,6 +10,7 @@ plugins {
     // classes instead and let a mismatch fail loudly at the boundary.
     id 'org.jetbrains.kotlin.plugin.serialization'
     id 'com.chaquo.python'
+    id 'com.android.compose.screenshot'
 }
 
 // Which ABIs to package. Defaults to arm64-v8a: extra ABIs multiply APK
@@ -165,6 +166,14 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    // The screenshotTest source set renders @Preview functions on the JVM
+    // through layoutlib, so it needs the tooling annotations and the
+    // serialization runtime the fixtures are parsed with. It does not get
+    // them from the main source set's configurations.
+    screenshotTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
+    screenshotTestImplementation 'androidx.compose.ui:ui-tooling'
+    screenshotTestImplementation 'androidx.compose.ui:ui-tooling-preview'
+    screenshotTestImplementation 'org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3'
     // Installed alongside the test APK rather than compiled into it -
     // it is the service that backs useTestStorageService above.
     androidTestUtil 'androidx.test.services:test-services:1.5.0'

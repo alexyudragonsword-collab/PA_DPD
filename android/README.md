@@ -221,6 +221,38 @@ emulator 用的是 `-gpu swiftshader_indirect` 软件渲染,跑在
 它约束的是文字而不是卡片,卡片实际比写的数字宽 20.dp——那样测试断言的数字
 就不是代码里写的那个数字了。
 
+### golden 对比:14 种图 × 明暗两套,跑在 JVM
+
+`src/screenshotTest/` 用 AGP 的 Compose Preview 截图测试(插件
+`com.android.compose.screenshot`)。**版本必须和 AGP 配对**,而这个插件的 POM
+不声明 AGP——它声明 `com.android.tools.compose:compose-preview-detector`,那个
+版本就是 Android tools 版本,`31.x` 对 AGP `8.x`:
+
+| 插件 | compose-preview-detector | → AGP |
+|---|---|---|
+| **alpha06** | 31.7.0-alpha09 | **8.7**(本项目) |
+| alpha07 | 31.8.0-alpha02 | 8.8 |
+| alpha08 | 31.9.0-alpha01 | 8.9 |
+| alpha09 | 31.10.0-alpha04 | 8.10 |
+
+凭印象本来要钉 alpha08,**差了两个版本**。workflow 里那个查询 job 就是为这个
+留着的,和查 Chaquopy 轮子的那个同理。
+
+**数据是真的**:每个 preview 读的是 `chart_spec.py` 自己产出的 fixture
+(`tests/test_chart_fixtures.py` 既生成又守),不是在 Kotlin 里手写的
+`ChartSpec`。手写的会拿虚构数据去测渲染器,而且会悄悄漏掉那些**渲染器真正
+会画错**的情形:对数轴、双轴、类别轴、bar 里的 NaN 断口、掩码带。gallery 的
+那套输入本来就是为了跑遍每种绘图原语而存在的。
+
+**明暗都画**:`@Preview` 的 `uiMode` 驱动 `isSystemInDarkTheme()`,而
+`ChartTheme` 读的是同一个信号。深色配色在代码里躺了很久,在这之前**没有任何
+东西渲染过它**——模拟器跑的是亮色,一条在深色背景上看不见的曲线可以一路发版。
+
+CI 那一步是**自举**的:没有基准图就生成并上传,有基准图就比对,两条路都不会
+为"还没有第一次"而红。写这段的开发环境**下载不了 artifact**(出网代理拦了
+blob 主机),所以第一批基准图必须由能打开 artifact 的人放进
+`app/src/debug/screenshotTest/reference/` 并提交。
+
 ### 覆盖范围
 
 `ScreenshotTour` 走十个屏 × 中英两种语言,拍的是**静息态**——布局在结果到达之前

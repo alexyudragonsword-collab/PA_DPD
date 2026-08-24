@@ -176,6 +176,56 @@ jobs:
         if: failure()
         run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-unit.log"
 
+      # Golden images of the chart renderer, drawn by layoutlib on the
+      # JVM rather than by the emulator. The emulator's version comes
+      # from the runner image and moves on GitHub's schedule, so a pixel
+      # comparison there reddens for reasons unrelated to the commit;
+      # layoutlib is pinned by the plugin version.
+      #
+      # Self-bootstrapping: with no reference images it generates them
+      # and uploads them, and with reference images it compares. Neither
+      # branch can fail for the want of a first run, and the development
+      # environment that wrote this cannot download artifacts to seed
+      # them by hand - see android/README.md.
+      - name: Chart golden images (JVM, layoutlib)
+        working-directory: android
+        run: |
+          set -o pipefail
+          ref=app/src/debug/screenshotTest/reference
+          if [ -n "$(find "$ref" -name '*.png' -print -quit 2>/dev/null)" ]; then
+            echo "### comparing against $(find "$ref" -name '*.png' | wc -l) reference images"
+            ./gradlew :app:validateDebugScreenshotTest \
+              -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+              2>&1 | tee "$RUNNER_TEMP/gradle-golden.log"
+          else
+            echo "### no reference images yet - generating them"
+            ./gradlew :app:updateDebugScreenshotTest \
+              -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+              2>&1 | tee "$RUNNER_TEMP/gradle-golden.log"
+            find "$ref" -name '*.png' | sort | sed 's/^/  /'
+          fi
+
+      - name: Surface golden image failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-golden.log"
+
+      - name: Collect golden images
+        if: always()
+        run: |
+          out=golden-images
+          mkdir -p "$out"
+          cp -r android/app/src/debug/screenshotTest/reference/. "$out/" 2>/dev/null || true
+          cp -r android/app/build/reports/screenshotTest "$out/report" 2>/dev/null || true
+          echo "collected $(find "$out" -name '*.png' | wc -l) PNGs"
+
+      - name: Upload golden images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: chart-golden-images
+          path: golden-images/**
+          if-no-files-found: warn
+
       - name: Report APK size
         working-directory: android
         run: |

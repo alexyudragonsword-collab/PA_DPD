@@ -7,4 +7,12 @@ plugins {
     id 'org.jetbrains.kotlin.plugin.compose' version '2.0.21' apply false
     id 'org.jetbrains.kotlin.plugin.serialization' version '2.0.21' apply false
     id 'com.chaquo.python'           version '16.0.0' apply false
+    // Pinned from the POM query in .github/workflows/android.yml:
+    // this plugin declares no AGP dependency, but it does declare
+    // com.android.tools.compose:compose-preview-detector, whose
+    // version is the Android tools version - 31.x pairs with AGP
+    // 8.x. alpha06 carries 31.7.0, which is AGP 8.7; alpha08, the
+    // version that looked right from memory, carries 31.9.0 and is
+    // two releases too new.
+    id 'com.android.compose.screenshot' version '0.0.1-alpha06' apply false
 }
