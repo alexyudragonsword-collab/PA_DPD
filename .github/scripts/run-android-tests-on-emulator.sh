@@ -64,8 +64,13 @@ find app/build/outputs/connected_android_test_additional_output \
 adb pull /sdcard/Android/data/com.padpd/files/screenshots "$shots" \
     >/dev/null 2>&1 || true
 # The tests print every path they write, so the log says what was
-# attempted even when nothing arrives here.
+# attempted even when nothing arrives here. The measured metric-card
+# bounds go the same way: they are evidence about the layout, and
+# evidence that only exists inside a downloadable artifact is invisible
+# to anyone reading the run.
 grep -a "padpd-screenshot:" "$out/logcat.txt" | tail -n 40 || true
+echo "=== measured metric card bounds (LayoutBoundsTest) ==="
+grep -a "padpd-metric-card:" "$out/logcat.txt" | tail -n 20 || true
 echo "=== screenshots collected: $(find "$shots" -name '*.png' | wc -l) ==="
 
 cp -r app/build/reports/androidTests "$out/reports" 2>/dev/null || true
