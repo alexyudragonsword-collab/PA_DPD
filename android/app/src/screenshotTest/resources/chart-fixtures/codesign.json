@@ -1,0 +1,77 @@
+{
+ "blobs": {
+  "b0": "CtejPexRuD3NzMw9rkfhPY/C9T24HgU+KVwPPpqZGT4K1yM+exQuPuxROD5cj0I+zcxMPj0KVz6uR2E+",
+  "b1": "AACQQZqZnUEzM6tBzcy4QWZmxkEAANRBmpnhQTMz70HNzPxBMzMFQgAADELNzBJCmpkZQmZmIEIzMydC",
+  "b2": "AADgQVK44EFI4eJB4XrmQR+F60EAAPJBhev5QdejAUI9CgdC9igNQgAAFEJcjxtCCtcjQgrXLEJcjzZC"
+ },
+ "chart": "codesign",
+ "id": "codesign",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "y": 60.0
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "accent",
+      "label": "PAE (%)",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     },
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "label": "DPD 系数",
+      "marker": "s",
+      "style": "dashed",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b2"
+     }
+    ],
+    "title": null,
+    "vspans": [
+     {
+      "color_role": "warn",
+      "x0": 0.186,
+      "x1": 0.194
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.196,
+      "x1": 0.20400000000000001
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.20600000000000002,
+      "x1": 0.21400000000000002
+     },
+     {
+      "color_role": "warn",
+      "x0": 0.216,
+      "x1": 0.224
+     }
+    ],
+    "x_ticks": null,
+    "xlabel": "PA drive",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "DPD 系数",
+    "ylabel": "PAE (%)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

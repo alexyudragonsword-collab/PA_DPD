@@ -1,0 +1,56 @@
+{
+ "blobs": {
+  "b0": "AAAAAAAAgD8AAABAAABAQAAAgEAAAKBAAADAQAAA4EAAAABBAAAQQQAAIEEAADBBAABAQQAAUEEAAGBBAABwQQAAgEEAAIhBAACQQQAAmEEAAKBBAACoQQAAsEEAALhBAADAQQAAyEEAANBBAADYQQAA4EEAAOhB",
+  "b1": "zczMPXYo3T2mVus9lKH3PcskAT43wwU+O8QJPsw8DT4TPxA+z9oSPqgdFT5yExc+b8YYPoQ/Gj5mhhs+xaEcPmqXHT5cbB4+9SQfPvvEHz60TyA+9ccgPjQwIT6SiiE+6dghPtIcIj6wVyI+uYoiPva2Ij5P3SI+",
+  "b2": "AAAowudfJMIKaCHC6vkewpD8HMKLWxvCHQYawpTuGMK2CRjCVU4Xwuu0FsJQNxbCetAVwkh8FcJZNxXC6f4UwrTQFMLfqhTC5osUwopyFMLHXRTCx0wUwtw+FMJ3MxTCIyoUwoAiFMI/HBTCIBcUwu8SFMKADxTC"
+ },
+ "chart": "grad",
+ "id": "grad",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "right",
+      "color_role": "muted",
+      "y": -38.0
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "accent",
+      "label": "drive",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     },
+     {
+      "axis": "right",
+      "color_role": "primary",
+      "label": "EVM (dB)",
+      "marker": "",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "梯度步",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "EVM (dB)",
+    "ylabel": "drive",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

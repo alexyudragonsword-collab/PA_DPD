@@ -1,0 +1,39 @@
+{
+ "blobs": {
+  "b0": "AAAAAAAAgD8AAABAAABAQAAAgEAAAKBAAADAQAAA4EAAAABBAAAQQQAAIEEAADBBAABAQQAAUEEAAGBBAABwQQAAgEEAAIhBAACQQQAAmEEAAKBBAACoQQAAsEEAALhBAADAQQAAyEEAANBBAADYQQAA4EEAAOhBAADwQQAA+EEAAABCAAAEQgAACEIAAAxCAAAQQgAAFEIAABhCAAAcQg==",
+  "b1": "MQisPW/Nmj2DYos9Ty17PWp8Yj07ZEw92544PbztJj3nGBc9Re4IPQeC+DwQ0uE834TNPDdauzyhGKs8rYycPFaIjzxu4oM8NOxyPMBEYDx+k088nKNAPNlFMzztTyc8/pscPDIIEzw7dgo8/MoCPGPc9ztMlOs72JbgO0HB1jtq9M07fRTGO44IvztTurg72RWzO0YJrjuhhKk7nnmlOw=="
+ },
+ "chart": "train",
+ "id": "train",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "primary",
+      "label": "loss",
+      "marker": "",
+      "style": "solid",
+      "width": 1.4,
+      "x": "b0",
+      "y": "b1"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "epoch",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "loss",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

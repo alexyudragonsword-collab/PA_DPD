@@ -1,0 +1,50 @@
+{
+ "blobs": {
+  "b0": "AACAPwAAAEAAAKBAAAAgQQAAoEEAAEhC",
+  "b1": "AAA4ws3MMMIzMyfCmpkfwmZmGMKamRHC",
+  "b2": "ZmY0wmZmLsIAACTCzcwcwpqZFcKamQ/C"
+ },
+ "chart": "two_tone",
+ "id": "two_tone",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "下边带 IM3",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "上边带 IM3",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "音间距 (MHz)",
+    "xlim": null,
+    "xscale": "log",
+    "y2label": null,
+    "ylabel": "IM3 (dBc)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

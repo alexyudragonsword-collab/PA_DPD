@@ -1,0 +1,72 @@
+{
+ "blobs": {
+  "b0": "AAAAAAAAgD8AAABAAABAQAAAgEAAAKBA",
+  "b1": "o9YqQsEy9UHl8QJCFWrRQQewGkLuegVC",
+  "b2": "j4nywVwQ7sFxKOzBqz/nwSvn58GmwdvB",
+  "b3": "j4nywf6sGMLHWhDCFvkHwpWpB8KOavTB",
+  "b4": "iwT1wRTjXMJ1MofCD9dPwthuSMIW6FHC"
+ },
+ "chart": "three_loop",
+ "id": "three_loop",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "原始环回(无环)",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "仅去嵌(无 QMC)",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b2"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "三环(去嵌+QMC+DPD)",
+      "marker": "d",
+      "style": "solid",
+      "width": 1.6,
+      "x": "b0",
+      "y": "b3"
+     },
+     {
+      "axis": "right",
+      "color_role": "muted",
+      "label": "镜像残差 (dBc)",
+      "marker": "",
+      "style": "dotted",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b4"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "块(冷 → 热)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": "镜像残差 (dBc)",
+    "ylabel": "在空口 EVM (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

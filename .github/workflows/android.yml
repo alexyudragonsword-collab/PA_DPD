@@ -65,6 +65,32 @@ jobs:
             echo
           done | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # The Compose screenshot plugin is versioned separately from AGP and
+  # its versions are not guessable - and Google Maven is not reachable
+  # from every development environment, so "just try it" costs a full
+  # build to learn one string. Same reasoning as the Chaquopy job above:
+  # ask the index, print the answer, pin from the printout.
+  screenshot-plugin-versions:
+    name: List Compose screenshot plugin versions
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Query Google Maven
+        run: |
+          base=https://dl.google.com/dl/android/maven2/com/android/compose/screenshot
+          for artifact in com.android.compose.screenshot.gradle.plugin \
+                          screenshot-test-gradle-plugin; do
+            echo "## $artifact"
+            if body=$(curl -sSf "$base/$artifact/maven-metadata.xml"); then
+              echo "$body" \
+                | grep -oE '<version>[^<]+</version>' \
+                | sed -E 's|</?version>||g; s/^/  /'
+            else
+              echo "  NOT FOUND ($base/$artifact/maven-metadata.xml)"
+            fi
+            echo
+          done | tee -a "$GITHUB_STEP_SUMMARY"
+
   # Criterion 4 (APK size), plus the things a build proves on its own:
   # that the plugin versions resolve, that Chaquopy has arm64 numpy and
   # scipy wheels, and that the Kotlin compiles.

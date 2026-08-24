@@ -1,0 +1,50 @@
+{
+ "blobs": {
+  "b0": "AAAAAAAAgD8AAABAAABAQAAAgEAAAKBA",
+  "b1": "dXyNwlZzK8LfXhLCItgDwiYL9sF0puPB",
+  "b2": "vNtAwiErKMIL2BjC8OMRwmquDsI55gLC"
+ },
+ "chart": "adaptive_evm",
+ "id": "adaptive_evm",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "冻结批处理 DPD",
+      "marker": "s",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     },
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "自适应 RLS",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.6,
+      "x": "b0",
+      "y": "b2"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": null,
+    "xlabel": "块(冷 → 热)",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "EVM (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}

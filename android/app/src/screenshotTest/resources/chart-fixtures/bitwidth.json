@@ -1,0 +1,62 @@
+{
+ "blobs": {
+  "b0": "AAAAAAAAgD8AAABAAABAQA==",
+  "b1": "IP9UwvOdAsIdorrBtPOhwQ=="
+ },
+ "chart": "bitwidth",
+ "id": "bitwidth",
+ "spec": {
+  "panels": [
+   {
+    "aspect_equal": false,
+    "hlines": [
+     {
+      "axis": "left",
+      "color_role": "muted",
+      "y": -53.87857429072575
+     }
+    ],
+    "kind": "line",
+    "series": [
+     {
+      "axis": "left",
+      "color_role": "seq",
+      "label": "GMP",
+      "marker": "o",
+      "style": "solid",
+      "width": 1.2,
+      "x": "b0",
+      "y": "b1"
+     }
+    ],
+    "title": null,
+    "vspans": [],
+    "x_ticks": [
+     {
+      "label": "W16",
+      "pos": 0.0
+     },
+     {
+      "label": "W12",
+      "pos": 1.0
+     },
+     {
+      "label": "W10",
+      "pos": 2.0
+     },
+     {
+      "label": "W8",
+      "pos": 3.0
+     }
+    ],
+    "xlabel": "",
+    "xlim": null,
+    "xscale": "linear",
+    "y2label": null,
+    "ylabel": "test NMSE (dB)",
+    "ylim": null,
+    "yscale": "linear"
+   }
+  ]
+ }
+}
