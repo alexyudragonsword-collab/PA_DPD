@@ -35,6 +35,7 @@ import com.padpd.i18n.Strings
 import com.padpd.i18n.tr
 import com.padpd.screens.CodesignScreen
 import com.padpd.screens.CompareScreen
+import com.padpd.screens.DataScreen
 import com.padpd.screens.DeployScreen
 import com.padpd.screens.DpdScreen
 import com.padpd.screens.GalleryScreen
@@ -63,10 +64,12 @@ class MainActivity : ComponentActivity() {
 /**
  * The nine screens of the desktop workbench, plus the chart gallery.
  *
- * All ten are listed from the start even though eight are placeholders.
- * A navigation bar that grows an entry per completed port would make a
- * half-finished app look finished; this one shows the shape of the whole
- * and what is still missing.
+ * All ten were listed from the first commit, while eight were still
+ * placeholders: a navigation bar that grows an entry per completed port
+ * would have made a half-finished app look finished. All ten are now
+ * ported, so the [Placeholder] branch below is unreachable - kept
+ * because the `when` is over an enum and a new entry should fail as a
+ * placeholder rather than as a missing branch.
  */
 private enum class Destination(val id: String, val zh: String) {
     HOME("home", "总览"),
@@ -130,6 +133,7 @@ fun PadpdApp() {
                         ModelingScreen(lang, torchAvailable = caps!!.torch)
                     Destination.DPD ->
                         DpdScreen(lang, torchAvailable = caps!!.torch)
+                    Destination.DATA -> DataScreen(lang)
                     Destination.DEPLOY -> DeployScreen(lang)
                     Destination.CODESIGN ->
                         CodesignScreen(lang, torchAvailable = caps!!.torch)

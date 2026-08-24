@@ -8,7 +8,7 @@ Kotlin 原生 UI + Chaquopy 嵌入的 Python 计算核。跑的是**和两个桌
 | Phase 0 | 可行性 spike | ✅ 五条验收全过（见下方「真机实测」） |
 | Phase 1 | Python 适配层（`padpd_mobile/`） | ✅ 44 条桌面测试 |
 | Phase 2 | Kotlin 图表渲染器 + 14 种规格画廊 | ✅ 本页「图表层」一节 |
-| Phase 3 | 9 个页面 | 未开始 |
+| Phase 3 | 9 个页面 | ✅ 九页全部移植（60 条桌面测试 + 每页真机 instrumented test） |
 
 ## 怎么构建
 
@@ -136,6 +136,12 @@ Java 的块注释不嵌套,Kotlin 的**嵌套**。所以在 KDoc 里写一个 gl
 `tests/test_mobile_pages.py::test_kotlin_block_comments_are_balanced` 守这条:
 本地没有 Kotlin 编译器,但这个错误不需要编译器,数深度就够了。
 
+后来这个守卫**误报**过一次:`SafImport.kt` 里 SAF picker 的 MIME 通配符
+写作星号-斜杠-星号,朴素扫描把中间两个字符当成注释结束符,报文件深度 -1。
+Kotlin 的词法器不会从字符串字面量里闭合注释,所以守卫也不该——现在它跳过
+字符串、字符与原始字符串字面量,并且 `_comment_depth` 自带一条测试,把当年
+真正吃掉 i18n 包的那段文本和这次误报的字符串一起钉住。
+
 ## Compose 测试：`clickable` 会把子节点的 testTag 吞掉
 
 `Modifier.clickable` 隐含 `mergeDescendants = true`，把整个子树合并成**一个**
@@ -161,6 +167,35 @@ Java 的块注释不嵌套,Kotlin 的**嵌套**。所以在 KDoc 里写一个 gl
 `caps` 与 `entries` 在源码里由同一个 `onSuccess` 分支一起赋值,不该共存。
 run 9 起没再复现,原因不明——记为悬案,不当作已修。`bootPending` 标签保留,
 以便复发时一眼看出来。
+
+## SAF 给的是授权,不是路径
+
+`gui_core.services.load_source` 收的是文件系统路径——桌面上文件就是路径。
+Android 的 Storage Access Framework 给的是 `content://` URI:一份**可撤销
+的、指向某个 provider 的授权**,不是位置。它背后的文档可能在别的 app 的
+私有目录、在网络 provider 上、或者在一个 zip 里,没有路径可以还原。
+
+所以 `SafImport.copyToCache` 在授权还有效时把字节拷出来,再把真实路径交给
+Python。这不是绕过 SAF,这就是 SAF 的用法:picker 返回的授权作用域限于本次
+任务,用户离开 app 就可能失效,任何之后还要用内容的代码都必须先取一份拷贝。
+
+两个具体决定:
+
+- **拷到 `cacheDir`**。源一旦被 Python 读进来就已经是内存里的 numpy 数组,
+  再永久留一份 40 MB 的采集只是让 app 占用随每次导入增长。
+- **保留显示名**。后缀是有语义的:`pages.py` 靠后缀选 loader
+  (`npz`/`cadence`/`mat`),按 URI 的 lastPathSegment 命名会让文件以"不支持
+  的类型"到达。显示名由 provider 自由决定,可能带路径分隔符,所以只取最后
+  一段——`../../databases/x` 拼到 cache 目录上会写到 app 的 databases 里,
+  这不是"不太可能",是"必须不可能"。
+
+系统 picker 无法在 instrumented test 里驱动,但 picker 本身没什么可测的:
+它只返回一个 URI。`SafImportTest` 用 `file://` URI 走同一条 ContentResolver
+路径,测的是这个项目自己写的那半:拷贝、后缀、路径逃逸。
+
+**OpenDPD 数据集目录不提供**:那是以 spec.json 为键的目录树,SAF 一次只授权
+一个文档,树导入意味着走 document tree 再逐个拷出来。数据页把这条写在界面
+上,而不是摆一个填不了的目录输入框。
 
 ## 依赖版本天花板（已实测，别改回去）
 

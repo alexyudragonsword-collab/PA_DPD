@@ -63,6 +63,12 @@ private val FRONTENDS = listOf("none", "iq", "iq+lo", "iq+lo+cim3")
 private val GAIN_MOD_DUTS = listOf("thermal", "static")
 private val FIT_TABS = listOf("psd" to "PSD", "amam" to "AM-AM / AM-PM")
 
+// The synthetic ReferencePA, as an entry in the source picker. A value
+// rather than a translated label: OptionRow uses the option itself in
+// its test tag, and a tag that changes with the UI language is the
+// defect the shared controls were given explicit tags to avoid.
+private const val SYNTHETIC = "synthetic"
+
 @Composable
 fun ModelingScreen(lang: String, torchAvailable: Boolean,
                    modifier: Modifier = Modifier) {
@@ -90,6 +96,17 @@ private fun FitSection(lang: String, torchAvailable: Boolean) {
     var run by remember { mutableStateOf<ScreenRun>(ScreenRun.Idle) }
     var generation by remember { mutableIntStateOf(0) }
     var tab by remember { mutableIntStateOf(0) }
+    var source by remember { mutableStateOf(SYNTHETIC) }
+    var imported by remember { mutableStateOf(listOf<String>()) }
+
+    // What the Data screen has registered. Fetched on its own rather
+    // than read off a fit result, because the picker has to exist before
+    // the first fit - and asking the data screen would make it compute a
+    // PSD and an AM-AM curve to answer a question about names.
+    LaunchedEffect(lang, generation) {
+        imported = (loadScreen("sources", lang) as? ScreenRun.Ready)
+            ?.screen?.options.orEmpty()
+    }
 
     LaunchedEffect(generation, lang) {
         if (generation == 0) return@LaunchedEffect
@@ -97,7 +114,16 @@ private fun FitSection(lang: String, torchAvailable: Boolean) {
         run = loadScreen("modeling", lang,
             JsonPrimitive(modelType), JsonPrimitive(order),
             JsonPrimitive(memory), JsonPrimitive(driveHundredths / 100.0),
-            JsonPrimitive(frontend))
+            JsonPrimitive(frontend),
+            JsonPrimitive(if (source == SYNTHETIC) "" else source))
+    }
+
+    if (imported.isNotEmpty()) {
+        Row(Modifier.fillMaxWidth()
+            .horizontalScroll(rememberScrollState())) {
+            OptionRow(tr("数据源"), "source", listOf(SYNTHETIC) + imported,
+                      source) { source = it }
+        }
     }
 
     Row(Modifier.fillMaxWidth()

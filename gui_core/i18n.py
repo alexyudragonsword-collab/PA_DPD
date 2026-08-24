@@ -33,6 +33,25 @@ _EN = {
     # The mobile app has no separate string table: Kotlin carries the
     # Chinese key exactly as the Qt sources do and looks it up here.
     "图表画廊": "Chart Gallery",
+    "加载实测/仿真 PA 数据并注册为数据源。":
+        "Load measured or simulated PA data and register it as a source.",
+    "载入双音扫音间距的 IM3 表,用记忆强度预判 DPD 该预留多少记忆。":
+        "Load an IM3-versus-tone-spacing table; the memory strength says "
+        "how much memory the DPD should budget for.",
+    "OpenDPD 数据集是目录树,SAF 只按文件授权,故此处不提供目录扫描;请用单文件导入(.npz/.csv/.mat)。":
+        "OpenDPD datasets are directory trees and the Storage Access "
+        "Framework grants one document at a time, so there is no "
+        "directory scan here - import a single .npz, .csv or .mat file.",
+    "不支持的文件类型:{suffix}": "unsupported file type: {suffix}",
+    "尚未注册数据源;可载入内置完整源示例或导入文件":
+        "No source registered yet - load the bundled complete-source "
+        "example, or import a file",
+    "交叉项": "Cross terms",
+    "估计系数量": "Estimated coefficients",
+    "热记忆": "Thermal memory",
+    "系数仍用实测训练;这里只定记忆预算。":
+        "Coefficients are still trained on measured data; this only sets "
+        "the memory budget.",
     "尚未实现": "Not implemented yet",
     "计算中…": "computing…",
     "Python 启动失败:": "Python failed to start: ",

@@ -184,6 +184,11 @@ tasks.register('stagePythonSources', Sync) {
         // so staging manual/ alongside it makes that module work on the
         // phone with no change at all. 2.9 MB of Markdown and PNGs.
         include 'manual/**'
+        // The Data screen's two bundled demos: services.EXAMPLE_COMPLETE_NPZ
+        // and EXAMPLE_TWO_TONE_CSV resolve under the repo root, which is
+        // gui_core's parent here too. 1.0 MB, and without them that screen
+        // has nothing to show until the user finds a file to import.
+        include 'examples/**'
     }
     exclude '**/__pycache__/**', '**/*.pyc', '**/*.pyo'
 

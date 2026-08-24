@@ -115,7 +115,7 @@ def waveform(bandwidth_mhz: float, qam: int, symbols: int, seed: int,
 
 
 def modeling(model_type: str, order: int, memory: int, drive: float,
-             frontend: str, *, lang: str = "zh") -> dict:
+             frontend: str, source: str = "", *, lang: str = "zh") -> dict:
     """PA Modeling, classical branch: fit a model and show the residual.
 
     Mirrors the classical half of gui_qt/pages/modeling.py. The neural
@@ -124,14 +124,16 @@ def modeling(model_type: str, order: int, memory: int, drive: float,
     so. The UI greys that family out; there is nothing for this module to
     assemble for it.
 
-    The source is always the synthetic ReferencePA for now. The desktop
-    page also offers whatever the Data page has loaded, and that page is
-    not ported yet, so offering a picker with one entry would imply a
-    choice that does not exist.
+    ``source`` names one of the Data screen's registered sources; empty
+    means the synthetic ReferencePA, which is the only thing available
+    until something is imported. A name that is no longer registered
+    falls back to synthetic rather than failing - sources live only as
+    long as the process, so a stale name is a normal thing to receive.
     """
     import gui_core.services as services
 
-    src = services.cached_synthetic_source(drive=drive, frontend=frontend)
+    src = _SOURCES.get(source) or services.cached_synthetic_source(
+        drive=drive, frontend=frontend)
     res = services.fit_classical(src, model_type,
                                  {"order": order, "memory": memory})
 
@@ -160,7 +162,10 @@ def modeling(model_type: str, order: int, memory: int, drive: float,
             res["metrics"])
 
     return {"result": res, "metrics": metrics, "charts": charts, "lang": lang,
-            "notes": [tr("✅ {name} 已注册", lang).format(name=name)]}
+            "notes": [tr("✅ {name} 已注册", lang).format(name=name)],
+            # Sources the Data screen has imported, so the picker offers
+            # what actually exists rather than a fixed list.
+            "options": list(_SOURCES)}
 
 
 def gain_modulation(dut: str, drive: float, fit_state: bool, *,
@@ -402,12 +407,12 @@ DEPLOY_BITS = (16, 14, 12, 10, 8)
 def _eval_source(entry: dict) -> dict:
     """The source a fitted model should be evaluated on.
 
-    services.eval_source_for rebuilds the exact synthetic source from the
-    name when it was never registered, which is the only case here: the
-    Data screen is not ported, so every source on this side is synthetic.
+    Registered sources come first; services.eval_source_for falls back to
+    rebuilding the exact synthetic source from its name when the model
+    was fitted on one of those instead.
     """
     import gui_core.services as services
-    return services.eval_source_for(entry["meta"], {})
+    return services.eval_source_for(entry["meta"], _SOURCES)
 
 
 def deploy(model_names: list | None = None, bits: list | None = None, *,
@@ -662,6 +667,233 @@ def manual(chapter_id: str = "", *, lang: str = "zh") -> dict:
             "options": [current]}
 
 
+# Sources the Data screen has registered, by name - the counterpart of
+# gui_qt's shared state.sources, and the reason _eval_source consults it.
+#
+# Like _MODELS, process-lifetime only: a source holds several megabytes of
+# IQ in numpy arrays, so it lives where the arrays live rather than being
+# written back out to the app's private storage on every import.
+_SOURCES: dict = {}
+
+# Suffix -> the kind services.load_source expects. Derived here rather
+# than in Kotlin: the mapping is a property of the service layer, and a
+# second copy of it on the other side of the bridge is one more thing
+# that can drift.
+SOURCE_KINDS = {".npz": "npz", ".csv": "cadence", ".mat": "mat"}
+
+_EXTRA_GROUP_NAMES = {"burst": "突发", "step": "阶跃探针",
+                      "cal_rx": "旁路标定", "atten": "衰减步进",
+                      "operating_points": "多工况"}
+
+
+def _preview(name: str, lang: str) -> tuple:
+    """(metrics, charts, rows, notes) for the selected source."""
+    import gui_core.services as services
+
+    src = _SOURCES.get(name)
+    if src is None:
+        return [], {}, [], []
+    prev = services.source_preview(src)
+    spec = src.get("spec") or {}
+    metrics = [
+        _metric(tr("采样率", lang), f"{src['fs'] / 1e6:.2f} MSPS"),
+        _metric("train / val / test",
+                f"{prev['n_train']:,} / {prev['n_val']:,} / "
+                f"{prev['n_test']:,}"),
+        _metric(tr("主带宽", lang),
+                f"{(src.get('bw') or 0) / 1e6:.0f} MHz"
+                if src.get("bw") else "—"),
+        _metric(tr("调制 / 子信道", lang),
+                f"{spec.get('modulation', '—')} / "
+                f"{spec.get('n_sub_ch', '—')}"),
+    ]
+    # The desktop caps the plotted span at 65536 samples; source_preview
+    # already applies that cap to the curves it returns, so the same cap
+    # here keeps the chart builders reading the same span it did.
+    n = min(len(src["x_train"]), 65536)
+    charts = {
+        "psd": ("psd", ({tr("PA 输入", lang): src["x_train"][:n],
+                         tr("PA 输出", lang): src["y_train"][:n]},
+                        src["fs"]), {}),
+        "amam": ("amam", (src["x_train"][:n], src["y_train"][:n]), {}),
+    }
+    rows, notes = [], []
+    if src.get("extras"):
+        for r in services.source_extras_rows(src):
+            rows.append({"group": tr(_EXTRA_GROUP_NAMES[r["group"]], lang),
+                         "present": "✓" if r["present"] else "✗",
+                         "n": f"{r['n']:,}" if r["n"] else "—"})
+    if src.get("align_info"):
+        notes.append(tr("对齐:延迟 {lag:.2f} 采样", lang).format(
+            lag=src["align_info"]["lag_total"]))
+    return metrics, charts, rows, notes
+
+
+def data(action: str = "", path: str = "", name: str = "",
+         auto_align: bool = False, *, lang: str = "zh") -> dict:
+    """Data Manager: import measured sources and preview them.
+
+    Actions, all of which end by previewing whatever source is selected:
+    ``example`` loads the bundled complete-source container, ``load``
+    imports a file the user picked, ``consume`` runs every capture-group
+    tool the source allows, ``remove`` drops one, and the empty action
+    just re-renders.
+
+    **Where the file comes from.** services.load_source wants a real
+    filesystem path, and Android's Storage Access Framework hands out a
+    ``content://`` URI instead - a permission grant, not a location, and
+    nothing this side can open. Kotlin therefore copies the picked
+    document into the app's cache directory first and passes that path.
+    The copy is not a workaround for a missing feature; a SAF grant is
+    revocable and scoped to the picker's lifetime, so reading the bytes
+    once while the grant is live is the intended shape.
+
+    **OpenDPD datasets are not offered.** They are directory trees keyed
+    by a spec.json, and SAF grants documents one at a time; a tree import
+    would mean walking a document tree and copying every member out. The
+    single-file importers cover .npz, .csv and .mat, and the bundled
+    example carries all five capture groups, so the screen says this
+    rather than showing a directory field that cannot be filled.
+    """
+    import gui_core.services as services
+
+    notes = []
+    selected = name
+
+    if action == "example":
+        try:
+            src = services.load_source("npz", services.EXAMPLE_COMPLETE_NPZ)
+            _SOURCES[src["name"]] = src
+            selected = src["name"]
+            notes.append(tr("✅ 已注册:{name}", lang).format(name=selected))
+        except Exception as e:                   # noqa: BLE001
+            notes.append(tr("❌ 加载失败:{e}", lang).format(e=e))
+    elif action == "load":
+        suffix = Path(path).suffix.lower()
+        kind = SOURCE_KINDS.get(suffix)
+        if kind is None:
+            notes.append(tr("不支持的文件类型:{suffix}", lang).format(
+                suffix=suffix or "?"))
+        else:
+            try:
+                src = services.load_source(kind, path,
+                                           auto_align=auto_align)
+                src["name"] = Path(path).name
+                _SOURCES[src["name"]] = src
+                selected = src["name"]
+                notes.append(tr("✅ 已注册:{name}", lang).format(
+                    name=selected))
+            except Exception as e:               # noqa: BLE001
+                notes.append(tr("❌ 加载失败:{e}", lang).format(e=e))
+    elif action == "consume":
+        src = _SOURCES.get(name)
+        if src is None or not src.get("extras"):
+            notes.append(tr("该源没有可消费的采集组", lang))
+        else:
+            notes.append(_consume_summary(services.consume_source_extras(src),
+                                          lang))
+    elif action == "remove":
+        _SOURCES.pop(name, None)
+        selected = next(iter(_SOURCES), "")
+
+    if selected not in _SOURCES:
+        selected = next(iter(_SOURCES), "")
+    metrics, charts, rows, more = _preview(selected, lang)
+    notes.extend(more)
+    if not _SOURCES:
+        notes.append(tr("尚未注册数据源;可载入内置完整源示例或导入文件",
+                        lang))
+
+    return {"result": None, "metrics": metrics, "charts": charts,
+            "rows": rows, "notes": notes, "lang": lang,
+            "options": [selected] + [n for n in _SOURCES if n != selected]
+            if selected else list(_SOURCES)}
+
+
+def _consume_summary(out: dict, lang: str) -> str:
+    """The desktop's one-line verdict over the capture-group consumers.
+
+    Each consumer reports its own failure as a string rather than
+    raising, so a source missing one group still gets the other three.
+    """
+    bits = []
+    gm = out.get("gain_mod")
+    if gm and gm["significant"]:
+        taus = "/".join(f"{t:.1f}" for t in gm["taus_heat_us"])
+        bits.append(tr("τ 辨识 {taus} µs", lang).format(taus=taus))
+    st = out.get("state_fit")
+    if st:
+        bits.append(tr("状态样条 {a:.1f}→{b:.1f} dB(+{g:.1f})",
+                       lang).format(a=st["nmse_plain_db"],
+                                    b=st["nmse_state_db"],
+                                    g=st["state_gain_db"]))
+    de = out.get("deembed")
+    if de:
+        bits.append(tr("RX 标定 IRR {irr:.1f} dB · IM3 {im3:.1f} dBc",
+                       lang).format(irr=de["rx_irr_db"] or float("nan"),
+                                    im3=de["rx_im3_dbc"] or float("nan")))
+    sc = out.get("scheduler")
+    if sc:
+        bits.append(tr("调度器 {n} 工况点", lang).format(
+            n=len(sc["conditions"])))
+    errs = [v for k, v in out.items() if k.endswith("_error")]
+    if errs:
+        bits.append("⚠ " + "; ".join(errs))
+    return "✅ " + ";".join(bits) if bits \
+        else tr("该源没有可消费的采集组", lang)
+
+
+
+def sources(*, lang: str = "zh") -> dict:
+    """The names of registered sources, and nothing else.
+
+    The Modeling screen needs the list to offer a picker, but calling
+    ``data`` for it would compute a PSD and an AM-AM curve over 64k
+    samples to answer a question about names.
+    """
+    return {"result": None, "metrics": [], "charts": {}, "rows": [],
+            "notes": [], "lang": lang, "options": list(_SOURCES)}
+
+
+def two_tone(path: str = "", *, lang: str = "zh") -> dict:
+    """Two-tone memory diagnostics, the Data page's second panel.
+
+    An IM3-versus-spacing table says how much memory the PA has before
+    any DPD is trained, which sets how much memory the DPD should budget
+    for. A separate screen rather than a branch of ``data`` because it
+    reads a different file and answers a different question; the desktop
+    puts them on one page only because a desktop page is large.
+
+    An empty path loads the bundled example, which is what the desktop's
+    second button does.
+    """
+    import gui_core.services as services
+
+    try:
+        res = services.analyze_two_tone_csv(path or
+                                            services.EXAMPLE_TWO_TONE_CSV)
+    except Exception as e:                       # noqa: BLE001
+        return {"result": None, "metrics": [], "charts": {}, "rows": [],
+                "lang": lang,
+                "notes": [tr("❌ 加载失败:{e}", lang).format(e=e)]}
+
+    metrics = [
+        _metric(tr("记忆强度", lang), f"{res['memory_strength_db']:.1f} dB"),
+        _metric(tr("建议记忆深度", lang), str(res["memory_depth"])),
+        _metric(tr("交叉项", lang),
+                tr("需要", lang) if res["use_cross_terms"]
+                else tr("不需要", lang)),
+        _metric(tr("估计系数量", lang), str(res["est_coeffs"])),
+        _metric(tr("热记忆", lang),
+                tr("疑似", lang) if res["thermal_suspected"]
+                else tr("无", lang)),
+    ]
+    return {
+        "result": None, "metrics": metrics, "rows": [], "lang": lang,
+        "charts": {"two_tone": ("two_tone", (res,), {})},
+        "notes": [tr("系数仍用实测训练;这里只定记忆预算。", lang)],
+    }
+
 # Screens Kotlin may ask for, by name. Same reasoning as api.DISPATCH:
 # the name arrives from outside the process, so it is matched against a
 # table rather than looked up on the module.
@@ -678,6 +910,9 @@ SCREENS = {
     "home": home,
     "codesign": codesign,
     "manual": manual,
+    "data": data,
+    "two_tone": two_tone,
+    "sources": sources,
 }
 
 
@@ -706,4 +941,8 @@ _SLOTS = {
     "home": (),
     "codesign": ("codesign",),
     "manual": (),
+    # Charts appear only once a source is registered.
+    "data": (),
+    "two_tone": ("two_tone",),
+    "sources": (),
 }

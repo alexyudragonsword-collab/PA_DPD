@@ -519,6 +519,136 @@ def test_a_missing_figure_is_reported_not_dropped(api, monkeypatch):
                for s in reply["segments"]), reply["segments"][-1]
 
 
+
+# ---- the data screen ----------------------------------------------------
+def _data(api, action="", path="", name="", auto_align=False, lang="zh"):
+    return _screen(api, "data", action, path, name, auto_align, lang=lang)
+
+
+def test_data_starts_with_nothing_registered(api):
+    """A source is a live object holding megabytes of IQ, so it lives
+    only as long as the process - the same rule the fitted models
+    follow."""
+    from padpd_mobile import pages
+    pages._SOURCES.clear()
+    reply = _data(api)
+    assert reply["options"] == []
+    assert any("尚未注册" in n or "No source registered" in n
+               for n in reply["notes"]), reply["notes"]
+
+
+def test_the_bundled_complete_source_loads(api):
+    """examples/complete_source_demo.npz is staged into the APK beside
+    gui_core, so services.EXAMPLE_COMPLETE_NPZ resolves on the phone the
+    same way it does here."""
+    reply = _data(api, "example")
+    assert reply["options"], reply["notes"]
+    assert reply["options"][0].endswith(".npz"), reply["options"]
+    # Sample rate, the three split sizes, main bandwidth, modulation.
+    assert len(reply["metrics"]) == 4, reply["metrics"]
+    assert set(reply["charts"]) == {"psd", "amam"}, list(reply["charts"])
+
+
+def test_the_complete_source_carries_all_five_capture_groups(api):
+    _data(api, "example")
+    reply = _data(api)
+    assert len(reply["rows"]) == 5, reply["rows"]
+    assert all(r["present"] == "✓" for r in reply["rows"]), reply["rows"]
+
+
+def test_capture_group_tools_run_and_report_what_they_found(api):
+    """consume_source_extras reports per-group failures as strings rather
+    than raising, so a source missing one group still gets the rest."""
+    name = _data(api, "example")["options"][0]
+    reply = _data(api, "consume", name=name)
+    verdict = reply["notes"][0]
+    assert verdict.startswith("✅"), verdict
+    # All four consumers reported, not just the first one to succeed:
+    # measured "τ 辨识 5.1/29.6 µs;状态样条 -23.8→-32.3 dB(+8.5);
+    # RX 标定 IRR 30.2 dB · IM3 -28.8 dBc;调度器 3 工况点".
+    for expected in ("τ 辨识", "状态样条", "RX 标定", "调度器"):
+        assert expected in verdict, (expected, verdict)
+    assert "⚠" not in verdict, verdict
+
+
+def test_an_unsupported_suffix_is_named_rather_than_guessed(api):
+    reply = _data(api, "load", path="/tmp/capture.wav")
+    assert any(".wav" in n for n in reply["notes"]), reply["notes"]
+
+
+def test_a_load_failure_is_a_note_not_an_exception(api):
+    """Picking a file that cannot be read is a normal thing to do; the
+    desktop shows it in the status line rather than raising."""
+    reply = _data(api, "load", path="/nonexistent/capture.npz")
+    assert any("❌" in n for n in reply["notes"]), reply["notes"]
+
+
+def test_removing_a_source_drops_it(api):
+    name = _data(api, "example")["options"][0]
+    assert _data(api, "remove", name=name)["options"] == []
+
+
+def test_a_registered_source_can_be_modelled(api):
+    """What makes the Data screen more than a viewer: fit_classical runs
+    on the imported source, not only on the synthetic one."""
+    from padpd_mobile import pages
+    name = _data(api, "example")["options"][0]
+    reply = _screen(api, "modeling", "GMP", 5, 4, 0.14, "none", name)
+    assert name in reply["options"], reply["options"]
+    fitted = [k for k in pages._MODELS if k.endswith(name)]
+    assert fitted, list(pages._MODELS)
+    nmse = float(reply["metrics"][0]["value"].split()[0])
+    assert nmse < -20.0, nmse   # measured -23.81 on this container
+
+
+def test_the_sources_listing_is_names_only(api):
+    """The Modeling screen's picker needs the names before any fit; going
+    through the data screen for them would compute a PSD to answer it."""
+    _data(api, "example")
+    reply = _screen(api, "sources")
+    assert reply["options"], reply
+    assert reply["charts"] == {} and reply["metrics"] == []
+
+
+def test_a_stale_source_name_falls_back_to_synthetic(api):
+    """Sources die with the process, so a name Kotlin remembers across a
+    restart is a normal thing to receive - not a reason to fail."""
+    reply = _screen(api, "modeling", "GMP", 5, 4, 0.14, "none", "gone.npz")
+    assert reply["notes"], reply
+    assert "gone.npz" not in reply["notes"][0], reply["notes"]
+
+
+# ---- the two-tone diagnostic --------------------------------------------
+def test_two_tone_example_sizes_the_dpd_memory_budget(api):
+    reply = _screen(api, "two_tone", "")
+    values = {m["value"] for m in reply["metrics"]}
+    assert len(reply["metrics"]) == 5, reply["metrics"]
+    assert "two_tone" in reply["charts"]
+    # Measured on examples/two_tone_example.csv: 8.5 dB of memory
+    # strength, depth 5, cross terms needed, 41 coefficients.
+    assert "8.5 dB" in values, values
+    # The example sweep's own reading; the point of the panel is that a
+    # number comes out, and that it is the one the service computed.
+    import gui_core.services as services
+    res = services.analyze_two_tone_csv(services.EXAMPLE_TWO_TONE_CSV)
+    assert f"{res['memory_strength_db']:.1f} dB" in values, values
+    assert str(res["memory_depth"]) in values, values
+
+
+def test_two_tone_says_coefficients_still_come_from_measurement(api):
+    """The panel sizes the memory budget; it does not train anything, and
+    the desktop is careful to say so."""
+    reply = _screen(api, "two_tone", "")
+    assert reply["notes"], reply
+    assert any("训练" in n or "trained" in n for n in reply["notes"])
+
+
+def test_a_bad_two_tone_file_is_reported_not_raised(api):
+    reply = _screen(api, "two_tone", "/nonexistent/sweep.csv")
+    assert reply["metrics"] == []
+    assert any("❌" in n for n in reply["notes"]), reply["notes"]
+
+
 # ---- i18n ---------------------------------------------------------------
 def test_i18n_map_translates_and_is_empty_for_chinese(api):
     from gui_core import i18n
@@ -566,23 +696,68 @@ def test_kotlin_block_comments_are_balanced():
     no Kotlin compiler here, but this particular error needs no compiler
     to find - depth tracking is the whole of it.
     """
-    bad = {}
-    for f in sorted(KOTLIN.parent.rglob("*.kt")):
-        text = f.read_text(encoding="utf-8")
-        depth = i = 0
-        while i < len(text) - 1:
-            two = text[i:i + 2]
-            if two == "/*":
-                depth += 1
-                i += 2
-            elif two == "*/":
-                depth -= 1
-                i += 2
-            else:
-                i += 1
-        if depth:
-            bad[f.name] = depth
+    bad = {f.name: d for f in sorted(KOTLIN.parent.rglob("*.kt"))
+           for d in [_comment_depth(f.read_text(encoding="utf-8"))] if d}
     assert not bad, f"unbalanced Kotlin block comments: {bad}"
+
+
+def test_the_comment_guard_catches_the_comment_that_ate_the_i18n_package():
+    """The text that actually broke the build, kept as the guard's own
+    test - and the string case that made it fire on innocent code.
+
+    A MIME wildcard is "*" then "/" then "*", which the naive scanner
+    read as a comment terminator and reported as an unbalanced file. The
+    Kotlin lexer does not close a comment from inside a string literal
+    either, so skipping literals is the same rule, not a loosening of
+    it.
+    """
+    assert _comment_depth("/** see gui_qt/pages/*.py for the original */")
+    assert _comment_depth('/* fine */ val t = arrayOf("*/*")') == 0
+    assert _comment_depth('val s = "/*"') == 0
+    assert _comment_depth('// a /* in a line comment') == 0
+    assert _comment_depth('val raw = \"\"\"a /* b\"\"\"') == 0
+
+
+def _comment_depth(text: str) -> int:
+    """Block-comment nesting left open at the end of a Kotlin file.
+
+    Skips string and character literals, and line comments, because
+    Kotlin's lexer does: a `*/` inside "*/*" closes nothing, and treating
+    it as a terminator makes the guard fire on correct code.
+    """
+    depth = i = 0
+    while i < len(text) - 1:
+        two = text[i:i + 2]
+        if depth and two == "/*":
+            depth += 1
+            i += 2
+        elif depth and two == "*/":
+            depth -= 1
+            i += 2
+        elif depth:
+            i += 1
+        elif two == "/*":
+            depth += 1
+            i += 2
+        elif two == "//":
+            i = text.find("\n", i)
+            if i < 0:
+                break
+        elif text[i:i + 3] == '"""':
+            # Raw strings take no escapes, so scan to the next triple
+            # quote rather than through the escape rules below.
+            i = text.find('"""', i + 3)
+            if i < 0:
+                break
+            i += 3
+        elif text[i] in "\"'":
+            quote, i = text[i], i + 1
+            while i < len(text) and text[i] != quote:
+                i += 2 if text[i] == "\\" else 1
+            i += 1
+        else:
+            i += 1
+    return depth
 
 
 def test_every_tr_key_in_the_screen_layer_has_a_translation():
