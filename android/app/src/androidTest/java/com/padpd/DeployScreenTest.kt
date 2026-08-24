@@ -64,6 +64,10 @@ class DeployScreenTest {
         val seen = awaitAny(SWEEP_TIMEOUT_MS, "chart:bitwidth", "sweep:error")
         assertFalse("bit-width sweep failed on device", seen == "sweep:error")
         assertTrue("no result table", exists("sweep:table"))
+        // The bit-width table is the widest RowTable in the app -
+        // one column per word length - so it is the picture that
+        // shows the header and the rows scrolling together.
+        Screenshots.capture(compose, "zh-deploy-result")
     }
 
     @Test

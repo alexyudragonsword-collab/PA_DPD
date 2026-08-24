@@ -68,6 +68,14 @@ android {
         versionName "0.1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Turns on the channel that gets screenshots off the device.
+        // With the test storage service running, AGP passes the tests an
+        // `additionalTestOutputDir` and pulls it afterwards into
+        // build/outputs/connected_android_test_additional_output. The
+        // alternative - writing to the app's external files directory and
+        // pulling that - needs root on API 30+, and this emulator is
+        // API 34. See androidTest/.../Screenshots.kt.
+        testInstrumentationRunnerArguments useTestStorageService: 'true'
 
         ndk {
             abiFilters.addAll(targetAbis)
@@ -157,6 +165,9 @@ dependencies {
     androidTestImplementation 'androidx.test:runner:1.6.2'
     androidTestImplementation platform('androidx.compose:compose-bom:2024.10.01')
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
+    // Installed alongside the test APK rather than compiled into it -
+    // it is the service that backs useTestStorageService above.
+    androidTestUtil 'androidx.test.services:test-services:1.5.0'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
 }
 

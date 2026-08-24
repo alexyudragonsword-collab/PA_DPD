@@ -67,6 +67,10 @@ class HomeAndCodesignTest {
                 "${presentTags()}",
             presentTags().count { it.startsWith("metric:") } >= 2,
         )
+        // The widest metric labels in the app land here: 13 Chinese
+        // characters become 37 in English. This is the picture that
+        // shows whether the card bounds hold.
+        Screenshots.capture(compose, "zh-codesign-result")
     }
 
     @Test

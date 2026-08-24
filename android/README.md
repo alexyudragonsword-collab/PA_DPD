@@ -168,6 +168,51 @@ Kotlin 的词法器不会从字符串字面量里闭合注释,所以守卫也不
 run 9 起没再复现,原因不明——记为悬案,不当作已修。`bootPending` 标签保留,
 以便复发时一眼看出来。
 
+## UI 自动化:节点断言测行为,截图看长相,两者不混
+
+节点断言(`ui-test-junit4` + `createAndroidComposeRule`)从 Phase 2 就在跑,
+现在 9 个测试类、35 条、都在 emulator job 里。它测的是**行为**:点了会不会跑、
+指标是不是这个数、失败会不会说原因。
+
+它结构上看不见的是**长相**。一张卡片可以"节点存在、文本正确",同时高四行、
+把邻居挤出屏幕——断言全绿。所以另加截图。
+
+### 截图不做 golden 对比,只当证据
+
+emulator 用的是 `-gpu swiftshader_indirect` 软件渲染,跑在
+`reactivecircus/android-emulator-runner` 给的镜像上,而**镜像版本由 GitHub 自己
+升**。字体栅格化、抗锯齿、Skia 版本任何一处变了,整套金图一起红,而那次红和被
+测的提交毫无关系。逐像素比对要做,得放到 JVM 上——那里 layoutlib 是钉死版本号的
+构件。
+
+所以 `Screenshots.capture` **吞掉自己的异常**:截不到图绝不能让一条行为测试变红。
+证据一旦能卡 CI,它就是断言,而这么飘的断言活不过一个月。唯一检查它的是
+`ScreenshotTour` 末尾那句 `Screenshots.written > 0`——放在一条本来就不测别的事
+的用例里。
+
+### 图怎么从设备上下来
+
+`getExternalFilesDir` 写出来的文件,**API 30+ 上 `adb pull` 需要 root**,而这台
+模拟器是 API 34。走 AGP 的正规通道:
+
+- `build.gradle` 打开 `useTestStorageService: 'true'`,并把
+  `androidx.test.services:test-services` 作为 `androidTestUtil` 装进去(它是随
+  测试 APK 一起安装的服务,不编进测试代码);
+- AGP 于是给测试传一个 `additionalTestOutputDir` 参数,并在跑完把那个目录拉到
+  `build/outputs/connected_android_test_additional_output/`;
+- helper 拿不到这个参数时退回 external files dir,收集脚本两条路都试。
+
+两条都是 best effort,但**每张图的路径都写进 logcat**(`Log.i`,不是 `println`
+——instrumented test 的 stdout 不一定进 logcat),收集脚本 grep 出来并打印张数。
+所以"一张都没有"和"写成功了只是没拉下来"在日志里是分得开的。
+
+### 覆盖范围
+
+`ScreenshotTour` 走十个屏 × 中英两种语言,拍的是**静息态**——布局在结果到达之前
+就定下来了。英文那一半是真正值钱的:整张 i18n 表一次性切换,英文字符数约为中文的
+三倍,卡片撑爆和表格错位都在这里现形。要结果才有的画面(波形、部署位宽表、数据源
+预览、联合设计)由本来就在跑那些计算的测试顺手拍一张,不重复跑一遍一分钟的扫描。
+
 ## SAF 给的是授权,不是路径
 
 `gui_core.services.load_source` 收的是文件系统路径——桌面上文件就是路径。

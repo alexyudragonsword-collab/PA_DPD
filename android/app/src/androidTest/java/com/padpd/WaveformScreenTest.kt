@@ -54,6 +54,7 @@ class WaveformScreenTest {
 
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
             .assertIsDisplayed()
+        Screenshots.capture(compose, "zh-waveform-result")
     }
 
     @Test

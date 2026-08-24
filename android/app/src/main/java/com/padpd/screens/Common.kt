@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -90,6 +92,15 @@ suspend fun loadScreen(
  * This one does scroll horizontally, which is safe only because it is
  * always placed directly in a vertical column. Do not nest it in a
  * horizontally scrolling row - see the note on [OptionRow].
+ *
+ * The card sizes to its label rather than being pinned at one width.
+ * Labels are translated and English runs about three times the character
+ * count of the Chinese it replaces - "联合设计(预算内最高效率)" is 13
+ * characters and "Co-design (best efficiency in budget)" is 37. At a
+ * fixed width and with no line limit that label simply wrapped to four
+ * lines, leaving one card towering over its neighbours. Bounding the
+ * width and capping the lines makes the overflow degrade predictably
+ * instead of reshaping the row.
  */
 @Composable
 fun MetricRow(metrics: List<PyBridge.Metric>) {
@@ -105,15 +116,21 @@ fun MetricRow(metrics: List<PyBridge.Metric>) {
                         RoundedCornerShape(8.dp),
                     )
                     .padding(10.dp)
-                    .width(140.dp)
+                    .widthIn(min = 140.dp, max = 210.dp)
                     .testTag("metric:${m.label}"),
             ) {
                 Text(m.label, fontSize = 11.sp,
+                     maxLines = 2, overflow = TextOverflow.Ellipsis,
                      color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(m.value, fontSize = 15.sp,
+                // The value is the reading itself; truncating it would be
+                // worse than any layout it breaks, so it gets the width
+                // it needs and only a single line to take it on.
+                Text(m.value, fontSize = 15.sp, maxLines = 1,
+                     overflow = TextOverflow.Ellipsis,
                      fontWeight = FontWeight.Medium)
                 if (m.note.isNotEmpty()) {
                     Text(m.note, fontSize = 10.sp,
+                         maxLines = 2, overflow = TextOverflow.Ellipsis,
                          color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
@@ -261,32 +278,55 @@ fun RunResult(
  * pages.py builds those rows in the order the desktop table shows them.
  * Scrolls horizontally, so like [MetricRow] it belongs directly in a
  * column and not inside another horizontal scroller.
+ *
+ * **One scroll state, shared.** The header and every data row are
+ * separate Rows, and each used to call rememberScrollState() for itself -
+ * so scrolling the header moved the header alone and the columns stopped
+ * lining up with their headings. Sharing one state is what makes this a
+ * table rather than a stack of independently scrolling strips.
+ *
+ * Column width is fixed for the same reason: the rows are measured
+ * independently of each other, so intrinsic sizing would give each row
+ * its own column widths and nothing would align. What the fixed width
+ * costs is that a long cell has to give somewhere, and a single line
+ * with an ellipsis is the visible way to give - wrapping made rows
+ * different heights, which breaks the alignment the fixed width exists
+ * to provide.
  */
 @Composable
 fun RowTable(rows: List<Map<String, String>>, tag: String) {
     if (rows.isEmpty()) return
     val columns = rows.first().keys.toList()
+    val scroll = rememberScrollState()
     Column(Modifier.fillMaxWidth().padding(vertical = 8.dp).testTag(tag)) {
-        Row(Modifier.horizontalScroll(rememberScrollState())) {
+        Row(Modifier.horizontalScroll(scroll)) {
             for (c in columns) {
                 Text(c, fontSize = 10.sp,
                      fontWeight = FontWeight.Medium,
+                     maxLines = 1, overflow = TextOverflow.Ellipsis,
                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                     modifier = Modifier.width(104.dp))
+                     modifier = Modifier.width(COLUMN_WIDTH))
             }
         }
         for ((i, row) in rows.withIndex()) {
-            Row(Modifier.horizontalScroll(rememberScrollState())
-                .testTag("$tag:row$i")) {
+            Row(Modifier.horizontalScroll(scroll).testTag("$tag:row$i")) {
                 for (c in columns) {
                     Text(row[c].orEmpty(), fontSize = 12.sp,
+                         maxLines = 1, overflow = TextOverflow.Ellipsis,
                          fontFamily = FontFamily.Monospace,
-                         modifier = Modifier.width(104.dp))
+                         modifier = Modifier.width(COLUMN_WIDTH))
                 }
             }
         }
     }
 }
+
+/**
+ * Table column width, wide enough for the longest translated cell the
+ * screens actually produce: "operating points" (16 monospace characters
+ * at 12sp) on the Data screen's capture-group checklist.
+ */
+private val COLUMN_WIDTH = 124.dp
 
 /** Several values picked from a fixed set. Not scrollable - see [OptionRow]. */
 @Composable

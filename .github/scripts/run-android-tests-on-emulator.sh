@@ -41,10 +41,33 @@ cd "$root/android" || { echo "cannot cd to $root/android"; exit 1; }
     2>&1 | tee "$out/gradle-test.log"
 status=${PIPESTATUS[0]}
 
+# Dumped before the screenshot collection below, which greps it: an
+# earlier version of this file read logcat.txt several lines before it
+# was written, so the grep silently matched nothing.
+#
 # Collect whether or not the assertions passed - a failing run is exactly
 # when its output is worth reading. The app tags its Python-side messages
 # so they can be separated from the framework's noise.
 adb logcat -d > "$out/logcat.txt"
+
+# Screenshots. The tests write them to the directory AGP names in the
+# `additionalTestOutputDir` instrumentation argument, and AGP pulls that
+# off the device into connected_android_test_additional_output. Where
+# that argument is absent the helper falls back to the app's own external
+# files directory, which is why the adb pull below runs too - it is a
+# second chance, not a duplicate. Both are best effort: a run with no
+# screenshots is a run whose assertions still mean what they say.
+shots="$out/screenshots"
+mkdir -p "$shots"
+find app/build/outputs/connected_android_test_additional_output \
+    -name '*.png' -exec cp {} "$shots/" \; 2>/dev/null || true
+adb pull /sdcard/Android/data/com.padpd/files/screenshots "$shots" \
+    >/dev/null 2>&1 || true
+# The tests print every path they write, so the log says what was
+# attempted even when nothing arrives here.
+grep -a "padpd-screenshot:" "$out/logcat.txt" | tail -n 40 || true
+echo "=== screenshots collected: $(find "$shots" -name '*.png' | wc -l) ==="
+
 cp -r app/build/reports/androidTests "$out/reports" 2>/dev/null || true
 
 # Gradle's console does print the assertion message for a failing

@@ -63,6 +63,7 @@ class DataScreenTest {
         compose.onNodeWithTag("chart:psd", useUnmergedTree = true)
             .performScrollTo()
         assertTrue("no PSD chart", exists("chart:psd"))
+        Screenshots.capture(compose, "zh-data-result")
     }
 
     @Test

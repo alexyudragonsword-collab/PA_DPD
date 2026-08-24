@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -186,11 +187,19 @@ private fun RunTable(
                     for ((key, label) in COLUMNS) {
                         val value = row[key].orEmpty()
                         if (value.isEmpty()) continue
-                        Column(Modifier.padding(end = 14.dp).width(96.dp)) {
+                        // 116.dp, not 96: the "when" column carries a
+                        // RunStore timestamp - "2026-08-24 01:23", 16
+                        // monospace characters at 12sp - which did not
+                        // fit and wrapped onto a second line, in Chinese
+                        // as much as in English.
+                        Column(Modifier.padding(end = 14.dp).width(116.dp)) {
                             Text(tr(label), fontSize = 9.sp,
+                                 maxLines = 1,
+                                 overflow = TextOverflow.Ellipsis,
                                  color = MaterialTheme.colorScheme
                                      .onSurfaceVariant)
-                            Text(value, fontSize = 12.sp,
+                            Text(value, fontSize = 12.sp, maxLines = 1,
+                                 overflow = TextOverflow.Ellipsis,
                                  fontFamily = FontFamily.Monospace)
                         }
                     }
