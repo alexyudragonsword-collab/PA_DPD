@@ -93,19 +93,24 @@ jobs:
 
       # The version list alone does not say which one goes with AGP
       # 8.7.2, and the plugin must match - that is the whole reason it is
-      # versioned separately. Its POM names the AGP it was built against,
-      # so the pairing is a fact to be read rather than a guess to be
-      # spent a build on.
-      - name: Which AGP each version was built against
+      # versioned separately.
+      #
+      # An earlier version of this step tried to grep the AGP version out
+      # of each POM with a lazy quantifier, which ERE does not have, so
+      # it reported "not found" for every candidate and said nothing
+      # about whether the dependency was absent or the pattern was. Print
+      # the coordinates instead and read them: a query whose negative
+      # result is ambiguous is not worth running.
+      - name: What each candidate POM declares
         run: |
           base=https://dl.google.com/dl/android/maven2/com/android/compose/screenshot/screenshot-test-gradle-plugin
-          for v in 0.0.1-alpha04 0.0.1-alpha05 0.0.1-alpha06 0.0.1-alpha07 \
-                   0.0.1-alpha08 0.0.1-alpha09 0.0.1-alpha10; do
-            agp=$(curl -sSf "$base/$v/screenshot-test-gradle-plugin-$v.pom" \
-                  | tr -d '\n' \
-                  | grep -oE '<artifactId>gradle</artifactId>[^!]*?<version>[^<]+' \
-                  | grep -oE '<version>[^<]+' | sed 's/<version>//' | head -1)
-            echo "  $v -> AGP ${agp:-（POM 里没找到 AGP 依赖）}"
+          for v in 0.0.1-alpha06 0.0.1-alpha07 0.0.1-alpha08 \
+                   0.0.1-alpha09 0.0.1-alpha10; do
+            echo "## $v"
+            curl -sSf "$base/$v/screenshot-test-gradle-plugin-$v.pom" \
+              | grep -E '<(groupId|artifactId|version|name|description)>' \
+              | sed -E 's/^[[:space:]]*/  /'
+            echo
           done | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Criterion 4 (APK size), plus the things a build proves on its own:
