@@ -29,13 +29,20 @@ import java.util.Base64
  * unrelated to the commit. Here the renderer is layoutlib, pinned by the
  * plugin version, so a changed image means changed drawing code.
  *
- * **The data is real.** Each preview loads a fixture produced by
- * chart_spec.py itself - see tests/test_chart_fixtures.py - rather than a
- * ChartSpec written by hand here. A hand-written spec would test the
- * renderer against a fiction and would quietly omit the awkward cases:
- * a log axis, a twin axis, a categorical axis, a NaN gap in a bar
- * series, a shaded mask band. Those are the ones a renderer gets wrong,
- * and the gallery fixtures carry all of them.
+ * **The spec is real, the series are thinned.** Each preview loads a
+ * fixture produced by chart_spec.py itself - see
+ * tests/test_chart_fixtures.py - rather than a ChartSpec written by hand
+ * here. A hand-written spec would test the renderer against a fiction
+ * and would quietly omit the awkward cases: a log axis, a twin axis, a
+ * categorical axis, a NaN gap in a bar series, a shaded mask band. Those
+ * are the ones a renderer gets wrong, and the gallery fixtures carry all
+ * of them.
+ *
+ * What is not identical to the running app is the point count: series
+ * are thinned to at most 800 samples, because a 380.dp chart cannot show
+ * four thousand and these have to live in the source tree. The spec
+ * itself - every label, limit and axis assignment - is byte-for-byte
+ * what Python produces, and is compared as such.
  *
  * **Both themes.** Every chart is rendered light and dark. The dark
  * palette exists in ChartTheme.kt and, until these, had never been
@@ -65,7 +72,7 @@ private val json = Json { ignoreUnknownKeys = true }
 private fun fixture(id: String): Pair<ChartSpec, BlobStore> {
     val text = requireNotNull(CHART_FIXTURES[id]) {
         "no compiled-in fixture for $id; regenerate ChartFixtures.kt"
-    }.concatToString()
+    }.joinToString("")   // Array<String>; concatToString is CharArray's
     val root = json.parseToJsonElement(text).jsonObject
     val spec = json.decodeFromJsonElement(
         ChartSpec.serializer(), root.getValue("spec"),
