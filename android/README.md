@@ -10,6 +10,30 @@ Kotlin 原生 UI + Chaquopy 嵌入的 Python 计算核。跑的是**和两个桌
 | Phase 2 | Kotlin 图表渲染器 + 14 种规格画廊 | ✅ 本页「图表层」一节 |
 | Phase 3 | 9 个页面 | ✅ 九页全部移植（60 条桌面测试 + 每页真机 instrumented test） |
 
+## 图标出自桌面那一份 source.png
+
+app 一开始**没有图标**——manifest 里根本没有 `android:icon`,启动器画的是系统
+默认的机器人,而这个项目的桌面构建早就有自己的图。
+
+现在 `packaging/make_icon.py` 一次生成三处:桌面 `gui_qt/assets/padpd.png`、
+Windows `padpd.ico`、以及 `android/.../res/mipmap-*`。换图只需替换
+`packaging/icon/source.png` 再跑一次这个脚本,**不可能只更新一个平台**。
+
+两个不显然的决定:
+
+- **满幅贴图放背景层,前景留空。** 这张画的内容到四边(实测包围盒 = 整幅),
+  自适应图标的安全区只有中心 72/108,把整块图缩进安全区会变成一枚浮在纯色上的
+  小方块徽章,那不是桌面上的样子。放背景层由启动器自己的蒙版裁,圆形/方形/
+  squircle 都是"桌面那张图被裁成对应形状"。
+- **legacy PNG 和 adaptive 都要有。** `minSdk 24`,API 26+ 取
+  `mipmap-anydpi-v26` 的自适应图标,24–25 只认 `android:icon`/`android:roundIcon`
+  指的 PNG。legacy 那套沿用桌面的圆角矩形处理(16% 半径),因为那两个版本上
+  没有任何东西会去蒙版它。
+
+`tests/test_app_icon.py` 守这条:五档密度尺寸、manifest 两个属性、adaptive XML
+指向背景层,以及**手机图标和桌面图标是同一张画**(缩到 128px 比中心内切圆的
+像素均差,阈值 6/255——换成另一张图差几十个灰度,不是差两个)。
+
 ## 怎么构建
 
 两条路，**先走 CI**——它不需要你本地装任何东西。
