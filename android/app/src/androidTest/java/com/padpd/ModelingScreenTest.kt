@@ -39,7 +39,7 @@ class ModelingScreenTest {
     private fun openModeling() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("nav:modeling").performScrollTo().performClick()
+        compose.goTo("modeling")
         awaitAny(NAV_TIMEOUT_MS, "fit")
     }
 

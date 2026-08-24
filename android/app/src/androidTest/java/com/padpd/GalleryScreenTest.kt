@@ -51,7 +51,7 @@ class GalleryScreenTest {
         // (a Row is not lazy), so performClick does not complain - it
         // injects a touch at coordinates outside the viewport and nothing
         // receives it. Composed is not the same as reachable.
-        compose.onNodeWithTag("nav:gallery").performScrollTo().performClick()
+        compose.goTo("gallery")
         awaitAny(NAV_TIMEOUT_MS, "head:psd")
 
         // The caption, not the whole row: the chart sits outside the tap

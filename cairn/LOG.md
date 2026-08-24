@@ -3,6 +3,35 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-24 · 抽屉导航作为平行方案(经典壳保留,`-PpadpdNav` 构建时选)
+
+- 需求:要 Claude Android app 那样的左侧抽屉 + 横向滑动开合,**不要对话界面**,
+  原方案保留,构建时二选一。
+- 先厘清一件事:**桌面 Qt 本来就是左侧常驻导航**(`QListWidget` +
+  `QStackedWidget`),抽屉不是把手机带向新形态,是把它带回和桌面一致;
+  现在的横向 NavBar 才是三个前端里的异类。抽屉项的 emoji 直接取自
+  `gui_qt/main.py` 的 `PAGES`,同一页在两端同一个字形。
+- 结构:`MainActivity` 只留启动/语言状态与页面分发,壳抽到 `com.padpd.shell`
+  (`AppShell` 按 `BuildConfig.NAV_SHELL` 分发,`ClassicShell` 原样搬,
+  `DrawerShell` 新写,`TopBar`/`CapabilityLine` 两壳共用——**两份拷贝就是
+  两套壳开始各自漂移而没人决定过的方式**)。
+- 选择机制用 `-PpadpdNav`,和 `padpdAbis`/`padpdBuildPython` 同一套
+  `project.findProperty` 惯例,值非法在配置期抛。**没用 productFlavors**:
+  那会把 workflow 与脚本里写死的每个任务名和 APK 路径全改掉,
+  两个独立 APK 换不来这个代价(理由记进 `android/README.md`)。
+- 测试:抽屉项复用同名 `nav:<id>` 标签 + `NavigationHarness.goTo()`
+  按屏上有无 `drawerToggle` 决定要不要先开抽屉。13 处调用点改完,
+  **37 条测试在两套壳上都成立**。CI 设备 job 改成 `nav:[classic,drawer]`
+  矩阵(并行,墙钟不翻倍),构建 job 追加一次 drawer 装配——
+  **只在默认参数下构建的那一半代码会烂掉而不被发现**。
+- `DrawerShellTest` 在 classic 构建上用 `assumeTrue` 整体跳过:
+  **因为被测对象不存在而悄悄变绿的测试,比明说"没跑"的更糟。**
+- 清理 import 时差点删掉 `getValue`/`setValue`——它们是 `by remember` 属性
+  委托隐式使用的,正则看不见。这是本轮第四次同类风险,靠逐符号核对拦住。
+- 待设备验证的真问题:抽屉拖拽与九页里大量 `horizontalScroll` 的手势协商,
+  以及 `performScrollTo()` 注入的手势会不会被抽屉吞掉。**这是同一族坑的
+  第三种变体**,只能在设备上回答。
+
 ## 2026-08-24 · 立规则:任何改动 Qt 与 Android 两边都要验完整
 
 - 起因是这轮反复出现同一种形状:桌面 454 passed 全绿,而 Android 侧同时存在

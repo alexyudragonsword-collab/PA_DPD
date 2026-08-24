@@ -33,7 +33,7 @@ class ManualScreenTest {
     private fun openManual() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("nav:manual").performScrollTo().performClick()
+        compose.goTo("manual")
         awaitAny(NAV_TIMEOUT_MS, "toc", "manual:error")
         assertFalse("manual failed to load", exists("manual:error"))
     }

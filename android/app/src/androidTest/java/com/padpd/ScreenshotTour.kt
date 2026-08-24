@@ -7,7 +7,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -64,8 +63,7 @@ class ScreenshotTour {
 
     private fun tour(lang: String) {
         for ((destination, landmarks) in DESTINATIONS) {
-            compose.onNodeWithTag("nav:$destination").performScrollTo()
-                .performClick()
+            compose.goTo(destination)
             // Best effort: a screen that has not settled is still worth
             // a picture, and this must not fail.
             settle(landmarks)

@@ -247,6 +247,22 @@ jobs:
           path: golden-images/**
           if-no-files-found: warn
 
+      # The drawer shell is only reached when built with it, so a build
+      # that never passes -PpadpdNav=drawer never compiles that half.
+      # Assembling it here is what stops the parallel scheme rotting
+      # while the default keeps passing.
+      - name: Assemble the drawer shell too
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PpadpdNav=drawer \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-drawer.log"
+
+      - name: Surface drawer build failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-drawer.log"
+
       - name: Report APK size
         working-directory: android
         run: |
@@ -288,9 +304,18 @@ jobs:
   # Timings from this job are NOT performance evidence: GitHub's x86_64
   # emulator runs under KVM on the runner's own CPU and emulates no ARM.
   instrumented:
-    name: Instrumented tests on emulator (x86_64)
+    # Both navigation shells, because the shell is chosen at build time
+    # and a build can only wear one. The legs run concurrently, so this
+    # costs runner minutes rather than wall clock. fail-fast off: which
+    # shell broke is the first thing worth knowing, and cancelling the
+    # other leg withholds it.
+    name: Instrumented tests (x86_64, ${{ matrix.nav }})
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        nav: [classic, drawer]
     steps:
       - uses: actions/checkout@v4
 
@@ -335,7 +360,7 @@ jobs:
           # ONE line. The action runs each line of `script` in its own
           # shell, so nothing persists between lines - not variables, not
           # cd, not set +e. See the script's header comment.
-          script: .github/scripts/run-android-tests-on-emulator.sh "${{ steps.py.outputs.python-path }}"
+          script: .github/scripts/run-android-tests-on-emulator.sh "${{ steps.py.outputs.python-path }}" "${{ matrix.nav }}"
 
       - name: Surface Gradle failure
         if: failure()
@@ -344,6 +369,6 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: instrumented-test-reports
+          name: instrumented-test-reports-${{ matrix.nav }}
           path: android-test-artifacts/**
           if-no-files-found: warn

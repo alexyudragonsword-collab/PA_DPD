@@ -31,6 +31,22 @@ def targetAbis = (project.findProperty('padpdAbis') ?: 'arm64-v8a')
 // padpd's requires-python = ">=3.10".
 def pythonVersion = '3.10'
 
+// Which navigation shell to build. Same shape as padpdAbis above, and
+// for the same reason: it is a build-time choice, so it is a Gradle
+// property rather than a runtime setting.
+//
+//   ./gradlew assembleRelease -PpadpdNav=drawer
+//
+// Default 'classic' means a build with no extra arguments behaves
+// exactly as it did before the drawer shell existed. Validated here
+// rather than in Kotlin, because a typo should stop the build instead
+// of silently selecting the default and shipping the wrong UI.
+def navShell = (project.findProperty('padpdNav') ?: 'classic').toString()
+if (!(navShell in ['classic', 'drawer'])) {
+    throw new GradleException(
+        "padpdNav must be 'classic' or 'drawer', got '${navShell}'")
+}
+
 // Chaquopy needs a local Python 3 to run pip. It normally auto-detects
 // one; CI pins it so the build does not depend on which python happens
 // to be first on PATH.
@@ -78,6 +94,11 @@ android {
         targetSdk 35
         versionCode 1
         versionName "0.1.0"
+
+        // Read by com.padpd.shell.AppShell. A String rather than a
+        // boolean so a third shell would not need the field's meaning
+        // renegotiated.
+        buildConfigField "String", "NAV_SHELL", "\"${navShell}\""
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         // Turns on the channel that gets screenshots off the device.
@@ -148,6 +169,8 @@ android {
 
     buildFeatures {
         compose true
+        // Off by default in AGP 8; NAV_SHELL above needs it.
+        buildConfig true
     }
 
     testOptions {

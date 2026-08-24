@@ -36,14 +36,14 @@ class DeployScreenTest {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
 
-        compose.onNodeWithTag("nav:modeling").performScrollTo().performClick()
+        compose.goTo("modeling")
         awaitAny(NAV_TIMEOUT_MS, "fit")
         compose.onNodeWithTag("fit", useUnmergedTree = true).performClick()
         val fitted = awaitAny(FIT_TIMEOUT_MS, "chart:psd", "fit:error")
         assertFalse("fit failed, so there is nothing to sweep",
                     fitted == "fit:error")
 
-        compose.onNodeWithTag("nav:deploy").performScrollTo().performClick()
+        compose.goTo("deploy")
         awaitAny(NAV_TIMEOUT_MS, "sweep", "noModels")
         assertFalse("deployment screen saw no fitted model",
                     exists("noModels"))
@@ -73,7 +73,7 @@ class DeployScreenTest {
     @Test
     fun statesWhyExportIsUnavailable() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
-        compose.onNodeWithTag("nav:deploy").performScrollTo().performClick()
+        compose.goTo("deploy")
         awaitAny(NAV_TIMEOUT_MS, "exportUnavailable", "noModels",
                  "sweep")
         // Three blockers - SAF, torch, iverilog - so the screen explains

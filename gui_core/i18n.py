@@ -33,6 +33,7 @@ _EN = {
     # The mobile app has no separate string table: Kotlin carries the
     # Chinese key exactly as the Qt sources do and looks it up here.
     "图表画廊": "Chart Gallery",
+    "功能": "Screens",
     "加载实测/仿真 PA 数据并注册为数据源。":
         "Load measured or simulated PA data and register it as a source.",
     "载入双音扫音间距的 IM3 表,用记忆强度预判 DPD 该预留多少记忆。":

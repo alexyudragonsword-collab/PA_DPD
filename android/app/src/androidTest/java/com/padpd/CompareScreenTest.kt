@@ -7,7 +7,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -37,7 +36,7 @@ class CompareScreenTest {
         assertFalse("Python failed to start on device", exists("bootError"))
 
         // Produce a run.
-        compose.onNodeWithTag("nav:modeling").performScrollTo().performClick()
+        compose.goTo("modeling")
         awaitAny(NAV_TIMEOUT_MS, "fit")
         compose.onNodeWithTag("fit", useUnmergedTree = true).performClick()
         val fitted = awaitAny(FIT_TIMEOUT_MS, "chart:psd", "fit:error")
@@ -45,7 +44,7 @@ class CompareScreenTest {
                     fitted == "fit:error")
 
         // Read it back through the compare screen.
-        compose.onNodeWithTag("nav:compare").performScrollTo().performClick()
+        compose.goTo("compare")
         awaitAny(NAV_TIMEOUT_MS, "runTable", "noRuns", "compare:error")
         assertFalse("compare screen reported no runs after a fit",
                     exists("noRuns"))

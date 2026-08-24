@@ -18,25 +18,31 @@
 # nothing, so `./gradlew` ran from the repo root where no wrapper exists.
 # One line calling one file has none of these problems.
 #
-# Usage: run-android-tests-on-emulator.sh <buildPython>
+# Usage: run-android-tests-on-emulator.sh <buildPython> [navShell]
+#
+# navShell picks which navigation shell the app under test wears
+# (classic|drawer, default classic). The shell is a build-time choice, so
+# testing both means building both - see android/README.md.
 
 set -uo pipefail   # deliberately NOT -e: collection must run after a
                    # failing test, which is exactly when it is worth most
 
-build_python=${1:?usage: run-android-tests-on-emulator.sh <buildPython>}
+build_python=${1:?usage: run-android-tests-on-emulator.sh <buildPython> [navShell]}
+nav_shell=${2:-classic}
 
 root=${GITHUB_WORKSPACE:-$(cd "$(dirname "$0")/../.." && pwd)}
 out="$root/android-test-artifacts"
 mkdir -p "$out"
 
 echo "=== instrumented test run starting ==="
-echo "root=$root"
+echo "root=$root  nav=$nav_shell"
 adb devices
 
 cd "$root/android" || { echo "cannot cd to $root/android"; exit 1; }
 
 ./gradlew :app:connectedDebugAndroidTest \
     -PpadpdAbis=x86_64 \
+    -PpadpdNav="$nav_shell" \
     -PpadpdBuildPython="$build_python" \
     2>&1 | tee "$out/gradle-test.log"
 status=${PIPESTATUS[0]}

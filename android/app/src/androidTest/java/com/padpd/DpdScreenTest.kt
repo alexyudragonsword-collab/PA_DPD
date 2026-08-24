@@ -34,7 +34,7 @@ class DpdScreenTest {
     private fun openDpd() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("nav:dpd").performScrollTo().performClick()
+        compose.goTo("dpd")
         awaitAny(NAV_TIMEOUT_MS, "runIla")
     }
 

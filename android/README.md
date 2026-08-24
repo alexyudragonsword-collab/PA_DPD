@@ -10,6 +10,50 @@ Kotlin 原生 UI + Chaquopy 嵌入的 Python 计算核。跑的是**和两个桌
 | Phase 2 | Kotlin 图表渲染器 + 14 种规格画廊 | ✅ 本页「图表层」一节 |
 | Phase 3 | 9 个页面 | ✅ 九页全部移植（60 条桌面测试 + 每页真机 instrumented test） |
 
+## 两套导航壳,构建时选
+
+app 有两套导航外壳,**功能页完全共用**,只是怎么到达它们不同:
+
+| 壳 | 形态 | 怎么构建 |
+|---|---|---|
+| `classic`(默认) | 顶部一条横向滚动的目的地列表 | `./gradlew assembleRelease` |
+| `drawer` | 左侧抽屉,汉堡或右滑打开 | `./gradlew assembleRelease -PpadpdNav=drawer` |
+
+`padpdNav` 和 `padpdAbis`、`padpdBuildPython` 是同一套机制
+(`project.findProperty`),值只能是这两个之一,写错**在配置期就抛**——
+拼错了不该悄悄退回默认值然后发出错的 UI。
+
+**为什么不用 productFlavors**:那更正统,但会把 `assembleRelease`、
+`connectedDebugAndroidTest`、`updateDebugScreenshotTest` 等任务名全部改掉,
+而 workflow 与 `run-android-tests-on-emulator.sh` 里这些名字、以及
+`app/build/outputs/apk/release/*.apk` 这类路径都是写死的。代价换不来收益。
+将来若要同时发两个包,再换 flavors。代价说清:两套壳的代码都进同一个 APK。
+
+### 抽屉是把手机拉回桌面的形态,不是引入新形态
+
+桌面 Qt 版本来就是左侧常驻列表(`gui_qt/main.py` 的 `QListWidget` +
+`QStackedWidget`),抽屉项的 emoji 也直接取自那里的 `PAGES`,同一个页面在
+笔记本和手机上是同一个字形。手机装不下**常驻**列表,所以是抽屉。
+
+### 手势和满屏的横向滚动共处
+
+九个页面里到处是 `Modifier.horizontalScroll`(选项行、指标卡、表格)。
+`ModalNavigationDrawer` 的开合手势作用在整个内容区上,靠 nested scroll 协商:
+横向行已经滚到最左时消费不了右拖,抽屉接管。这是 Android 的标准行为,
+也是**这个项目第三次遇到同一族问题**(前两次见下方「共享控件不能自带滚动」
+与「横向滚动条里的节点」)。所以它是在设备上验的,不是推理出来的。
+
+### 测试:两套壳共用一批 `nav:<id>` 标签
+
+抽屉项和经典导航条上的条目**打同名标签**,`NavigationHarness.goTo()` 按屏上
+有没有 `drawerToggle` 决定要不要先开抽屉。因此那 37 条设备测试在两套壳上
+都成立,抽屉版的九个页面不会失去覆盖。CI 的设备 job 是
+`nav: [classic, drawer]` 矩阵,两条腿并行,墙钟时间不翻倍。
+
+`DrawerShellTest` 只测抽屉自己(开、选中即关、右滑能开、能力行在抽屉里),
+在 classic 构建上用 `assumeTrue` 整体跳过——**一条因为被测对象不存在而
+悄悄变绿的测试,比一条明说"没跑"的更糟**。
+
 ## 图标出自桌面那一份 source.png
 
 app 一开始**没有图标**——manifest 里根本没有 `android:icon`,启动器画的是系统

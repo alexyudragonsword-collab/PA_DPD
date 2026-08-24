@@ -3,15 +3,9 @@ package com.padpd
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,11 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.padpd.chart.PyBridge
@@ -44,6 +36,7 @@ import com.padpd.screens.ManualScreen
 import com.padpd.screens.ModelingScreen
 import com.padpd.screens.Placeholder
 import com.padpd.screens.WaveformScreen
+import com.padpd.shell.AppShell
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -71,17 +64,24 @@ class MainActivity : ComponentActivity() {
  * because the `when` is over an enum and a new entry should fail as a
  * placeholder rather than as a missing branch.
  */
-private enum class Destination(val id: String, val zh: String) {
-    HOME("home", "总览"),
-    WAVEFORM("waveform", "波形工作台"),
-    MODELING("modeling", "PA 建模"),
-    DPD("dpd", "DPD 实验室"),
-    DATA("data", "数据管理"),
-    DEPLOY("deploy", "部署"),
-    COMPARE("compare", "结果比较"),
-    CODESIGN("codesign", "联合设计"),
-    MANUAL("manual", "用户手册"),
-    GALLERY("gallery", "图表画廊"),
+// Public because both shells in com.padpd.shell render it.
+//
+// The emoji are the desktop's, copied from gui_qt/main.py's PAGES, so
+// the same page carries the same glyph on a laptop and on a phone. The
+// gallery has none there - it is an Android-only screen - so it gets one
+// here. They are decoration, never an identifier: the drawer's test tags
+// are built from `id`, which is ASCII and fixed.
+enum class Destination(val id: String, val zh: String, val emoji: String) {
+    HOME("home", "总览", "🏠"),
+    WAVEFORM("waveform", "波形工作台", "🌊"),
+    MODELING("modeling", "PA 建模", "📈"),
+    DPD("dpd", "DPD 实验室", "🎛️"),
+    DATA("data", "数据管理", "🗂️"),
+    DEPLOY("deploy", "部署", "🚀"),
+    COMPARE("compare", "结果比较", "⚖️"),
+    CODESIGN("codesign", "联合设计", "🧭"),
+    MANUAL("manual", "用户手册", "📖"),
+    GALLERY("gallery", "图表画廊", "🖼️"),
 }
 
 @Composable
@@ -108,9 +108,19 @@ fun PadpdApp() {
             .onFailure { bootError = it.message ?: it.toString() }
     }
 
-    Column(Modifier.fillMaxSize()) {
-        TopBar(lang, onLang = { lang = it })
-
+    // This function now owns only what both shells need and neither
+    // should own: the boot state, the language, and which destination is
+    // current. How those are presented - a nav bar or a drawer - is the
+    // shell's business, chosen at build time in AppShell.
+    val ready = caps != null && bootError == null
+    AppShell(
+        current = where,
+        onPick = { where = it },
+        lang = lang,
+        onLang = { lang = it },
+        caps = caps,
+        navigable = ready,
+    ) {
         val error = bootError
         when {
             error != null -> Text(
@@ -123,98 +133,22 @@ fun PadpdApp() {
                 tr("正在启动 Python…"), fontSize = 12.sp,
                 modifier = Modifier.padding(12.dp).testTag("bootPending"),
             )
-            else -> {
-                CapabilityLine(caps!!)
-                NavBar(where) { where = it }
-                when (where) {
-                    Destination.HOME -> HomeScreen(lang)
-                    Destination.WAVEFORM -> WaveformScreen(lang)
-                    Destination.MODELING ->
-                        ModelingScreen(lang, torchAvailable = caps!!.torch)
-                    Destination.DPD ->
-                        DpdScreen(lang, torchAvailable = caps!!.torch)
-                    Destination.DATA -> DataScreen(lang)
-                    Destination.DEPLOY -> DeployScreen(lang)
-                    Destination.CODESIGN ->
-                        CodesignScreen(lang, torchAvailable = caps!!.torch)
-                    Destination.COMPARE -> CompareScreen(lang)
-                    Destination.MANUAL -> ManualScreen(lang)
-                    Destination.GALLERY -> GalleryScreen()
-                    else -> Placeholder(tr(where.zh))
-                }
+            else -> when (where) {
+                Destination.HOME -> HomeScreen(lang)
+                Destination.WAVEFORM -> WaveformScreen(lang)
+                Destination.MODELING ->
+                    ModelingScreen(lang, torchAvailable = caps!!.torch)
+                Destination.DPD ->
+                    DpdScreen(lang, torchAvailable = caps!!.torch)
+                Destination.DATA -> DataScreen(lang)
+                Destination.DEPLOY -> DeployScreen(lang)
+                Destination.CODESIGN ->
+                    CodesignScreen(lang, torchAvailable = caps!!.torch)
+                Destination.COMPARE -> CompareScreen(lang)
+                Destination.MANUAL -> ManualScreen(lang)
+                Destination.GALLERY -> GalleryScreen()
+                else -> Placeholder(tr(where.zh))
             }
-        }
-    }
-}
-
-/**
- * What this build can and cannot do, stated up front.
- *
- * torch has no Android wheel, so five entry points cannot run at all.
- * Saying so here - rather than only greying controls where they appear -
- * means the limitation is visible before someone plans work around it.
- */
-@Composable
-private fun CapabilityLine(caps: PyBridge.Capabilities) {
-    Text(
-        "padpd ${caps.version} · " +
-            tr("{n} 种图表", "n" to caps.charts.size) + " · " +
-            tr("torch 不可用({n} 个入口)", "n" to caps.unavailable.size),
-        fontSize = 11.sp,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 12.dp).testTag("caps"),
-    )
-}
-
-@Composable
-private fun TopBar(lang: String, onLang: (String) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            tr("WiFi 7 PA + DPD 工作台"),
-            fontSize = 15.sp, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.testTag("appTitle"),
-        )
-        Row(Modifier.fillMaxWidth().padding(start = 12.dp)) {
-            for (code in listOf("zh", "en")) {
-                Text(
-                    code.uppercase(),
-                    fontSize = 12.sp,
-                    fontWeight = if (code == lang) FontWeight.Bold
-                                 else FontWeight.Normal,
-                    color = if (code == lang) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(end = 8.dp)
-                        .testTag("lang:$code")
-                        .clickable { onLang(code) },
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun NavBar(current: Destination, onPick: (Destination) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth()
-            .padding(horizontal = 12.dp, vertical = 4.dp)
-            .horizontalScroll(rememberScrollState())
-            .testTag("nav"),
-    ) {
-        for (d in Destination.entries) {
-            val here = d == current
-            Text(
-                tr(d.zh),
-                fontSize = 13.sp,
-                fontWeight = if (here) FontWeight.Bold else FontWeight.Normal,
-                color = if (here) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 14.dp)
-                    .testTag("nav:${d.id}")
-                    .clickable { onPick(d) },
-            )
         }
     }
 }

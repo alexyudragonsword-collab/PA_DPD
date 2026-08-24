@@ -40,7 +40,7 @@ class DataScreenTest {
     private fun openData() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("nav:data").performScrollTo().performClick()
+        compose.goTo("data")
         awaitAny(NAV_TIMEOUT_MS, "loadExample", "data:error")
         assertFalse("data screen failed to load", exists("data:error"))
     }

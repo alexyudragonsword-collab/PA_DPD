@@ -8,7 +8,6 @@ import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.unit.dp
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import android.util.Log
@@ -56,7 +55,7 @@ class LayoutBoundsTest {
 
         // The Overview's four headline figures carry the longest labels
         // that are on screen without running anything first.
-        compose.onNodeWithTag("nav:home").performScrollTo().performClick()
+        compose.goTo("home")
         awaitAny(NAV_TIMEOUT_MS, "env", "home:error")
         assertFalse("overview failed to load", exists("home:error"))
 
