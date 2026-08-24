@@ -3,6 +3,36 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-24 · UI 自动化:布局边界 + 截图证据 + 图表金图(JVM)
+
+- 用户提的方案里,`ui-test-junit4` + `createAndroidComposeRule` + 节点断言**本来就在跑**
+  (9 个测试类、118 处断言)。真正新的只有截图。评估结论:**截图分两种**——当证据
+  (零维护、不拦 bug)和当断言(golden,会漂移)。emulator 版本由 GitHub runner 镜像
+  决定,金图放那儿会按 GitHub 的升级节奏变红,所以 golden 放 JVM。
+- 先改布局。三处,其中一处不是溢出:`RowTable` 表头和每行**各调一次
+  `rememberScrollState()`**,横滚表头数据行不动,列和表头对不上——一直是坏的,
+  跟翻译无关。指标卡 140dp 写死无行数上限;对比页时间戳列 96dp 装不下 16 字符。
+- **我说英文 label"折成四行"是编的**,没量过,实际约 2 行。缺陷真实(无上限地长),
+  数字是我造的。改成 `LayoutBoundsTest` 读 `getBoundsInRoot()` 实测,宽度断言、
+  高度只记录不设阈值(行数是字体度量的函数,把猜的数写成阈值就是无谓变红的起点)。
+- **这个开发环境下载不了 artifact**(代理拦 blob 主机),所以截图对我是只写的。
+  凡"只存在于可下载产物里的证据",对读 run 的人等于不存在——已把实测尺寸和截图
+  路径都 grep 进 CI 日志。
+- 金图连着两轮**绿而空**:28 张预览全渲染成 800 字节的空图,任务照样退出 0。
+  根因是 layoutlib 在独立进程独立 classpath 上跑,`screenshotTest/resources` 和
+  `debug/assets` **两条取文件的路都不通**(后者报 `assets=true, classpath=false`)。
+  处置:fixture 编进 Kotlin 源码;并加 `check-android-preview-renders.py` 读逐个
+  预览的结果文件,让渲染失败变成红色。**绿而空比红更糟,没有人会去问它。**
+- 插件版本从 POM 读出来:`compose-preview-detector` 的 31.x 对 AGP 8.x → alpha06。
+  凭印象要钉的 alpha08 差两个版本。
+- 我在同一个 Kotlin 文件上犯了三次 API 错误(两次漏 import、一次 `concatToString`
+  用在 `Array<String>` 上)。**编译器在四分钟外时,该选不可能出错的写法**——减边
+  代替扩展属性那次是对的,后面没坚持。生成 Kotlin 没转义那次已补往返校验守卫。
+- 结果:37 条设备测试(+`ScreenshotTour` +`LayoutBoundsTest`)、每轮 24 张界面截图、
+  28 张图表金图(明暗各半,深色配色第一次被渲染)。桌面 76 passed。
+  **待人工**:基准图要由能打开 artifact 的人提交进
+  `app/src/debug/screenshotTest/reference/`,之后该步骤自动转为比对。
+
 ## 2026-08-24 · Android Phase 3 收尾:总览/联合设计/手册/数据页,九页全部移植
 
 - 第 6–9 页写完。桌面 429 passed / 17 skipped;设备测试新增
