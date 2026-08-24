@@ -29,9 +29,14 @@ WiFi 7(802.11be)PA 行为建模与数字预失真的 AI 辅助研发平台:经�
 - **开工前确认工作区**:容器可能中途回收,工作区会静默退回旧提交。发现
   文件"消失"或 `git log` 对不上时:
   `git fetch origin <branch> && git reset --hard origin/<branch>`。
-- **验证后才能说完成**:
-  `QT_QPA_PLATFORM=offscreen python -m pytest tests/ -m "not slow" -q`
+- **验证后才能说完成,且 Qt 与 Android 两边都要验**:
+  桌面 `QT_QPA_PLATFORM=offscreen python -m pytest tests/ -m "not slow" -q`
   (约 4 分钟);改了神经/训练/ONNX 路径再跑全量。测试失败如实报。
+  **桌面全绿不代表 Android 可用**——Kotlin 只在 CI 里编译,本地没有 SDK,
+  所以 Android 侧的"验过"= 推上去读 Android workflow 的**构建 job 与设备
+  job 两个结论**,不是"我改得应该没问题"。改到 `gui_core/`(三个前端共用的
+  契约)、`padpd_mobile/`、`android/` 任意一处,两边都得验。
+  详见 `cairn/工程约束与陷阱.md` 的「双前端验证」。
 - **不要删**:`tests/conftest.py` 的 `OMP_NUM_THREADS=1` 与 pandas 预导入、
   `tests/test_gui_qt.py` fixture 的显式拆除——都是死锁修复;docstring 里的
   失败记录与设计理由是资产。
