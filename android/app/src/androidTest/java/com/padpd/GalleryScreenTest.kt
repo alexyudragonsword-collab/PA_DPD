@@ -40,7 +40,17 @@ class GalleryScreenTest {
     fun startsAndDrawsTheFirstChart() {
         awaitAny(BOOT_TIMEOUT_MS, "caps", "bootError")
         assertFalse("Python failed to start on device", exists("bootError"))
-        compose.onNodeWithTag("caps", useUnmergedTree = true).assertIsDisplayed()
+        // Displayed only on the classic shell. The drawer shell moved
+        // the capability line into the drawer, and a closed drawer is
+        // composed but not on screen - the fourth variant of this
+        // project's recurring "composed is not reachable". Asserting it
+        // unconditionally is what turned that design decision into a
+        // red test on the drawer leg, which is the matrix working.
+        // DrawerShellTest covers the line in its new home.
+        if (!compose.hasTag("drawerToggle")) {
+            compose.onNodeWithTag("caps", useUnmergedTree = true)
+                .assertIsDisplayed()
+        }
 
         // The gallery is no longer the launch screen - the app opens on
         // Waveform Studio - so navigate to it first.

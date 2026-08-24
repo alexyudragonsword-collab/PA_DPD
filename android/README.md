@@ -175,16 +175,21 @@ Compose 在横向滚动组件收到**无限宽约束**时抛 `IllegalStateExcept
 
 点之前先 `performScrollTo()`。
 
-**这个坑出现过三个变体,根源相同:节点存在 ≠ 可见/可交互。**
+**这个坑出现过四个变体,根源相同:节点存在 ≠ 可见/可交互。**
 
 | 变体 | 症状 | 修法 |
 |---|---|---|
 | 合并语义树(`clickable` 吞子节点) | tag 根本查不到 | `useUnmergedTree = true` |
 | 横向滚动视口外 | 查得到、`performClick` 不报错、但没反应 | 点前 `performScrollTo()` |
 | 纵向滚动视口外 | 查得到、`assertIsDisplayed` 失败 | 断言前 `performScrollTo()` |
+| **关着的抽屉里** | 同上,且**滚不过去**——它不在同一条滚动链上 | 先开抽屉,或按壳分支 |
 
-前两个都表现为"点了没反应",第三个表现为"组件不可见"。写设备测试时:
-**查到 tag 只说明它被组合了,要交互或断言可见,先滚过去。**
+前两个都表现为"点了没反应",后两个表现为"组件不可见"。第四个是抽屉壳带来的:
+`ModalNavigationDrawer` 的 sheet 关着时照样被 composed,所以
+`GalleryScreenTest` 里一句对 `caps` 的 `assertIsDisplayed` 在抽屉腿上变红——
+**那不是测试坏了,是它如实报告了"能力行搬进抽屉"这个设计决定**,也正是
+`nav:[classic,drawer]` 矩阵存在的意义。写设备测试时:
+**查到 tag 只说明它被组合了,要交互或断言可见,先滚过去或先打开。**
 
 ## Kotlin 的块注释可以嵌套——注释里写 `/*` 会吃掉整个文件
 
