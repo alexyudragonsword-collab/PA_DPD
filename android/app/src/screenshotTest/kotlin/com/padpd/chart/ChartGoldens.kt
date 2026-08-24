@@ -1,5 +1,6 @@
 package com.padpd.chart
 
+import android.content.res.AssetManager
 import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -12,6 +13,7 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.serialization.json.Json
@@ -51,12 +53,30 @@ private val json = Json { ignoreUnknownKeys = true }
  *
  * BlobStore takes a fetch lambda rather than a bridge, which is what
  * makes this possible at all - no Python, no device, just bytes.
+ *
+ * The fixtures live in `src/debug/assets`, not in the screenshotTest
+ * source set's `resources`. Resources there compile fine and are simply
+ * absent at render time: layoutlib runs the preview in its own process
+ * with its own classpath, and the screenshotTest java resources are not
+ * on it. The first attempt put them there and every one of the 28
+ * previews rendered blank, each about 800 bytes, with
+ * "fixture ... is not on the classpath" in the build log.
+ *
+ * Debug assets rather than main assets so the 412 KB of test data stays
+ * out of the release APK. Both sources are still tried, and a failure
+ * names both, because one round trip that answers the question beats
+ * two that each rule out one option.
  */
-private fun fixture(id: String): Pair<ChartSpec, BlobStore> {
-    val stream = requireNotNull(
-        ChartGoldensMarker::class.java.classLoader
-            ?.getResourceAsStream("chart-fixtures/$id.json"),
-    ) { "fixture chart-fixtures/$id.json is not on the classpath" }
+private fun fixture(id: String, assets: AssetManager?): Pair<ChartSpec, BlobStore> {
+    val path = "chart-fixtures/$id.json"
+    val fromAssets = assets?.runCatching { open(path) }?.getOrNull()
+    val fromClasspath = ChartGoldensMarker::class.java.classLoader
+        ?.getResourceAsStream(path)
+    val stream = fromAssets ?: fromClasspath
+    requireNotNull(stream) {
+        "fixture $path not found: assets=${assets != null}, " +
+            "classpath=${fromClasspath != null}"
+    }
     val root = json.parseToJsonElement(
         stream.bufferedReader().use { it.readText() },
     ).jsonObject
@@ -84,7 +104,7 @@ private fun Framed(id: String) {
     // reads the same signal, so the frame and the chart cannot disagree
     // about which palette they are in.
     val dark = isSystemInDarkTheme()
-    val (spec, blobs) = fixture(id)
+    val (spec, blobs) = fixture(id, LocalContext.current.assets)
     MaterialTheme(
         colorScheme = if (dark) darkColorScheme() else lightColorScheme(),
     ) {

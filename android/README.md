@@ -250,6 +250,12 @@ first"——报错把修法写出来了,但那是花一轮构建换来的。
 会画错**的情形:对数轴、双轴、类别轴、bar 里的 NaN 断口、掩码带。gallery 的
 那套输入本来就是为了跑遍每种绘图原语而存在的。
 
+fixture 放在 `src/debug/assets/`,**不是** screenshotTest 源集的 `resources/`。
+放后者能编译、渲染时却不存在:layoutlib 在自己的进程里跑预览,自己的 classpath,
+screenshotTest 的 java 资源不在上面。第一版就放在那儿,28 张预览**全部渲染成空图**
+(每张约 800 字节),日志里是 `fixture ... is not on the classpath`。用 debug 而非
+main,是为了让这 412 KB 测试数据不进 release APK。
+
 **明暗都画**:`@Preview` 的 `uiMode` 驱动 `isSystemInDarkTheme()`,而
 `ChartTheme` 读的是同一个信号。深色配色在代码里躺了很久,在这之前**没有任何
 东西渲染过它**——模拟器跑的是亮色,一条在深色背景上看不见的曲线可以一路发版。

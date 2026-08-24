@@ -34,8 +34,12 @@ import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 MOBILE = ROOT / "android" / "app" / "src" / "main" / "python"
-FIXTURES = (ROOT / "android" / "app" / "src" / "screenshotTest"
-            / "resources" / "chart-fixtures")
+# Debug assets, not the screenshotTest source set's resources: layoutlib
+# renders previews in its own process and those resources are not on its
+# classpath - see the note in ChartGoldens.kt. Debug rather than main so
+# the test data stays out of the release APK.
+FIXTURES = (ROOT / "android" / "app" / "src" / "debug" / "assets"
+            / "chart-fixtures")
 
 if str(MOBILE) not in sys.path:
     sys.path.insert(0, str(MOBILE))

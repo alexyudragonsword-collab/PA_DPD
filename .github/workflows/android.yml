@@ -215,6 +215,13 @@ jobs:
             | sort | sed 's/^/  /' | head -80
           echo "### (end)"
 
+          # A preview that throws is reported as "There were some
+          # issues with rendering one or more previews" and the build
+          # still exits zero. That is how twenty-eight blank images - 800
+          # bytes each - were produced by a green step.
+          python3 "$GITHUB_WORKSPACE/.github/scripts/check-android-preview-renders.py" \
+            app/build/outputs/screenshotTest-results/preview/debug/results.json
+
       - name: Surface golden image failure
         if: failure()
         run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-golden.log"
