@@ -67,18 +67,23 @@ class LayoutBoundsTest {
         for (tag in tags) {
             val bounds = compose.onNodeWithTag(tag, useUnmergedTree = true)
                 .getBoundsInRoot()
-            Log.i("padpd", "padpd-metric-card: $tag " +
-                  "${bounds.width} x ${bounds.height}")
+            // Subtracting the edges rather than reading DpRect.width and
+            // .height: those are top-level extension properties in
+            // androidx.compose.ui.unit and need their own imports, which
+            // is the second import this file cost a CI round trip for.
+            // left/top/right/bottom are members and cannot.
+            val width = bounds.right - bounds.left
+            val height = bounds.bottom - bounds.top
+            Log.i("padpd", "padpd-metric-card: $tag $width x $height")
             assertTrue(
-                "$tag is ${bounds.width} wide, over the " +
-                    "$METRIC_MAX_WIDTH bound - a translated label grew " +
-                    "the card",
-                bounds.width <= METRIC_MAX_WIDTH + SLACK,
+                "$tag is $width wide, over the $METRIC_MAX_WIDTH bound " +
+                    "- a translated label grew the card",
+                width <= METRIC_MAX_WIDTH + SLACK,
             )
             assertTrue(
-                "$tag is ${bounds.height} tall, which is unbounded " +
-                    "growth rather than a wrapped label",
-                bounds.height <= HEIGHT_CEILING,
+                "$tag is $height tall, which is unbounded growth " +
+                    "rather than a wrapped label",
+                height <= HEIGHT_CEILING,
             )
         }
     }

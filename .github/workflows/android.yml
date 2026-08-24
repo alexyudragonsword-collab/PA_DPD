@@ -191,31 +191,45 @@ jobs:
         working-directory: android
         run: |
           set -o pipefail
-          ref=app/src/debug/screenshotTest/reference
-          if [ -n "$(find "$ref" -name '*.png' -print -quit 2>/dev/null)" ]; then
-            echo "### comparing against $(find "$ref" -name '*.png' | wc -l) reference images"
-            ./gradlew :app:validateDebugScreenshotTest \
-              -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-              2>&1 | tee "$RUNNER_TEMP/gradle-golden.log"
+          # Where the plugin keeps reference images is a property of the
+          # plugin, and the first attempt hard-coded a guess at it. The
+          # step then passed while producing nothing: update ran, wrote
+          # its images somewhere, and the guessed path matched none of
+          # them. Search for them instead, and print what the build
+          # actually produced so the next question is answered by the
+          # log rather than by another guess.
+          refs=$(find app/src -path '*creenshot*' -name '*.png' 2>/dev/null | wc -l)
+          if [ "$refs" -gt 0 ]; then
+            echo "### comparing against $refs reference images"
+            task=validateDebugScreenshotTest
           else
             echo "### no reference images yet - generating them"
-            ./gradlew :app:updateDebugScreenshotTest \
-              -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
-              2>&1 | tee "$RUNNER_TEMP/gradle-golden.log"
-            find "$ref" -name '*.png' | sort | sed 's/^/  /'
+            task=updateDebugScreenshotTest
           fi
+          ./gradlew ":app:$task" \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-golden.log"
+          echo "### every screenshot-related file under app/"
+          find app -path '*creenshot*' \
+            \( -name '*.png' -o -name '*.html' -o -name '*.json' \) \
+            | sort | sed 's/^/  /' | head -80
+          echo "### (end)"
 
       - name: Surface golden image failure
         if: failure()
         run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-golden.log"
 
+      # Paths are preserved (cp --parents) so the artifact itself shows
+      # where the plugin puts things - the question that cost a run.
       - name: Collect golden images
         if: always()
+        working-directory: android
         run: |
-          out=golden-images
+          out="$GITHUB_WORKSPACE/golden-images"
           mkdir -p "$out"
-          cp -r android/app/src/debug/screenshotTest/reference/. "$out/" 2>/dev/null || true
-          cp -r android/app/build/reports/screenshotTest "$out/report" 2>/dev/null || true
+          find app -path '*creenshot*' \
+            \( -name '*.png' -o -name '*.html' \) \
+            -exec cp --parents {} "$out/" \; 2>/dev/null || true
           echo "collected $(find "$out" -name '*.png' | wc -l) PNGs"
 
       - name: Upload golden images
