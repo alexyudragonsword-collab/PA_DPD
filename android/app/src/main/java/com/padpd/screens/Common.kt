@@ -110,13 +110,18 @@ fun MetricRow(metrics: List<PyBridge.Metric>) {
     ) {
         for (m in metrics) {
             Column(
+                // widthIn before the background, not after: a bound
+                // applied inside the padding constrains the text and
+                // leaves the card 20.dp wider than the number says, so
+                // the figure a test can assert on would not be the
+                // figure written here.
                 Modifier.padding(end = 8.dp)
+                    .widthIn(min = METRIC_MIN_WIDTH, max = METRIC_MAX_WIDTH)
                     .background(
                         MaterialTheme.colorScheme.surfaceVariant,
                         RoundedCornerShape(8.dp),
                     )
                     .padding(10.dp)
-                    .widthIn(min = 140.dp, max = 210.dp)
                     .testTag("metric:${m.label}"),
             ) {
                 Text(m.label, fontSize = 11.sp,
@@ -137,6 +142,17 @@ fun MetricRow(metrics: List<PyBridge.Metric>) {
         }
     }
 }
+
+/**
+ * Metric card bounds, named so the test that measures them and the code
+ * that sets them cannot drift apart.
+ *
+ * The maximum is what stops a translated label growing the card without
+ * limit; [MetricRow] scrolls horizontally, so a card wider than the
+ * screen would push its neighbours out of reach rather than wrap.
+ */
+val METRIC_MIN_WIDTH = 140.dp
+val METRIC_MAX_WIDTH = 210.dp
 
 /**
  * An integer nudged by fixed steps - the phone form of a QSpinBox.
