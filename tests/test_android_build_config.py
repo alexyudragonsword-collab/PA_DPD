@@ -120,15 +120,23 @@ def test_the_build_stamp_is_written_and_reaches_the_assets(
     "drawer" matches a classic build too.
     """
     assert "writePadpdBuildStamp" in gradle_code
-    assert 'padpd-assets/padpd-build.json' in gradle_code
-    # The generated directory has to be an assets source dir, or the file
-    # is written and packaged by nothing.
-    assert 'assets.srcDirs += layout.buildDirectory.dir("padpd-assets")' \
-        in gradle_code
-    # ...and some assets task has to depend on it, or it is written after
-    # the merge that would have picked it up.
-    hook = _block_after(gradle_code, "tasks.configureEach { t ->")
-    assert "dependsOn buildStamp" in hook and "assets" in hook
+    assert '"padpd-build.json"' in gradle_code
+
+    # Registered through AGP's variant API. Not negotiable, and not a
+    # style preference: the hand-wired version added the directory to
+    # sourceSets and hooked every task whose name contains "assets",
+    # which missed lintVitalAnalyzeRelease and failed the build with
+    # "uses this output ... without declaring an explicit or implicit
+    # dependency". The set of consumers is AGP's to know.
+    wiring = _block_after(gradle_code, "androidComponents {")
+    assert "addGeneratedSourceDirectory" in wiring, (
+        "the build stamp must be registered with "
+        "sources.assets.addGeneratedSourceDirectory, so AGP wires every "
+        "consumer - matching task names by hand does not reach lint")
+    assert "buildStamp" in wiring
+    assert "assets.srcDirs" not in gradle_code, (
+        "the generated directory must not also be a plain source dir; "
+        "that is the wiring that failed")
 
 
 def test_the_stamp_records_both_build_time_choices(
@@ -136,5 +144,12 @@ def test_the_stamp_records_both_build_time_choices(
     """navShell alone would leave the compiled/interpreted pair
     indistinguishable, which is the pair CI builds back to back in one
     workspace."""
-    stamp = _block_after(gradle_code, "doLast {")
+    stamp = _block_after(gradle_code, "void write() {")
     assert "navShell" in stamp and "compiled" in stamp
+
+    # AGP picks the output directory for a generated source dir. Setting
+    # one here would be ignored at best and fight it at worst.
+    register = _block_after(
+        gradle_code, "tasks.register('writePadpdBuildStamp', "
+                     "PadpdBuildStampTask) {")
+    assert "outputDir" not in register

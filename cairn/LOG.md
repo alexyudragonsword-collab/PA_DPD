@@ -18,6 +18,13 @@
   腿若构建了经典壳,41 条测试会全过。
 - `compiled` 记的是"被要求的",`inspect_apk.py` 读 payload 回答"实际出货的",
   两边都查 = 查请求与结果是否一致。
+- **接线第一版是错的,CI 说得很清楚**:把生成目录加进 `sourceSets` 再钩住
+  所有名字含 `assets` 的任务,release 构建报
+  `lintVitalAnalyzeRelease uses this output ... without declaring an
+  explicit or implicit dependency`——lint 也读 assets 目录,名字里却没有
+  `assets`。改用 `addGeneratedSourceDirectory` 交给 AGP 接线。
+  同一轮**两条设备腿是绿的**(`connectedDebugAndroidTest` 不跑 lintVital),
+  所以"stamp 确实进包、断言确实成立"当时就验到了,红的只是 release 那条路。
 - **守卫写错了一次并被自己的破坏测试抓到**:第一版用子串查
   `dependsOn buildStamp`,把那行注释掉之后字符串仍在,测试照绿。加了
   `gradle_code` fixture 去掉整行注释后重验,三个方向都会红。

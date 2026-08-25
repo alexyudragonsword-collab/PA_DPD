@@ -190,10 +190,6 @@ android {
 
     sourceSets {
         main {
-            // Generated below: one small asset saying what this APK was
-            // built from.
-            assets.srcDirs += layout.buildDirectory.dir("padpd-assets")
-
             python {
                 srcDirs = [
                     "src/main/python",
@@ -289,31 +285,55 @@ dependencies {
 // answer-giver - inspect_apk.py reads the payload - and the workflows
 // check that the two agree.
 // ---------------------------------------------------------------------------
-def buildStamp = tasks.register('writePadpdBuildStamp') {
-    description = 'Record the build-time choices as assets/padpd-build.json'
-    def out = layout.buildDirectory.file("padpd-assets/padpd-build.json")
-    // Read at configuration time: a task action must not touch the
-    // project object under the configuration cache.
-    def navValue = navShell
-    def compiledValue = compiled
-    inputs.property('navShell', navValue)
-    inputs.property('compiled', compiledValue)
-    outputs.file(out)
-    doLast {
-        def f = out.get().asFile
+// Registered through AGP's variant API rather than by adding a directory
+// to sourceSets and wiring the dependency by hand. The hand-wired
+// version failed, and instructively: it hooked every task whose name
+// contains "assets", which is not the whole set of consumers -
+//
+//   Task ':app:lintVitalAnalyzeRelease' uses this output of task
+//   ':app:writePadpdBuildStamp' without declaring an explicit or
+//   implicit dependency.
+//
+// Lint reads the asset directories too, and so, potentially, does
+// whatever the next AGP version adds. Matching task names is
+// whack-a-mole against a list only AGP knows; addGeneratedSourceDirectory
+// hands AGP the task and lets it wire every consumer itself. It also
+// chooses the output directory, which is why the task does not set one.
+abstract class PadpdBuildStampTask extends DefaultTask {
+    @Input String navShell
+    @Input boolean compiledPadpd
+
+    @OutputDirectory abstract DirectoryProperty getOutputDir()
+
+    @TaskAction
+    void write() {
+        def f = new File(outputDir.get().asFile, "padpd-build.json")
         f.parentFile.mkdirs()
-        f.text = "{\"navShell\": \"${navValue}\", " +
-                 "\"compiled\": ${compiledValue}}\n"
+        f.text = "{\"navShell\": \"${navShell}\", " +
+                 "\"compiled\": ${compiledPadpd}}\n"
     }
 }
 
-// Same binding-by-name-pattern as the Python staging below, and for the
-// same reason: the asset task names vary by variant and plugin version.
-tasks.configureEach { t ->
-    if (t.name != 'writePadpdBuildStamp' &&
-        t.name.toLowerCase().contains('assets')) {
-        t.dependsOn buildStamp
-    }
+// Bound to locals first: inside the configuration closure the delegate is
+// the task, where `navShell` is the property being assigned rather than
+// the script variable being read from.
+def navShellValue = navShell
+def compiledValue = compiled
+
+def buildStamp = tasks.register('writePadpdBuildStamp', PadpdBuildStampTask) {
+    description = 'Record the build-time choices as assets/padpd-build.json'
+    navShell = navShellValue
+    compiledPadpd = compiledValue
+}
+
+androidComponents {
+    onVariants(selector().all(), { variant ->
+        // Nullable: a variant can have assets switched off entirely.
+        if (variant.sources.assets != null) {
+            variant.sources.assets.addGeneratedSourceDirectory(
+                buildStamp, { PadpdBuildStampTask t -> t.getOutputDir() })
+        }
+    })
 }
 
 // ---------------------------------------------------------------------------
