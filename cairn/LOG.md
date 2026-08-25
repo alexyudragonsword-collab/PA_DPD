@@ -3,6 +3,21 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-25 · 修掉图表 fixture 的跨机器浮点漂移(CI 已红三个提交)
+
+- 查 Cython 那批的 CI 时发现:`test_chart_fixtures.py` 从 `1a7ec3e` 起在
+  **五个平台全红**,而本地一直绿。原因是 fixture 守卫按**字节**比 spec 里
+  的浮点,而那个数出自 LS 解,跨 BLAS 实现不可复现:
+  `-53.87857429060689`(本机)对 `-53.87857429072575`(runner)。
+- 是我上一批写的守卫的缺陷:blob 那半当时写了 `np.allclose` 容差,
+  **spec 那半的 docstring 明确写着"不受舍入影响"——那句话是错的**。
+- 处置:两侧都过 `_round_floats`(7 位有效数字,比观测噪声多五个数量级,
+  也超过 380.dp 预览画得出的精度)。只有 `bitwidth.json`、`codesign.json`
+  和 `ChartFixtures.kt` 变了。反向验过:噪声塌成同一个值,第 7 位的真实
+  改动仍然报红。
+- 这也是「本地全绿 ≠ 跨机器可复现」的一个实例,记进
+  `cairn/工程约束与陷阱.md`。
+
 ## 2026-08-25 · Cython 编译版(`-PpadpdCompiled`,解释版保留)
 
 - 起因:APK 里 `src/padpd/` 是可读源码——解压两层就能看,`.pyc` 连 docstring

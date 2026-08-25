@@ -51,6 +51,33 @@ KOTLIN_FIXTURES = (SCREENSHOT_TEST / "kotlin" / "com" / "padpd" / "chart"
 MAX_POINTS = 800
 
 
+# Significant digits kept in the spec's numbers.
+#
+# The fixture is generated on one machine and compared on another, and a
+# number that came out of an LS solve is not bit-reproducible across BLAS
+# implementations. Measured: one hline y read -53.87857429060689 locally
+# and -53.87857429072575 on the runner - a difference in the 12th
+# significant digit, which reddened every CI platform for three commits
+# while every local run stayed green. Seven digits leaves five orders of
+# margin over that, and is more precision than a 380.dp preview can draw.
+#
+# Significant digits, not decimal places: the spec carries dB (tens), Hz
+# (1e7) and ratios in one structure, and a fixed number of decimals would
+# either flatten the small values or keep the noise in the large ones.
+SPEC_DIGITS = 7
+
+
+def _round_floats(obj):
+    """Every float in a spec, rounded to SPEC_DIGITS significant digits."""
+    if isinstance(obj, float):
+        return float(f"{obj:.{SPEC_DIGITS}g}")
+    if isinstance(obj, dict):
+        return {k: _round_floats(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_round_floats(v) for v in obj]
+    return obj
+
+
 def _thin(arr: np.ndarray) -> np.ndarray:
     """Every k-th sample, with k chosen per array length.
 
@@ -80,7 +107,7 @@ def _build(entry_id: str) -> dict:
     return {
         "id": entry_id,
         "chart": name,
-        "spec": spec,
+        "spec": _round_floats(spec),
         # float32 little-endian, the same encoding api._put_blob uses and
         # the same one Kotlin's Blobs.decode expects. Base64 because the
         # fixture is one file per chart and a sidecar per array would be
@@ -106,9 +133,14 @@ def test_fixture_matches_what_python_builds_today(entry_id):
     Values are compared with a tolerance rather than byte-for-byte. The
     fixture is generated on one machine and checked on another - CI also
     runs a job pinned to numpy 1.23.3, the Android version ceiling - and
-    a last-ulp difference in a PSD is not a contract change. The spec
-    itself is compared exactly: labels, limits and axis assignments are
-    the contract, and they are not subject to rounding.
+    a last-ulp difference in a PSD is not a contract change.
+
+    The spec is compared exactly, but only after both sides pass through
+    _round_floats. Its labels, limits and axis assignments ARE the
+    contract and are compared as they stand; its numbers are not exempt
+    from the same cross-machine noise, and an earlier version of this
+    file said they were. That claim cost three commits of CI red on
+    every platform - see SPEC_DIGITS for the measurement.
     """
     path = FIXTURES / f"{entry_id}.json"
     built = _build(entry_id)

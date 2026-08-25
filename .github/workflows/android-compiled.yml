@@ -289,6 +289,10 @@ jobs:
             printf '| compiled | %s | %.1f |\n' "$c" "$(awk "BEGIN{print $c/1048576}")"
             printf '| delta | %s | %.1f |\n' "$((c - i))" "$(awk "BEGIN{print ($c-$i)/1048576}")"
           } >> "$GITHUB_STEP_SUMMARY"
+          # ...and to the log as well. A number that exists only in the
+          # run summary cannot be quoted from a job log later, which is
+          # exactly when someone wants it.
+          echo "interpreted=$i  compiled=$c  delta=$((c - i))"
           awk "BEGIN {exit !($c > 120*1048576)}" \
             && { echo "::error::compiled APK is over the 120 MB budget"; exit 1; } \
             || true
