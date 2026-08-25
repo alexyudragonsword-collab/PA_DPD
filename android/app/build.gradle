@@ -300,8 +300,12 @@ dependencies {
 // hands AGP the task and lets it wire every consumer itself. It also
 // chooses the output directory, which is why the task does not set one.
 abstract class PadpdBuildStampTask extends DefaultTask {
+    // Boxed Boolean, not primitive boolean. A primitive defaults to
+    // false, so a configuration slip would stamp every APK
+    // "compiled": false with no error at all - and the gate that reads
+    // the stamp would agree with itself. Null fails validation instead.
     @Input String navShell
-    @Input boolean compiledPadpd
+    @Input Boolean compiledPadpd
 
     @OutputDirectory abstract DirectoryProperty getOutputDir()
 
@@ -314,16 +318,23 @@ abstract class PadpdBuildStampTask extends DefaultTask {
     }
 }
 
-// Bound to locals first: inside the configuration closure the delegate is
-// the task, where `navShell` is the property being assigned rather than
-// the script variable being read from.
-def navShellValue = navShell
-def compiledValue = compiled
-
-def buildStamp = tasks.register('writePadpdBuildStamp', PadpdBuildStampTask) {
-    description = 'Record the build-time choices as assets/padpd-build.json'
-    navShell = navShellValue
-    compiledPadpd = compiledValue
+// `{ t -> t.navShell = ... }`, never `{ navShell = ... }`. A Groovy
+// closure captures the enclosing script's LOCAL VARIABLES lexically,
+// before Gradle's delegate is consulted at all - and this script has a
+// local `def navShell` a hundred lines up. So a bare assignment here
+// quietly reassigns that local and leaves the task property unset:
+//
+//   Type 'PadpdBuildStampTask' property 'navShell' doesn't have a
+//   configured value.
+//
+// It failed loudly only because a String stays null - see the note on
+// compiledPadpd's type above for what the same slip would have done to a
+// primitive. The explicit receiver removes the ambiguity rather than
+// relying on names not colliding.
+def buildStamp = tasks.register('writePadpdBuildStamp', PadpdBuildStampTask) { t ->
+    t.description = 'Record the build-time choices as assets/padpd-build.json'
+    t.navShell = navShell
+    t.compiledPadpd = compiled
 }
 
 androidComponents {

@@ -25,6 +25,12 @@
   `assets`。改用 `addGeneratedSourceDirectory` 交给 AGP 接线。
   同一轮**两条设备腿是绿的**(`connectedDebugAndroidTest` 不跑 lintVital),
   所以"stamp 确实进包、断言确实成立"当时就验到了,红的只是 release 那条路。
+- **第二版接线又错一次**:`tasks.register(...) { navShell = navShell }`——
+  Groovy 闭包**词法捕获**外层脚本的局部变量,而脚本里正好有 `def navShell`,
+  于是赋的是局部变量,任务属性没设。这一次连设备腿也红了。改成显式接收者
+  `{ t -> t.navShell = navShell }`,并把 `compiledPadpd` 从原始 `boolean`
+  改成可空 `Boolean`——**原始类型会默认成 false 并静默盖错章**。
+  守卫补了一条,把刚才那个写法原样放回去会红。
 - **守卫写错了一次并被自己的破坏测试抓到**:第一版用子串查
   `dependsOn buildStamp`,把那行注释掉之后字符串仍在,测试照绿。加了
   `gradle_code` fixture 去掉整行注释后重验,三个方向都会红。

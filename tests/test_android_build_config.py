@@ -17,6 +17,7 @@ exactly.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import pytest
@@ -153,3 +154,33 @@ def test_the_stamp_records_both_build_time_choices(
         gradle_code, "tasks.register('writePadpdBuildStamp', "
                      "PadpdBuildStampTask) {")
     assert "outputDir" not in register
+
+
+def test_the_stamp_task_is_configured_through_an_explicit_receiver(
+        gradle_code: str) -> None:
+    """`{ t -> t.navShell = navShell }`, never `{ navShell = navShell }`.
+
+    A Groovy closure captures the enclosing script's local variables
+    lexically, before Gradle's delegate is consulted, and this script has
+    a local `def navShell`. A bare assignment therefore reassigns the
+    local and leaves the task property unset - which cost a CI round
+    with "property 'navShell' doesn't have a configured value".
+
+    It only failed loudly because a String stays null. compiledPadpd is
+    a primitive boolean: the same slip would have defaulted it to false,
+    stamped every APK "compiled": false, and produced no error at all.
+    """
+    register = _block_after(
+        gradle_code, "tasks.register('writePadpdBuildStamp', "
+                     "PadpdBuildStampTask) {")
+    locals_ = set(re.findall(r"^def (\w+)\s*=", gradle_code, re.M))
+    assert {"navShell", "compiled"} <= locals_, (
+        "this guard assumes navShell/compiled are script locals; if they "
+        "stopped being so, re-derive what it should check")
+    shadowed = [line.strip() for line in register.splitlines()
+                if (m := re.match(r"\s*(\w+)\s*=[^=]", line))
+                and m.group(1) in locals_]
+    assert not shadowed, (
+        "bare assignment inside the task closure shadows a script local "
+        "and silently does not configure the task; use an explicit "
+        f"receiver (t.x = x): {shadowed}")
