@@ -3,6 +3,29 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-25 · 四个 release 全绿,真机安装通过,APK 体积数字更正
+
+- `0f3fe36`:四个 workflow 全绿。四个 release 产物齐了,每个都过两条**独立**
+  证据链——stamp 记"构建时要的"、`inspect_apk.py` 走进 `.imy` 数"实际出货的":
+
+  | 产物 | 壳 | padpd | stamp | payload |
+  |---|---|---|---|---|
+  | `padpd-arm64-release` | classic | 解释 | `compiled=False` | 58 source / 0 native |
+  | `…-drawer` | drawer | 解释 | `compiled=False` | 58 source / 0 native |
+  | `…-compiled` | classic | 编译 | `compiled=True` | 0 source / 58 native |
+  | `…-compiled-drawer` | drawer | 编译 | `compiled=True` | 0 source / 58 native |
+
+  三个包里 `gui_core 7 source`、`padpd_mobile 5 source` 也都是**断言**。
+- **真机安装由用户实测通过**——这条 CI 拿不到,模拟器腿证明的是"41 条断言
+  成立",不是"装到手机上能用"。
+- **更正一个我报错过的数字**:先前几次报的 52 MB / 54.6 MB 是 **artifact zip**
+  的字节数,不是 APK。真实 APK:解释版 59,668,327 B(56.9 MB)、编译版
+  62,127,995 B(59.3 MB),差 +2.35 MB,与 2561 KiB 的 wheel 对得上。
+  `android/README.md` 验收表里的 43.6 MB 是 Phase 0 当时的值(那时还没有
+  manual/、examples/ 和九个功能页),**保留原值并追加更正说明,不静默覆盖**。
+- 体积现在直接 echo 进 job log:**只存在于 run summary 里的数字,事后没法从
+  job log 引出来**,而那正是有人要它的时候。
+
 ## 2026-08-25 · 补齐第四个 release,并让 APK 能被问出"你是谁"
 
 - 缺口:壳(2) × padpd(2) 有四种组合,先前只装配了三种——**drawer + 编译版

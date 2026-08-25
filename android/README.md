@@ -593,10 +593,30 @@ Android Studio 通常能自动找到；找不到就在 `python { }` 里显式给
 | 1 | `scipy.signal` / `optimize` / `interpolate` / `io` 可导入 | 四个全过 | 全过（`signal` 0.98 s） | ✅ |
 | 2 | `import gui_core.services` 且 `torch not imported` | — | 0.01 s，无 torch | ✅ |
 | 3 | GMP 拟合 / ILA 三轮 | < 15 s / < 30 s | **0.63 s / 2.31 s** | ✅ |
-| 4 | 单 ABI release APK | < 120 MB | 43.6 MB | ✅ |
+| 4 | 单 ABI release APK | < 120 MB | 43.6 MB（Phase 0 当时） | ✅ |
 | 5 | 冷启动到 Python 就绪 | < 5 s | **178 ms** | ✅ |
 
 **Phase 0 通过。** 标准 3 余量 24 倍，标准 5 余量 28 倍。
+
+**标准 4 的数字后来变了，原值保留在上表里不覆盖。** 43.6 MB 量的是 Phase 0
+那个包，当时还没有 `manual/`（2.9 MB）、`examples/`（1.0 MB）和九个功能页。
+2026-08-25 实测（arm64-v8a release，`stat -c%s` 的真实 APK 字节）：
+
+| 构建 | 字节 | ≈ |
+|---|---:|---:|
+| 解释版 | 59,668,327 | 56.9 MB |
+| 编译版 | 62,127,995 | 59.3 MB |
+| 差值 | +2,459,668 | +2.35 MB |
+
+差值和 2561 KiB 的 wheel 对得上，预算仍有一倍余量。
+
+**别把 artifact 的字节数当成 APK 体积**：Actions 产物是 zip 过的，同一个包在
+产物列表里显示 52.2 MB / 54.6 MB，比 APK 本身小约 12%。汇报时错过一次，
+所以体积现在直接 echo 进 job log，不只写进 run summary——**只存在于 run
+summary 里的数字，事后没法从 job log 里引出来。**
+
+**真机安装**：2026-08-25 由用户实测，安装并可用。这条是 CI 拿不到的——模拟器
+腿证明得了「41 条断言成立」，证明不了「装到手机上能用」。
 
 ## 真机实测（aarch64 / Linux 5.10.43）
 
