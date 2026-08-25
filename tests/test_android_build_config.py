@@ -30,6 +30,20 @@ def gradle() -> str:
     return GRADLE.read_text(encoding="utf-8")
 
 
+@pytest.fixture(scope="module")
+def gradle_code(gradle: str) -> str:
+    """The same file with whole-line ``//`` comments dropped.
+
+    A substring check cannot tell code from a comment, and the first
+    version of the dependsOn guard below could not: commenting the line
+    out left the string in the file and the test stayed green. Only
+    whole-line comments go - a trailing one after real code is rare here
+    and removing it would mean parsing quotes, which `https://` breaks.
+    """
+    return "\n".join(line for line in gradle.splitlines()
+                     if not line.lstrip().startswith("//"))
+
+
 def _block_after(text: str, opener: str) -> str:
     """The braced block introduced by `opener`, by brace matching.
 
@@ -92,5 +106,35 @@ def test_the_wheel_check_names_the_command_that_produces_one(
 
 def test_the_vendored_scripts_are_present() -> None:
     """CI runs these; the skill they came from is not in the repo."""
-    for name in ("android_wheel.py", "inspect_apk.py", "README.md"):
+    for name in ("android_wheel.py", "inspect_apk.py", "apk_build_stamp.py",
+                 "README.md"):
         assert (ROOT / "scripts" / "android" / name).is_file(), name
+
+
+def test_the_build_stamp_is_written_and_reaches_the_assets(
+        gradle_code: str) -> None:
+    """Four release APKs, all named app-release.apk until renamed.
+
+    The stamp is the only thing in the APK that says which of them it
+    is: both shells compile into both builds, so grepping the DEX for
+    "drawer" matches a classic build too.
+    """
+    assert "writePadpdBuildStamp" in gradle_code
+    assert 'padpd-assets/padpd-build.json' in gradle_code
+    # The generated directory has to be an assets source dir, or the file
+    # is written and packaged by nothing.
+    assert 'assets.srcDirs += layout.buildDirectory.dir("padpd-assets")' \
+        in gradle_code
+    # ...and some assets task has to depend on it, or it is written after
+    # the merge that would have picked it up.
+    hook = _block_after(gradle_code, "tasks.configureEach { t ->")
+    assert "dependsOn buildStamp" in hook and "assets" in hook
+
+
+def test_the_stamp_records_both_build_time_choices(
+        gradle_code: str) -> None:
+    """navShell alone would leave the compiled/interpreted pair
+    indistinguishable, which is the pair CI builds back to back in one
+    workspace."""
+    stamp = _block_after(gradle_code, "doLast {")
+    assert "navShell" in stamp and "compiled" in stamp

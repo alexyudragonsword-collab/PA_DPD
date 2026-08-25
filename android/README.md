@@ -135,6 +135,39 @@ staging `padpd/**`:app payload 在 sys.path 上排在 requirements 前面。
 设备 job 同样是 `nav: [classic, drawer]` 两条腿:干净的交叉编译和长得没问题
 的 wheel,**都不等于**在真设备上 import 成功。
 
+### 四个 release,和一个能问出"你是谁"的 APK
+
+壳(2) × padpd(2) = 四种 release,CI 全都装配并分别上传:
+
+| artifact | 壳 | padpd |
+|---|---|---|
+| `padpd-arm64-release` | classic | 解释 |
+| `padpd-arm64-release-drawer` | drawer | 解释 |
+| `padpd-arm64-release-compiled` | classic | 编译 |
+| `padpd-arm64-release-compiled-drawer` | drawer | 编译 |
+
+Gradle 把这四个**全叫 `app-release.apk`**,重命名之前谁也不知道谁是谁。
+所以每个 APK 里现在有一份 `assets/padpd-build.json`:
+
+```json
+{"navShell": "drawer", "compiled": true}
+```
+
+`scripts/android/apk_build_stamp.py` 读它,`--nav` / `--compiled` 把它变成
+断言。构建 job、编译 job、以及四条设备腿在跑完测试后都查一次。
+
+**为什么是 asset 而不是 `BuildConfig` 字段**:两套壳的代码都编进两个 APK,
+所以 classic 构建的 DEX 里同样有 `"drawer"` 这个字符串(`DrawerShell` 的
+testTag 就是),grep 什么也证明不了。一个固定路径、一个值,`unzip -p` 就能读,
+没有第二种解释。
+
+**为什么连设备腿也查**:一条叫 `drawer` 的矩阵腿如果实际构建的是经典壳,
+41 条测试会**全过**——它们本来就写成两套壳都成立的。
+
+`compiled` 记的是**构建时被要求的东西**;padpd 到底有没有以 `.so` 出货是另一个
+问题,由 `inspect_apk.py` 读 payload 回答。两边都查,查的就是**请求与结果是否
+一致**——本项目这一族 bug 全是这个形状。
+
 ### 版本对齐
 
 `--target-version 3.10.15-0` 不是猜的:Chaquopy 16.0.0 的

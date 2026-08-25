@@ -247,6 +247,15 @@ jobs:
           path: golden-images/**
           if-no-files-found: warn
 
+      # The APK must say what it is before its size is reported as
+      # anything. Reporting first is exactly how the drawer build's size
+      # once got published as the classic build's.
+      - name: What this APK declares
+        run: |
+          apk=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          python scripts/android/apk_build_stamp.py "$apk" \
+            --nav classic --compiled false
+
       - name: Report APK size
         working-directory: android
         run: |
@@ -303,6 +312,12 @@ jobs:
       - name: Surface drawer build failure
         if: failure()
         run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-drawer.log"
+
+      - name: What the drawer APK declares
+        run: |
+          apk=$(find android/app/build/outputs/apk/release -name '*.apk' | head -1)
+          python scripts/android/apk_build_stamp.py "$apk" \
+            --nav drawer --compiled false
 
       - uses: actions/upload-artifact@v4
         if: always()

@@ -66,6 +66,11 @@ status=${PIPESTATUS[0]}
 apk=$(find app/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1)
 if [ -n "$apk" ]; then
     echo "=== what this APK ships ==="
+    # The shell first. A matrix leg named "drawer" that built the classic
+    # shell would run all 41 tests, pass every one of them, and report
+    # nothing wrong - the tests are written to work on both.
+    python3 "$root/scripts/android/apk_build_stamp.py" "$apk" \
+        --nav "$nav_shell" --compiled "$compiled" || status=1
     if [ "$compiled" = true ]; then
         # An assertion, because this is the one claim the compiled
         # variant makes and the UI tests cannot see it: they would pass

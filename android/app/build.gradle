@@ -190,6 +190,10 @@ android {
 
     sourceSets {
         main {
+            // Generated below: one small asset saying what this APK was
+            // built from.
+            assets.srcDirs += layout.buildDirectory.dir("padpd-assets")
+
             python {
                 srcDirs = [
                     "src/main/python",
@@ -262,6 +266,54 @@ dependencies {
     // it is the service that backs useTestStorageService above.
     androidTestUtil 'androidx.test.services:test-services:1.5.0'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
+}
+
+// ---------------------------------------------------------------------------
+// A build stamp, shipped as an asset.
+//
+// Four release APKs now come out of one repo - two shells crossed with
+// interpreted/compiled - and every one of them is called app-release.apk
+// until something renames it. The failure this exists to make impossible
+// has already happened once here: the drawer build was uploaded under
+// the classic name, its size was reported as the classic build's, and CI
+// stayed green, because NOTHING CHECKED WHAT AN APK ACTUALLY WAS.
+//
+// An asset rather than a BuildConfig field, deliberately. Both shells'
+// code compiles into both APKs, so the string "drawer" is in the DEX of
+// a classic build too and grepping for it proves nothing. One file with
+// one value, at a fixed path, is readable with `unzip -p` and cannot be
+// confused with anything else.
+//
+// `compiled` here records what the build was ASKED for. Whether padpd
+// really shipped as .so is a different question with a different
+// answer-giver - inspect_apk.py reads the payload - and the workflows
+// check that the two agree.
+// ---------------------------------------------------------------------------
+def buildStamp = tasks.register('writePadpdBuildStamp') {
+    description = 'Record the build-time choices as assets/padpd-build.json'
+    def out = layout.buildDirectory.file("padpd-assets/padpd-build.json")
+    // Read at configuration time: a task action must not touch the
+    // project object under the configuration cache.
+    def navValue = navShell
+    def compiledValue = compiled
+    inputs.property('navShell', navValue)
+    inputs.property('compiled', compiledValue)
+    outputs.file(out)
+    doLast {
+        def f = out.get().asFile
+        f.parentFile.mkdirs()
+        f.text = "{\"navShell\": \"${navValue}\", " +
+                 "\"compiled\": ${compiledValue}}\n"
+    }
+}
+
+// Same binding-by-name-pattern as the Python staging below, and for the
+// same reason: the asset task names vary by variant and plugin version.
+tasks.configureEach { t ->
+    if (t.name != 'writePadpdBuildStamp' &&
+        t.name.toLowerCase().contains('assets')) {
+        t.dependsOn buildStamp
+    }
 }
 
 // ---------------------------------------------------------------------------

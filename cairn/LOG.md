@@ -3,6 +3,25 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-25 · 补齐第四个 release,并让 APK 能被问出"你是谁"
+
+- 缺口:壳(2) × padpd(2) 有四种组合,先前只装配了三种——**drawer + 编译版
+  在模拟器上验过却没有可安装的包**。补上一次
+  `assembleRelease -PpadpdCompiled=true -PpadpdNav=drawer` 与上传。
+- 顺手关掉一个早就记下的缺口:**没有任何东西检查一个 APK 穿的是哪套壳**。
+  Gradle 把四个包全叫 `app-release.apk`,而这个仓库已经因此发错过一次
+  (抽屉版冒充 classic 上传、体积也报的是抽屉版,CI 一路绿)。
+- 做法:`assets/padpd-build.json` 记 `{navShell, compiled}`,
+  `scripts/android/apk_build_stamp.py` 读它并断言。**不能用 `BuildConfig`
+  字段**——两套壳的代码都编进两个 APK,classic 的 DEX 里照样有 `"drawer"`。
+  构建 job、编译 job、四条设备腿各查一次;设备腿尤其必要:一条叫 drawer 的
+  腿若构建了经典壳,41 条测试会全过。
+- `compiled` 记的是"被要求的",`inspect_apk.py` 读 payload 回答"实际出货的",
+  两边都查 = 查请求与结果是否一致。
+- **守卫写错了一次并被自己的破坏测试抓到**:第一版用子串查
+  `dependsOn buildStamp`,把那行注释掉之后字符串仍在,测试照绿。加了
+  `gradle_code` fixture 去掉整行注释后重验,三个方向都会红。
+
 ## 2026-08-25 · 修掉图表 fixture 的跨机器浮点漂移(CI 已红三个提交)
 
 - 查 Cython 那批的 CI 时发现:`test_chart_fixtures.py` 从 `1a7ec3e` 起在

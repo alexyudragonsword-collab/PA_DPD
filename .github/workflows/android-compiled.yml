@@ -275,6 +275,14 @@ jobs:
           # readable in here".
           python scripts/android/inspect_apk.py "$RUNNER_TEMP/compiled.apk" \
             --pure gui_core,padpd_mobile
+          # ...and each APK must also say it is the one we asked for.
+          # inspect_apk reads the payload (what shipped); the stamp
+          # records the Gradle properties (what was requested). Checking
+          # both is checking that the request and the result agree.
+          python scripts/android/apk_build_stamp.py \
+            "$RUNNER_TEMP/compiled.apk" --nav classic --compiled true
+          python scripts/android/apk_build_stamp.py \
+            "$RUNNER_TEMP/interpreted.apk" --nav classic --compiled false
 
       - name: Size
         run: |
@@ -302,6 +310,40 @@ jobs:
         with:
           name: padpd-arm64-release-compiled
           path: ${{ runner.temp }}/compiled.apk
+          if-no-files-found: warn
+
+      # The fourth corner of shell x padpd. Without it the drawer shell
+      # is compiled and device-tested but has no release anyone can
+      # install - and "we tested that combination" is a weaker statement
+      # when the thing tested cannot be handed to someone.
+      - name: Assemble the drawer shell, compiled
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:clean \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}"
+          ./gradlew :app:assembleRelease \
+            -PpadpdCompiled=true -PpadpdNav=drawer \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-compiled-drawer.log"
+          cp app/build/outputs/apk/release/*.apk \
+            "$RUNNER_TEMP/compiled-drawer.apk"
+          cd "$GITHUB_WORKSPACE"
+          python scripts/android/inspect_apk.py \
+            "$RUNNER_TEMP/compiled-drawer.apk" --native padpd
+          python scripts/android/apk_build_stamp.py \
+            "$RUNNER_TEMP/compiled-drawer.apk" --nav drawer --compiled true
+          echo "compiled-drawer=$(stat -c%s "$RUNNER_TEMP/compiled-drawer.apk")"
+
+      - name: Surface drawer build failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-compiled-drawer.log"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: padpd-arm64-release-compiled-drawer
+          path: ${{ runner.temp }}/compiled-drawer.apk
           if-no-files-found: warn
 
   # A clean cross-compile and a correct-looking wheel are not an import
