@@ -43,7 +43,7 @@ def test_amam_csv_both_conventions(tmp_path):
     p1 = tmp_path / "amam_lin.csv"
     lines = ["r_in,r_out,phase_deg"] + [
         f"{a},{b},{c}" for a, b, c in zip(r, r_out, ph)]
-    p1.write_text("\n".join(lines))
+    p1.write_text("\n".join(lines), encoding="utf-8")
     r1, o1, p1_ = load_amam_table(str(p1))
     assert np.allclose(r1, r) and np.allclose(o1, r_out)
 
@@ -53,7 +53,7 @@ def test_amam_csv_both_conventions(tmp_path):
     p2 = tmp_path / "amam_dbm.csv"
     lines = ["pin_dbm,pout_dbm,phase_deg"] + [
         f"{a},{b},{c}" for a, b, c in zip(pin, pout, ph)]
-    p2.write_text("\n".join(lines))
+    p2.write_text("\n".join(lines), encoding="utf-8")
     r2, o2, _ = load_amam_table(str(p2))
     assert np.allclose(r2, r, rtol=1e-6)
     assert np.allclose(o2, r_out, rtol=1e-6)
@@ -66,7 +66,7 @@ def test_s21_fir_reproduces_table(tmp_path):
     p = tmp_path / "s21.csv"
     lines = ["freq_hz,mag_db,phase_deg"] + [
         f"{a},{b},{c}" for a, b, c in zip(f_tab, mag_db, ph_deg)]
-    p.write_text("\n".join(lines))
+    p.write_text("\n".join(lines), encoding="utf-8")
     taps = s21_to_fir(str(p), FS, n_taps=31)
     # check realized response at in-band table points
     n = 4096

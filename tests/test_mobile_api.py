@@ -193,7 +193,8 @@ def test_every_figs_builder_has_a_spec_builder():
     than it costs to parse one file.
     """
     import ast
-    tree = ast.parse((ROOT / "gui_qt" / "figs.py").read_text())
+    tree = ast.parse((ROOT / "gui_qt" / "figs.py")
+                     .read_text(encoding="utf-8"))
     fig_names = {n.name[:-4] for n in ast.walk(tree)
                  if isinstance(n, ast.FunctionDef)
                  and n.name.endswith("_fig") and not n.name.startswith("_")}
@@ -350,7 +351,7 @@ def test_committed_spec_fixture_matches_what_python_emits():
     """
     fixture_path = (ROOT / "android" / "app" / "src" / "test" / "resources"
                     / "gallery_specs.json")
-    fixture = json.loads(fixture_path.read_text())
+    fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
     assert set(fixture) == set(e["id"] for e in _gallery_listing())
 
     for entry_id, want in fixture.items():

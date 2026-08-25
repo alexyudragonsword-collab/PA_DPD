@@ -45,7 +45,7 @@ def test_emit_rtl_writes_files(tmp_path):
               "exp_re.mem", "exp_im.mem"):
         assert (tmp_path / f).exists()
     assert info["n_taps"] > 0
-    src = (tmp_path / "dpd_mac.v").read_text()
+    src = (tmp_path / "dpd_mac.v").read_text(encoding="utf-8")
     assert "module dpd_mac" in src and "'sd" in src
 
 
@@ -106,7 +106,7 @@ def test_emit_lut_rtl_writes_files(tmp_path):
               "lut_r.mem", "lut_exp_re.mem", "lut_exp_im.mem"):
         assert (tmp_path / f).exists(), f
     assert info["n_entries"] == 33 and info["n_branches"] == 3
-    v = (tmp_path / "dpd_lut.v").read_text()
+    v = (tmp_path / "dpd_lut.v").read_text(encoding="utf-8")
     assert "rom_re" in v and ">>> FB" in v
 
 
@@ -199,7 +199,7 @@ def test_lut_rtl_conjugate_branches_bit_true(tmp_path):
         wf.x, n_knots=5, memory_depth=2, conjugate=True).fit(wf.x, y)
     emit_lut_rtl(wl, str(tmp_path), addr_bits=5, frac_bits=7,
                  n_vectors=128)
-    assert "carrier x^-1" in (tmp_path / "dpd_lut.v").read_text()
+    assert "carrier x^-1" in (tmp_path / "dpd_lut.v").read_text(encoding="utf-8")
     res = verify_with_iverilog(str(tmp_path),
                                sources=("dpd_lut.v", "tb_lut.v"))
     assert res["available"] and res["passed"], res["output"]
@@ -222,7 +222,7 @@ def test_lut_rtl_cim3_dc_bit_true(tmp_path):
         dc_term=True).fit(wf.x, y, regularization=1e-9)
     info = emit_lut_rtl(m, str(tmp_path), addr_bits=5, frac_bits=7,
                         n_vectors=128)
-    v = (tmp_path / "dpd_lut.v").read_text()
+    v = (tmp_path / "dpd_lut.v").read_text(encoding="utf-8")
     assert "carrier x^-3" in v and "DC_RE" in v
     assert any(s > 0 for s in info["shifts"])  # scale alignment engaged
     res = verify_with_iverilog(str(tmp_path),

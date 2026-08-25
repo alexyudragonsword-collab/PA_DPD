@@ -20,7 +20,7 @@ def test_load_split_csv_format(tmp_path):
     rng = np.random.default_rng(0)
     spec = {"dataset_format": "split_csv", "input_signal_fs": 800e6,
             "bw_main_ch": 200e6, "n_sub_ch": 10, "nperseg": 2560}
-    (tmp_path / "spec.json").write_text(json.dumps(spec))
+    (tmp_path / "spec.json").write_text(json.dumps(spec), encoding="utf-8")
     data = {}
     for split, n in (("train", 60), ("val", 20), ("test", 20)):
         x = rng.standard_normal(n) + 1j * rng.standard_normal(n)
@@ -44,7 +44,7 @@ def test_load_single_csv_format(tmp_path):
     spec = {"dataset_format": "single_csv", "csv_filename": "data.csv",
             "split_ratios": {"train": 0.6, "val": 0.2, "test": 0.2},
             "input_signal_fs": 640e6}
-    (tmp_path / "spec.json").write_text(json.dumps(spec))
+    (tmp_path / "spec.json").write_text(json.dumps(spec), encoding="utf-8")
     # UTF-8 BOM like OpenDPD's example file
     with open(tmp_path / "data.csv", "w", encoding="utf-8-sig") as f:
         f.write("I_in,Q_in,I_out,Q_out\n")

@@ -66,7 +66,7 @@ def test_quantize_lut_and_export_roundtrip(fitted_smp, tmp_path):
     assert q["entry_bits"] == 12
     p = tmp_path / "lut.json"
     payload = export_lut(lut, w_bits=12, path=str(p))
-    loaded = json.loads(p.read_text())
+    loaded = json.loads(p.read_text(encoding="utf-8"))
     assert loaded == json.loads(json.dumps(payload))
     assert loaded["n_entries"] == 128 and loaded["n_branches"] == 4
     # dequantized entries match the float table within 1 LSB

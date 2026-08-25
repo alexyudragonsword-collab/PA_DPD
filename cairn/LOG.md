@@ -15,7 +15,22 @@
   也超过 380.dp 预览画得出的精度)。只有 `bitwidth.json`、`codesign.json`
   和 `ChartFixtures.kt` 变了。反向验过:噪声塌成同一个值,第 7 位的真实
   改动仍然报红。
-- 这也是「本地全绿 ≠ 跨机器可复现」的一个实例,记进
+- **同一缺陷还有第二半,我当时判断"未观测,不过度设计",随后就观测到了**:
+  `android-deps-floor` job 钉在 numpy 1.23.3 / scipy 1.8.1(Android 天花板),
+  那里 **blob** 也变了——`To+G…` 对 `VY+G…`,float32 低位尾数之差,实测相对
+  差 7.9e-7(测试 rtol=1e-5,且该值 3.9e-9 本身就低于 atol=1e-8)。
+  JSON 那条测试对 blob 早有容差,**Kotlin 那条是整串按字节比,blob 一起比了**。
+- 处置不是给 blob 加容差就算了,而是把 Kotlin 那条的契约拆开:
+  **骨架逐字符比**(`_skeleton` 把 30000 字的载荷字面量抹掉,保留头部、
+  map 框架、entry id 与分块数),**数字按同一套容差比**。顺带修正一处:
+  round-trip 现在解**已提交的那个文件**,不是刚生成的文本——Kotlin 编译器
+  读的是前者。两个方向都验过会红(改骨架 / 改载荷)。
+- 另一条 Windows 专有的红:`tests/` 里若干 `read_text()` 没写 encoding,
+  Windows runner 默认 cp1252,而 cp1252 没有 0x8f/0x90 的映射,UTF-8 中文里
+  这两个字节遍地都是。**写测试的那台机器就是测试能过的那台机器**——本地永远
+  发现不了。已全部补 encoding,并加 lint 型守卫
+  `test_no_test_reads_or_writes_a_file_without_an_encoding`。
+- 这三条都是「本地全绿 ≠ 跨机器可复现」的实例,记进
   `cairn/工程约束与陷阱.md`。
 
 ## 2026-08-25 · Cython 编译版(`-PpadpdCompiled`,解释版保留)
