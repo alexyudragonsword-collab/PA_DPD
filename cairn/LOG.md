@@ -3,6 +3,36 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-08-25 · Cython 编译版(`-PpadpdCompiled`,解释版保留)
+
+- 起因:APK 里 `src/padpd/` 是可读源码——解压两层就能看,`.pyc` 连 docstring
+  都还给你。工具来自 `python-android-apk` skill,两个脚本**搬进仓库**
+  (`scripts/android/`):CI 跑得到的只有仓库里的文件。
+- 唯一相对上游的改动是 `--strip-requires`。`pyproject.toml` 声明
+  `numpy>=1.24/scipy>=1.10/matplotlib>=3.7`,Android 这边**故意**装
+  1.23.3 / 1.8.1、matplotlib 根本不装(Chaquopy 仓库只有到这儿)。
+  把 `Requires-Dist` 留着,pip 会重解一遍这场已经做过的决定然后失败。
+  只删那几行,名字/版本/许可证仍来自 `pyproject.toml`,不产生第二份元数据。
+- 范围:只编译 `src/padpd/`(58 个模块,`--compile all`)。`gui_core/`
+  没编——不是遗漏:它把 `manual/`、`examples/` 解析成**自己目录的兄弟**,
+  而 wheel 装进的是 Chaquopy 的 requirements 树,搬它要连 3.9 MB 数据一起
+  搬,是另一件事、另一次设备验证。CI 里把"gui_core 没被编译"写成**断言**。
+- 桌面实测(本机,同环境两遍):解释版 454 passed / 17 skipped;把
+  `src/padpd` 换成 58 个 `.so` 后 **453 passed / 17 skipped / 1 failed**,
+  唯一失败的是 `test_api_pages_reference_real_modules`——它断言
+  `docs/api/*.md` 引用的模块都有 `.py` 文件,在故意删掉源码的树里必然假。
+  处置:**两遍都 deselect**,理由写进 workflow。`__init__.so` 作为包初始化
+  在 CPython 自己的 importer 下可用,这一条也是在这里证的。
+  (这两个数是本改动自带的 5 条守卫加入**之前**量的;加完之后解释版基线是
+  459 passed / 17 skipped。)
+- 带对照的可读性检查:同一句 grep 在 `gmp.pyc` 里命中 1 次、在 `gmp.so` 里
+  0 次。**没有前半句,写错的 grep 对两边都报"没找到"。**
+- `--target-version 3.10.15-0` 从 Chaquopy 16.0.0 的 `Common.class`
+  (`PYTHON_VERSIONS`)读出来,不是猜的;Maven 上另有 `3.10.15-1`,不是它。
+- CI 新增 `android-compiled.yml` 三个 job:桌面双跑对照、两个 APK 前后构建
+  并用 `--native`/`--pure` 互相断言(中间 `clean`)、设备两条壳腿。
+  详见 `android/README.md` 与 `cairn/工程约束与陷阱.md` 新增小节。
+
 ## 2026-08-24 · 抽屉导航作为平行方案(经典壳保留,`-PpadpdNav` 构建时选)
 
 - 需求:要 Claude Android app 那样的左侧抽屉 + 横向滑动开合,**不要对话界面**,

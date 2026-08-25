@@ -1,0 +1,380 @@
+name: Android (compiled)
+
+# The Cython-compiled variant of the app: `src/padpd` ships as Android
+# .so instead of readable .py. Everything else about the build is
+# unchanged - same Gradle tasks, same Kotlin, same shells.
+#
+# A workflow of its own rather than more steps in android.yml, because
+# it answers a different question and costs a different amount. android.yml
+# guards the app; this guards a claim about the app, and the claim is the
+# expensive part: `--compile all` asserts the suite still passes with
+# every padpd .py deleted, which is a second full run of the desktop
+# suite, not a build flag.
+#
+# What it does NOT claim - the wording matters when someone asks:
+# compiling raises the cost of reading padpd's ALGORITHMS from "unzip and
+# read" to "disassemble". Literal constants survive in the constant pool
+# and can be found exactly. gui_core/, padpd_mobile/, manual/ and
+# examples/ still ship as plain text. Nothing here protects a number the
+# UI displays. See scripts/android/README.md.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "scripts/android/**"
+      - "android/app/build.gradle"
+      - ".github/workflows/android-compiled.yml"
+      - ".github/scripts/run-android-tests-on-emulator.sh"
+  pull_request:
+    paths:
+      - "scripts/android/**"
+      - "android/app/build.gradle"
+      - ".github/workflows/android-compiled.yml"
+      - ".github/scripts/run-android-tests-on-emulator.sh"
+
+permissions:
+  contents: read
+
+env:
+  GRADLE_VERSION: "8.10.2"
+  # The Android CPython build to compile against. Not a guess: Chaquopy
+  # 16.0.0's com/chaquo/python/internal/Common.class maps the short
+  # version "3.10" (what app/build.gradle asks for) to 3.10.15, with
+  # build number 0. Maven Central also carries 3.10.15-1, which is a
+  # different artifact and not the one Chaquopy downloads. Re-read that
+  # table when the Chaquopy version moves.
+  CHAQUOPY_TARGET: "3.10.15-0"
+
+  # One test is excluded from BOTH suite runs, and only one.
+  # test_api_pages_reference_real_modules asserts that every `::: padpd.x`
+  # in docs/api/*.md resolves to a .py on disk - a property of the source
+  # checkout, for mkdocstrings' benefit. In a tree where the sources were
+  # deliberately deleted it is false by construction, and it says nothing
+  # about whether padpd still works. Measured with it left in: exactly
+  # one test differs between the two runs, and it is this one, reporting
+  # the deletion back at us (2026-08-25, interpreted 454 passed / 17
+  # skipped, compiled 453 / 1 failed / 17). Deselected from BOTH runs so
+  # the comparison stays a comparison; every other test runs in both.
+  DESELECT: >-
+    --deselect
+    tests/test_docs_site.py::test_api_pages_reference_real_modules
+
+jobs:
+  # The claim behind `--compile all`, made falsifiable: run the desktop
+  # suite twice in one job, once interpreted and once with every padpd
+  # .py replaced by its .so, and require the counts to match.
+  #
+  # Comparing against a remembered number from another job would not do -
+  # the pass/skip split moves with whichever optional stacks are
+  # installed, so only a control run in the same environment says
+  # anything. This is also where `__init__.so` is proven to work as a
+  # package initialiser at all, under CPython's own importer, before the
+  # question is confused with Chaquopy's.
+  suite:
+    name: Desktop suite, interpreted vs compiled
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: System Qt deps
+        run: sudo apt-get update && sudo apt-get install -y libegl1
+
+      - name: Install
+        run: |
+          pip install -e .[dev,gui,gui-qt]
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install "cython>=3.0" build
+
+      # Before the swap: the wheel's metadata comes from building the
+      # project, and a project whose src/padpd is already .so would
+      # package those instead.
+      - name: Build the host wheel
+        run: |
+          set -o pipefail
+          python scripts/android/android_wheel.py \
+            --package padpd --compile all --host \
+            --outdir "$RUNNER_TEMP/hostwheel" --strip-requires \
+            2>&1 | tail -n 20
+
+      - name: Suite, interpreted (control)
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -o pipefail
+          pytest tests/ -q -m "not slow" $DESELECT \
+            2>&1 | tee "$RUNNER_TEMP/before.log"
+
+      # rm, not extract-over: the point of the exercise is that the .py
+      # are GONE. Left in place they shadow the .so on import and the run
+      # below would prove nothing while looking identical.
+      - name: Swap in the compiled package
+        run: |
+          rm -rf src/padpd
+          python - <<'PY'
+          import os, zipfile, glob
+          whl, = glob.glob(os.environ["RUNNER_TEMP"] + "/hostwheel/*.whl")
+          with zipfile.ZipFile(whl) as z:
+              for n in z.namelist():
+                  if n.startswith("padpd/"):
+                      z.extract(n, "src")
+          PY
+          echo "py left: $(find src/padpd -name '*.py' | wc -l)"
+          echo "so:      $(find src/padpd -name '*.so' | wc -l)"
+          test "$(find src/padpd -name '*.py' | wc -l)" -eq 0
+          python -c "import padpd.pa.gmp as m; print('import ok:', m.__file__)"
+
+      - name: Suite, compiled
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          set -o pipefail
+          pytest tests/ -q -m "not slow" $DESELECT \
+            2>&1 | tee "$RUNNER_TEMP/after.log"
+
+      # A suite that skips instead of failing looks exactly like one that
+      # tested something, so compare the counts rather than the colour.
+      - name: The two runs must agree
+        run: |
+          before=$(grep -oE '[0-9]+ (passed|failed|skipped|error)[a-z]*' \
+                   "$RUNNER_TEMP/before.log" | sort | tr '\n' ' ')
+          after=$(grep -oE '[0-9]+ (passed|failed|skipped|error)[a-z]*' \
+                  "$RUNNER_TEMP/after.log" | sort | tr '\n' ' ')
+          {
+            echo "## Desktop suite"
+            echo
+            echo "| build | result |"
+            echo "|---|---|"
+            echo "| interpreted | \`$before\` |"
+            echo "| compiled | \`$after\` |"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "interpreted: $before"
+          echo "compiled:    $after"
+          [ -n "$before" ] || { echo "::error::no counts parsed from the control run"; exit 1; }
+          [ "$before" = "$after" ] || {
+            echo "::error::compiling padpd changed the suite result"; exit 1; }
+
+      # The check that proves the compilation did anything, with its own
+      # control: the same grep must FIND the phrase in ordinary bytecode.
+      # Without the control a wrong grep reports "not found" for both and
+      # the negative result means nothing.
+      - name: A docstring must survive .pyc and not survive .so
+        run: |
+          phrase="Generalized Memory Polynomial"
+          # From git, because the working tree's copy was just deleted.
+          git show HEAD:src/padpd/pa/gmp.py > "$RUNNER_TEMP/gmp_src.py"
+          python -c "import py_compile; py_compile.compile('$RUNNER_TEMP/gmp_src.py', '$RUNNER_TEMP/gmp.pyc')"
+          n_pyc=$(strings "$RUNNER_TEMP/gmp.pyc" | grep -c "$phrase" || true)
+          n_so=$(strings src/padpd/pa/gmp.so | grep -c "$phrase" || true)
+          echo "control (.pyc): $n_pyc    compiled (.so): $n_so"
+          [ "$n_pyc" -ge 1 ] || { echo "::error::the control found nothing - the grep is wrong, so the negative below means nothing"; exit 1; }
+          [ "$n_so" -eq 0 ] || { echo "::error::the docstring survived compilation"; exit 1; }
+
+  # Both APKs out of one workspace, and asserted against each other. The
+  # realistic failure is the second build reusing the first's pip output,
+  # which no line of the build log distinguishes.
+  build:
+    name: Compiled APK (arm64) + gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Must match app/build.gradle's `python version` - pip checks each
+      # wheel's Requires-Python against the interpreter it RUNS under.
+      - uses: actions/setup-python@v5
+        id: py
+        with:
+          python-version: "3.10"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Install the wheel builder's dependencies
+        run: pip install "cython>=3.0" build
+
+      - name: Generate Gradle wrapper
+        run: ./.github/scripts/gen-gradle-wrapper.sh android "$GRADLE_VERSION"
+
+      - name: Build the arm64 wheel
+        run: |
+          set -o pipefail
+          ndk=${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}
+          [ -n "$ndk" ] && [ -d "$ndk" ] || {
+            echo "::error::no NDK on this runner (ANDROID_NDK_HOME/ROOT unset)"
+            exit 1; }
+          echo "NDK: $ndk"
+          python scripts/android/android_wheel.py \
+            --package padpd --compile all \
+            --abi arm64-v8a --ndk "$ndk" \
+            --target-version "$CHAQUOPY_TARGET" --strip-requires \
+            2>&1 | tail -n 20
+          ls -l android/app/pysrc
+
+      - name: Assemble the compiled release
+        working-directory: android
+        run: |
+          set -o pipefail
+          ./gradlew :app:assembleRelease -PpadpdCompiled=true \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-compiled.log"
+          # Copied out immediately: both builds write to the same
+          # apk/release path, and the last one there wins. That has
+          # already shipped one wrong artifact from this repo.
+          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/compiled.apk"
+
+      - name: Surface Gradle failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-compiled.log"
+
+      - name: Assemble the interpreted release (the control)
+        working-directory: android
+        run: |
+          set -o pipefail
+          # clean first. Chaquopy's pip output and requirements payload
+          # live under app/build, and the two builds disagree about
+          # whether padpd belongs there. An up-to-date check that got
+          # this wrong would leave the compiled build's padpd inside the
+          # interpreted APK - which the gate below WOULD catch, but as a
+          # confusing failure rather than an answer. app/pysrc is outside
+          # build/, so the wheel survives.
+          ./gradlew :app:clean \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}"
+          ./gradlew :app:assembleRelease \
+            -PpadpdBuildPython="${{ steps.py.outputs.python-path }}" \
+            2>&1 | tee "$RUNNER_TEMP/gradle-interpreted.log"
+          cp app/build/outputs/apk/release/*.apk "$RUNNER_TEMP/interpreted.apk"
+
+      - name: Surface Gradle failure (control build)
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh "$RUNNER_TEMP/gradle-interpreted.log"
+
+      # The two APKs differ in name only unless something checks. This is
+      # that check: one must be all native under padpd/, the other all
+      # source, and a .py sitting beside a .so counts as a failure
+      # because it shadows it on import.
+      - name: Gate - the two builds must actually differ
+        run: |
+          python scripts/android/inspect_apk.py "$RUNNER_TEMP/compiled.apk" \
+            --native padpd,padpd/pa,padpd/dpd,padpd/deploy,padpd/metrics
+          python scripts/android/inspect_apk.py "$RUNNER_TEMP/interpreted.apk" \
+            --pure padpd,padpd/pa,padpd/dpd,padpd/deploy,padpd/metrics
+          # gui_core is NOT compiled, in either build. Asserted rather
+          # than left implicit so the day it changes, this line is what
+          # says so - and so nobody reads "compiled APK" as "nothing
+          # readable in here".
+          python scripts/android/inspect_apk.py "$RUNNER_TEMP/compiled.apk" \
+            --pure gui_core,padpd_mobile
+
+      - name: Size
+        run: |
+          c=$(stat -c%s "$RUNNER_TEMP/compiled.apk")
+          i=$(stat -c%s "$RUNNER_TEMP/interpreted.apk")
+          {
+            echo "## APK size (arm64-v8a, release)"
+            echo
+            echo "| build | bytes | MB |"
+            echo "|---|---:|---:|"
+            printf '| interpreted | %s | %.1f |\n' "$i" "$(awk "BEGIN{print $i/1048576}")"
+            printf '| compiled | %s | %.1f |\n' "$c" "$(awk "BEGIN{print $c/1048576}")"
+            printf '| delta | %s | %.1f |\n' "$((c - i))" "$(awk "BEGIN{print ($c-$i)/1048576}")"
+          } >> "$GITHUB_STEP_SUMMARY"
+          awk "BEGIN {exit !($c > 120*1048576)}" \
+            && { echo "::error::compiled APK is over the 120 MB budget"; exit 1; } \
+            || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: padpd-arm64-release-compiled
+          path: ${{ runner.temp }}/compiled.apk
+          if-no-files-found: warn
+
+  # A clean cross-compile and a correct-looking wheel are not an import
+  # on a device. Both shells, because the app can only wear one and a
+  # build that is never made is never compiled.
+  instrumented:
+    name: Instrumented tests, compiled (x86_64, ${{ matrix.nav }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        nav: [classic, drawer]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: actions/setup-python@v5
+        id: py
+        with:
+          python-version: "3.10"
+
+      # cache-disabled for the same reason as android.yml: its post-action
+      # buries the failure diagnostics under ~100 lines after every step.
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-disabled: true
+
+      - name: Install the wheel builder's dependencies
+        run: pip install "cython>=3.0" build
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
+            | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Generate Gradle wrapper
+        run: ./.github/scripts/gen-gradle-wrapper.sh android "$GRADLE_VERSION"
+
+      # x86_64, because GitHub's emulators are x86_64. The wheel is
+      # tagged, and pip picks by tag, so an arm64 wheel here would not be
+      # installed at all rather than installed and broken.
+      - name: Build the x86_64 wheel
+        run: |
+          set -o pipefail
+          ndk=${ANDROID_NDK_HOME:-${ANDROID_NDK_ROOT:-}}
+          [ -n "$ndk" ] && [ -d "$ndk" ] || {
+            echo "::error::no NDK on this runner"; exit 1; }
+          python scripts/android/android_wheel.py \
+            --package padpd --compile all \
+            --abi x86_64 --ndk "$ndk" \
+            --target-version "$CHAQUOPY_TARGET" --strip-requires \
+            2>&1 | tail -n 20
+
+      - name: Run instrumented tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          target: google_apis
+          arch: x86_64
+          disable-animations: true
+          # ONE line - the action runs each line in its own shell.
+          script: .github/scripts/run-android-tests-on-emulator.sh "${{ steps.py.outputs.python-path }}" "${{ matrix.nav }}" compiled
+
+      - name: Surface Gradle failure
+        if: failure()
+        run: .github/scripts/surface-gradle-failure.sh android-test-artifacts/gradle-test.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: instrumented-test-reports-compiled-${{ matrix.nav }}
+          path: android-test-artifacts/**
+          if-no-files-found: warn

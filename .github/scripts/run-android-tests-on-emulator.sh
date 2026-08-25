@@ -18,24 +18,35 @@
 # nothing, so `./gradlew` ran from the repo root where no wrapper exists.
 # One line calling one file has none of these problems.
 #
-# Usage: run-android-tests-on-emulator.sh <buildPython> [navShell]
+# Usage: run-android-tests-on-emulator.sh <buildPython> [navShell] [compiled]
 #
 # navShell picks which navigation shell the app under test wears
 # (classic|drawer, default classic). The shell is a build-time choice, so
 # testing both means building both - see android/README.md.
+#
+# Pass the literal word `compiled` as the third argument to test the
+# build whose padpd ships as Cython .so instead of .py. That build needs
+# an x86_64 padpd wheel already sitting in android/app/pysrc; Gradle
+# fails at configuration time, naming the command, if it is not there.
 
 set -uo pipefail   # deliberately NOT -e: collection must run after a
                    # failing test, which is exactly when it is worth most
 
-build_python=${1:?usage: run-android-tests-on-emulator.sh <buildPython> [navShell]}
+build_python=${1:?usage: run-android-tests-on-emulator.sh <buildPython> [navShell] [compiled]}
 nav_shell=${2:-classic}
+compiled=false
+case "${3:-}" in
+    ""|interpreted) ;;
+    compiled) compiled=true ;;
+    *) echo "third argument must be 'compiled' or empty, got '${3}'"; exit 2 ;;
+esac
 
 root=${GITHUB_WORKSPACE:-$(cd "$(dirname "$0")/../.." && pwd)}
 out="$root/android-test-artifacts"
 mkdir -p "$out"
 
 echo "=== instrumented test run starting ==="
-echo "root=$root  nav=$nav_shell"
+echo "root=$root  nav=$nav_shell  compiled=$compiled"
 adb devices
 
 cd "$root/android" || { echo "cannot cd to $root/android"; exit 1; }
@@ -43,9 +54,33 @@ cd "$root/android" || { echo "cannot cd to $root/android"; exit 1; }
 ./gradlew :app:connectedDebugAndroidTest \
     -PpadpdAbis=x86_64 \
     -PpadpdNav="$nav_shell" \
+    -PpadpdCompiled="$compiled" \
     -PpadpdBuildPython="$build_python" \
     2>&1 | tee "$out/gradle-test.log"
 status=${PIPESTATUS[0]}
+
+# What actually got installed, on the device. The tests exercise the
+# app through its UI and would pass just as well against an interpreted
+# build that quietly ignored -PpadpdCompiled, so ask the APK rather than
+# the flag. Cheap, and it is the assertion the whole variant rests on.
+apk=$(find app/build/outputs/apk/debug -name '*.apk' 2>/dev/null | head -1)
+if [ -n "$apk" ]; then
+    echo "=== what this APK ships ==="
+    if [ "$compiled" = true ]; then
+        # An assertion, because this is the one claim the compiled
+        # variant makes and the UI tests cannot see it: they would pass
+        # just as happily against a build that ignored the flag.
+        python3 "$root/scripts/android/inspect_apk.py" "$apk" --native padpd \
+            || status=1
+    else
+        # Reported, not asserted. The interpreted/compiled distinction is
+        # asserted in android-compiled.yml's build job, where both APKs
+        # exist side by side; making it a gate here too would put a new
+        # way for the ordinary Android workflow to redden in the path of
+        # a change that has nothing to do with it.
+        python3 "$root/scripts/android/inspect_apk.py" "$apk" || true
+    fi
+fi
 
 # Dumped before the screenshot collection below, which greps it: an
 # earlier version of this file read logcat.txt several lines before it

@@ -1,0 +1,12 @@
+# Where the Cython-compiled padpd wheels land, one per ABI, for
+# -PpadpdCompiled=true. Build inputs, not sources: they are produced by
+#
+#   python scripts/android/android_wheel.py --package padpd --compile all \
+#       --abi arm64-v8a --ndk "$ANDROID_NDK_HOME" \
+#       --target-version 3.10.15-0 --strip-requires
+#
+# and they are ~10 MB of machine code apiece, so they stay out of git.
+# The directory itself is tracked so Gradle's configuration-time check
+# can name it in its error message.
+*.whl
+*.tar.gz

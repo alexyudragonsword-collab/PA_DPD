@@ -30,3 +30,6 @@ gui_prefs.json
 
 # mkdocs 构建输出
 site/
+
+# Cython cross-compile scratch (scripts/android/android_wheel.py)
+build-android-wheel/

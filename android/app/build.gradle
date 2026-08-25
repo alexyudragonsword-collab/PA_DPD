@@ -47,6 +47,45 @@ if (!(navShell in ['classic', 'drawer'])) {
         "padpdNav must be 'classic' or 'drawer', got '${navShell}'")
 }
 
+// Whether padpd ships as Cython-compiled .so instead of readable .py.
+//
+//   ./gradlew assembleRelease -PpadpdCompiled=true
+//
+// Same shape and same default reasoning as padpdNav above: a build with
+// no extra arguments behaves exactly as it did before this existed.
+//
+// The wheels are NOT built here. Cross-compiling needs the NDK and a
+// Cython run per module, which is a minute of work that has nothing to
+// do with Gradle's model of this project; making it a Gradle task would
+// also make the NDK a requirement of every ordinary build. So the
+// wheels are an input: build them first, then build with this flag.
+def compiled = (project.findProperty('padpdCompiled') ?: 'false')
+        .toString().toBoolean()
+def pysrc = file('pysrc')
+
+// One wheel per ABI, so every ABI being packaged needs one present.
+// Checked at configuration time rather than left to pip, because pip's
+// own failure here ("No matching distribution found for padpd") names
+// neither the ABI nor the command that produces the file.
+if (compiled) {
+    targetAbis.each { abi ->
+        def want = "android_21_${abi.replace('-', '_')}"
+        def hit = (pysrc.listFiles() ?: []).find {
+            it.name.startsWith('padpd-') && it.name.endsWith('.whl') &&
+                    it.name.contains(want)
+        }
+        if (!hit) {
+            throw new GradleException(
+                "-PpadpdCompiled=true, but ${pysrc} holds no padpd wheel " +
+                "for ${abi}. Build it from the repo root:\n" +
+                "  python scripts/android/android_wheel.py --package padpd " +
+                "--compile all \\\n" +
+                "      --abi ${abi} --ndk \"\$ANDROID_NDK_HOME\" \\\n" +
+                "      --target-version 3.10.15-0 --strip-requires")
+        }
+    }
+}
+
 // Chaquopy needs a local Python 3 to run pip. It normally auto-detects
 // one; CI pins it so the build does not depend on which python happens
 // to be first on PATH.
@@ -134,6 +173,17 @@ android {
                 // not assumed - and android-deps-floor.yml keeps that true.
                 install "numpy==1.23.3"
                 install "scipy==1.8.1"
+
+                if (compiled) {
+                    // --find-links, never a path install. pip matches
+                    // wheel tags only when choosing from a link set;
+                    // handed a path it installs what it was given, so
+                    // the arm64 wheel would land in the x86_64 build
+                    // too - installing cleanly and dying at import with
+                    // an ELF-header error that names nothing near here.
+                    options "--find-links", pysrc.absolutePath
+                    install "padpd"
+                }
             }
         }
     }
@@ -229,8 +279,17 @@ tasks.register('stagePythonSources', Sync) {
     description = 'Copy padpd + gui_core from the repo into the Chaquopy source dir'
     into layout.buildDirectory.dir("python-src")
 
-    from("$repoRoot/src") {
-        include 'padpd/**'
+    // With -PpadpdCompiled=true padpd arrives as a wheel instead, and
+    // staging it here as well would be worse than redundant: the app
+    // payload precedes the requirements on sys.path, so the .py would
+    // shadow the .so and the compiled build would run interpreted while
+    // looking exactly like a compiled one. Sync deletes the staged copy
+    // when this branch stops contributing it, so switching back and
+    // forth needs no clean.
+    if (!compiled) {
+        from("$repoRoot/src") {
+            include 'padpd/**'
+        }
     }
     from(repoRoot) {
         include 'gui_core/**'

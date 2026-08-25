@@ -61,6 +61,89 @@ CI 侧不需要选:构建 job **两套都装配**,分别上传成
 在 classic 构建上用 `assumeTrue` 整体跳过——**一条因为被测对象不存在而
 悄悄变绿的测试,比一条明说"没跑"的更糟**。
 
+## Cython 编译版,也是构建时选
+
+默认构建的 APK 里,`src/padpd/` 是**可读的源码**——解压 APK、解压里面
+Chaquopy 的 `.imy` payload,58 个模块的算法就在那儿;就算 Chaquopy 编成了
+`.pyc`,`strings` 照样把函数名、行号和整段 docstring 还给你。
+
+`-PpadpdCompiled=true` 让 padpd 改以 Android `.so` 的形式进包:
+
+```bash
+pip install "cython>=3.0" build
+python scripts/android/android_wheel.py --package padpd --compile all \
+    --abi arm64-v8a --ndk "$ANDROID_NDK_HOME" \
+    --target-version 3.10.15-0 --strip-requires
+cd android && ./gradlew :app:assembleRelease -PpadpdCompiled=true
+```
+
+wheel **不是** Gradle 造的:交叉编译要 NDK 和 58 次 Cython 调用,做成 Gradle
+任务等于让每一次普通构建都依赖 NDK。所以它是**输入**——先造 wheel,再构建。
+少了对应 ABI 的 wheel,配置期就抛,错误里带着上面那条命令(pip 自己的
+"No matching distribution found for padpd" 既不说是哪个 ABI,也不说怎么办)。
+
+### 它买到了什么,没买到什么
+
+**读算法的成本从「解压就能看」抬到「得反汇编」。** 除此以外,一句都不能多说:
+
+- **没编译的部分照旧是明文**:`gui_core/`、`padpd_mobile/`、`manual/`、
+  `examples/` 都还是原样。理由不是遗漏——`gui_core/manual.py` 与
+  `services.py` 把 `manual/`、`examples/` 解析成**自己目录的兄弟**
+  (`Path(__file__).resolve().parent.parent`),而 wheel 装进的是 Chaquopy 的
+  requirements 树,和 app payload 根不是同一个目录。要搬得连那 3.9 MB 数据
+  一起搬,是另一件事、另一次设备验证。CI 里这条是**断言**而不是默认:
+  编译版的 APK 也要过 `inspect_apk.py --pure gui_core,padpd_mobile`,
+  免得有人把「编译版」读成「里面什么都看不见」。
+- **字面常量编译后仍在**,躺在常量池里,精确搜索一次就命中。
+- **运行时能拿到的就能拿到**:界面上显示的任何数值都不受影响。
+
+它不是授权校验,不是数据保护,也不是对界面内容的混淆。
+
+### `--compile all` 是一句断言,不是一个开关
+
+编译哪些模块,等于声称「把这些 `.py` 删掉,测试仍然全过」。所以
+`android-compiled.yml` 的 `suite` job **在同一个环境里把桌面套件跑两遍**:
+一遍解释执行作对照,一遍把 `src/padpd` 换成 `.so`,然后要求两次的计数
+逐字相同。拿另一个 job 记住的数字来比不行——通过/跳过的分布随装了哪些可选
+依赖而变,只有同环境的对照说明得了问题。
+
+同一个 job 里还有一条**带对照的**检查:同一句 grep 必须在普通 `.pyc` 里
+**找得到** docstring、在 `.so` 里找不到。没有前半句,写错的 grep 会对两边
+都报"没找到",这个否定结论就什么都不证明。
+
+### 两个 APK 只差一个名字,除非有东西去查
+
+编译版和解释版在同一个 workspace 里前后构建,最现实的失败是第二次复用了
+第一次的 pip 产物,**构建日志里没有任何一行能区分它们**。所以 `build` job
+两个都造,然后:
+
+```bash
+python scripts/android/inspect_apk.py compiled.apk    --native padpd,padpd/pa,...
+python scripts/android/inspect_apk.py interpreted.apk --pure   padpd,padpd/pa,...
+```
+
+`.py` 若和 `.so` 并存也算失败——它会在 import 时把 `.so` 挡住,于是「编译版」
+跑的是解释器。同一个道理,`stagePythonSources` 在 `compiled` 为真时**不再**
+staging `padpd/**`:app payload 在 sys.path 上排在 requirements 前面。
+`tests/test_android_build_config.py` 用括号配对守着这条互斥关系。
+`run-android-tests-on-emulator.sh` 在设备测试跑完后还会查一次**真正装上去的
+那个 APK**——设备测试全都是从 UI 走的,一个悄悄忽略了 `-PpadpdCompiled` 的
+构建照样能全绿,所以得问 APK 而不是问参数。编译腿上这是**断言**;解释腿上
+只**打印**,不判定(那条区分由上面的 `build` job 断言,那里两个 APK 并排
+摆着;在这里再设一道闸,只会给普通 Android workflow 添一条与它无关的红)。
+
+设备 job 同样是 `nav: [classic, drawer]` 两条腿:干净的交叉编译和长得没问题
+的 wheel,**都不等于**在真设备上 import 成功。
+
+### 版本对齐
+
+`--target-version 3.10.15-0` 不是猜的:Chaquopy 16.0.0 的
+`com/chaquo/python/internal/Common.class` 里 `PYTHON_VERSIONS` 把
+`app/build.gradle` 写的短版本 `3.10` 映射到 `3.10.15`,build number 是 `0`。
+Maven Central 上还有个 `3.10.15-1`,那是另一个构件,Chaquopy 不下它。
+换 Chaquopy 版本时重读那张表。3.10 上补丁号差一点无所谓(Cython 的内部头文件
+include 由 `PY_VERSION_HEX` 挡着),**3.11+ 就必须精确**。
+
 ## 图标出自桌面那一份 source.png
 
 app 一开始**没有图标**——manifest 里根本没有 `android:icon`,启动器画的是系统
