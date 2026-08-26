@@ -1,0 +1,573 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="padpd 平台一页总览：为什么需要它、六项能力、四条判断、可信度与边界。全部数字为实测输出。">
+<style>*, *::before, *::after { box-sizing: border-box; }</style>
+<title>padpd 平台总览</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&amp;family=Noto+Sans+SC:wght@400;500;700&amp;family=Noto+Serif+SC:wght@600;700&amp;display=swap">
+
+<style>
+  /* ---- tokens: the complete light palette lives on bare :root ------- */
+  :root {
+    --ground:   #E7ECEE;   /* letterbox behind the 16:9 page          */
+    --paper:    #F3F6F7;   /* page ground, teal-biased white          */
+    --panel:    #FFFFFF;
+    --ink:      #16232A;
+    --ink-2:    #4A5C66;
+    --ink-3:    #7B8C95;
+    --rule:     #C2D0D5;
+    --rule-2:   #DCE4E7;
+    --petrol:   #0B6E7A;   /* accent: structure, headings, the mask   */
+    --petrol-w: #0B6E7A16;
+    --ochre:    #96600E;   /* the one highlight: measured values      */
+    --pass:     #276E4E;
+    --fail:     #A2372F;
+    --shadow:   0 .1rem .4rem #16232a10;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:  #070C0F;
+      --paper:   #0F171B;
+      --panel:   #152126;
+      --ink:     #E4EDF0;
+      --ink-2:   #9DB2BA;
+      --ink-3:   #708790;
+      --rule:    #2C3C43;
+      --rule-2:  #203036;
+      --petrol:  #4CBECB;
+      --petrol-w:#4cbecb1c;
+      --ochre:   #E3A54C;
+      --pass:    #56C793;
+      --fail:    #E8796F;
+      --shadow:  0 .1rem .4rem #0007;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:  #070C0F;
+    --paper:   #0F171B;
+    --panel:   #152126;
+    --ink:     #E4EDF0;
+    --ink-2:   #9DB2BA;
+    --ink-3:   #708790;
+    --rule:    #2C3C43;
+    --rule-2:  #203036;
+    --petrol:  #4CBECB;
+    --petrol-w:#4cbecb1c;
+    --ochre:   #E3A54C;
+    --pass:    #56C793;
+    --fail:    #E8796F;
+    --shadow:  0 .1rem .4rem #0007;
+  }
+
+  /* 1rem == 1% of the page width, so the whole 16:9 canvas scales
+     with the viewport and nothing needs a media query. */
+  html { font-size: calc(min(100vw, 177.78vh) / 100); }
+
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+  }
+
+  .page {
+    width: min(100vw, 177.78vh);
+    height: min(56.25vw, 100vh);
+    background: var(--paper);
+    display: grid;
+    grid-template-rows: 5.6rem 15.1rem 12.1rem 12.1rem 4.2rem;
+    gap: 1.15rem;
+    padding: 1.4rem 2rem 1.1rem;
+    box-sizing: border-box;
+    overflow: hidden;
+  }
+  .page > * { min-height: 0; }
+
+  /* ---- section head: a three-step tick, i.e. a spectral-mask shoulder */
+  .sec {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-weight: 700;
+    font-size: .95rem;
+    color: var(--petrol);
+    margin: 0 0 .45rem;
+    display: flex;
+    align-items: baseline;
+    gap: .5rem;
+    letter-spacing: .02em;
+    line-height: 1.1;
+  }
+  .sec::before {
+    content: "";
+    flex: none;
+    width: .7rem;
+    height: .55rem;
+    background:
+      linear-gradient(var(--petrol), var(--petrol)) 0      100% / .18rem .23rem no-repeat,
+      linear-gradient(var(--petrol), var(--petrol)) .26rem 100% / .18rem .39rem no-repeat,
+      linear-gradient(var(--petrol), var(--petrol)) .52rem 100% / .18rem .55rem no-repeat;
+  }
+  .sec small {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 400;
+    font-size: .55rem;
+    color: var(--ink-3);
+    letter-spacing: .05em;
+  }
+
+  /* ---- A. masthead -------------------------------------------------- */
+  .masthead {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 2rem;
+    border-bottom: .11rem solid var(--petrol);
+    padding-bottom: .6rem;
+  }
+  .wordmark {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-weight: 600;
+    font-size: 2rem;
+    line-height: 1.28;
+    letter-spacing: -.02em;
+  }
+  .wordmark span { color: var(--petrol); }
+  .sub {
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-weight: 600;
+    font-size: 1.05rem;
+    margin: .25rem 0 0;
+  }
+  .thesis { font-size: .72rem; color: var(--ink-2); margin: .22rem 0 0; }
+  .status { text-align: right; flex: none; }
+  .badge {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .62rem;
+    color: var(--pass);
+    border: .07rem solid var(--pass);
+    border-radius: .15rem;
+    padding: .18rem .45rem;
+    letter-spacing: .03em;
+  }
+  .status .meta {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .55rem;
+    color: var(--ink-3);
+    margin-top: .3rem;
+    letter-spacing: .03em;
+  }
+
+  /* ---- B. why + headline figures ------------------------------------ */
+  .why-band { display: grid; grid-template-columns: 34fr 66fr; gap: 1.5rem; }
+  .why ol { margin: 0; padding-left: .95rem; }
+  .why li { font-size: .7rem; color: var(--ink-2); margin-bottom: .3rem; line-height: 1.45; }
+  .why li b { color: var(--ink); font-weight: 700; }
+  .punch {
+    margin: .5rem 0 0;
+    font-family: "Noto Serif SC", Georgia, serif;
+    font-weight: 700;
+    font-size: .84rem;
+    color: var(--ink);
+    border-left: .18rem solid var(--ochre);
+    padding-left: .5rem;
+    line-height: 1.4;
+  }
+
+  .result { display: grid; grid-template-columns: 58fr 42fr; gap: 1.1rem; }
+  .plot {
+    background: var(--panel);
+    border: .07rem solid var(--rule-2);
+    border-radius: .15rem;
+    padding: .45rem .6rem .5rem;
+    box-shadow: var(--shadow);
+    align-content: start;
+  }
+  .numbers { display: grid; grid-auto-rows: 1fr; gap: .5rem; }
+  .num {
+    background: var(--panel);
+    border: .07rem solid var(--rule-2);
+    border-left: .2rem solid var(--ochre);
+    border-radius: .15rem;
+    padding: .38rem .6rem;
+    box-shadow: var(--shadow);
+    display: grid;
+    grid-template-columns: 6.2rem 1fr;
+    gap: .7rem;
+    align-items: center;
+  }
+  .num .v {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: 1.24rem;
+    line-height: 1.18;
+    color: var(--ochre);
+    letter-spacing: -.02em;
+    text-align: right;
+  }
+  .num .k { font-size: .62rem; font-weight: 700; }
+  .num .d { font-size: .6rem; color: var(--ink-2); line-height: 1.38; }
+  .num .d em { font-style: normal; color: var(--fail); font-weight: 700; }
+  .num .d strong { color: var(--pass); }
+
+  figure { margin: 0; display: grid; align-content: start; }
+  figcaption { font-size: .58rem; color: var(--ink-3); line-height: 1.4; margin-top: .25rem; }
+  svg { display: block; width: 100%; height: auto; }
+
+  /* ---- D. capability grid ------------------------------------------- */
+  .caps-band { display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+  .caps { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: .65rem; min-height: 0; }
+  .cap {
+    background: var(--panel);
+    border: .07rem solid var(--rule-2);
+    border-radius: .15rem;
+    padding: .5rem .6rem;
+    display: grid;
+    grid-template-rows: auto auto 1fr;
+    gap: .16rem;
+    box-shadow: var(--shadow);
+    min-height: 0;
+  }
+  .cap h3 { margin: 0; font-size: .76rem; font-weight: 700; display: flex; align-items: baseline; gap: .38rem; }
+  .cap h3 i {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-style: normal;
+    font-size: .58rem;
+    color: var(--petrol);
+    background: var(--petrol-w);
+    border-radius: .12rem;
+    padding: .05rem .28rem;
+    flex: none;
+  }
+  .cap p { margin: 0; font-size: .61rem; color: var(--ink-2); line-height: 1.4; }
+  .cap .fig {
+    align-self: end;
+    font-size: .61rem;
+    line-height: 1.4;
+    border-top: .07rem dashed var(--rule);
+    padding-top: .26rem;
+  }
+  .cap .fig b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--ochre);
+  }
+
+  /* ---- E/F. judgements + wall + evidence ---------------------------- */
+  .lower { display: grid; grid-template-columns: 40fr 25fr 35fr; gap: 1.4rem; min-height: 0; }
+  .judge { display: grid; gap: .34rem; align-content: start; }
+  .j { display: grid; grid-template-columns: auto 1fr; gap: .45rem; align-items: start; }
+  .j .n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .6rem;
+    font-weight: 600;
+    color: var(--paper);
+    background: var(--petrol);
+    border-radius: .12rem;
+    width: .95rem;
+    text-align: center;
+    line-height: .95rem;
+    flex: none;
+    margin-top: .06rem;
+  }
+  .j p { margin: 0; font-size: .62rem; color: var(--ink-2); line-height: 1.42; }
+  .j p b { color: var(--ink); font-weight: 700; }
+  .j p code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    font-size: .6rem;
+    color: var(--ochre);
+    font-weight: 600;
+  }
+
+  .wall {
+    display: grid;
+    align-content: start;
+    background: var(--panel);
+    border: .07rem solid var(--rule-2);
+    border-radius: .15rem;
+    padding: .45rem .6rem .5rem;
+    box-shadow: var(--shadow);
+  }
+
+  .evid { display: grid; gap: .3rem; align-content: start; margin: 0; }
+  .e {
+    display: grid;
+    grid-template-columns: 5.4rem 1fr;
+    gap: .45rem;
+    font-size: .61rem;
+    line-height: 1.4;
+    padding-bottom: .28rem;
+    border-bottom: .07rem solid var(--rule-2);
+  }
+  .e:last-child { border-bottom: 0; }
+  .e dt { font-weight: 700; }
+  .e dd { margin: 0; color: var(--ink-2); }
+  .e dd b {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  /* ---- G. maturity + colophon --------------------------------------- */
+  .tail { display: grid; grid-template-rows: 1fr auto; gap: .45rem; min-height: 0; }
+  .maturity {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1.4rem;
+    border-top: .07rem solid var(--rule);
+    padding-top: .5rem;
+  }
+  .m h4 { margin: 0 0 .12rem; font-size: .65rem; font-weight: 700; }
+  .m.done h4 { color: var(--pass); }
+  .m.wait h4 { color: var(--ochre); }
+  .m.next h4 { color: var(--petrol); }
+  .m p { margin: 0; font-size: .6rem; color: var(--ink-2); line-height: 1.4; }
+  .m p b { color: var(--ink); font-weight: 700; }
+
+  .colophon {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .53rem;
+    color: var(--ink-3);
+    letter-spacing: .03em;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation: none !important; transition: none !important; }
+  }
+</style>
+
+</head>
+<body>
+<div class="page">
+
+  <!-- ================= A. masthead ================= -->
+  <header class="masthead">
+    <div>
+      <div class="wordmark">pa<span>dpd</span></div>
+      <p class="sub">WiFi 7 功放行为建模与数字预失真研发平台</p>
+      <p class="thesis">把「设计 → 流片 → 实测 → 补救」的串行流程，压成流片之前就能定规模、定结构、定系数的闭环。</p>
+    </div>
+    <div class="status">
+      <span class="badge">Phase 1 → 6.5 全部达成</span>
+      <div class="meta">2026-08 · 全部数字为实测输出</div>
+    </div>
+  </header>
+
+  <!-- ================= B. why + result ================= -->
+  <section class="why-band">
+
+    <div class="why">
+      <h2 class="sec">为什么需要它</h2>
+      <ol>
+        <li><b>WiFi 7 把两件事同时推到极限。</b>320 MHz 带宽加 4096-QAM，对信号纯净度的要求比上一代高一个量级。</li>
+        <li><b>功放天生非线性。</b>要效率就得逼近饱和区；逼近饱和区，信号就失真、干扰邻道——发不出去，或者合规不过。</li>
+        <li><b>传统做法是事后补救。</b>流片之后才知道有多糟，DPD 靠后端调参救火，改一轮就要再流片一次。</li>
+      </ol>
+      <p class="punch">这个平台把「补救」提前成「设计约束」。</p>
+    </div>
+
+    <div>
+      <h2 class="sec">结果 <small>SYNTHETIC 320 MHz / 4096-QAM · MEASURED</small></h2>
+      <div class="result">
+        <div class="numbers">
+          <div class="num">
+            <div class="v">−19→−64</div>
+            <div>
+              <div class="k">信号质量（dB）</div>
+              <div class="d">频谱模板由 <em>FAIL</em> 转 <strong>PASS</strong>——从「不能出货」到「能出货」。</div>
+            </div>
+          </div>
+          <div class="num">
+            <div class="v">4–5×</div>
+            <div>
+              <div class="k">运行时算力省下</div>
+              <div class="d">同等精度下每个样本的乘法从 208 次降到 48 次，直接对应芯片面积与功耗。</div>
+            </div>
+          </div>
+          <div class="num">
+            <div class="v">+9.1</div>
+            <div>
+              <div class="k">功放效率（百分点）</div>
+              <div class="d">效率从 11.8% 提到 20.9% 且仍然合规，对应整机的电池与散热。</div>
+            </div>
+          </div>
+        </div>
+
+        <figure class="plot">
+          <svg viewBox="0 0 300 134" role="img" aria-label="DPD 之前信号肩部越过频谱模板判失败，DPD 之后整条曲线落在模板之下判通过">
+            <polyline points="14,84 58,84 58,56 82,56 82,24 202,24 202,56 226,56 226,84 272,84"
+                      fill="none" stroke="var(--petrol)" stroke-width="1.6" stroke-dasharray="4 3"></polyline>
+            <polyline points="14,94 40,90 58,78 78,46 92,30 143,28 196,30 210,46 228,78 248,90 272,94"
+                      fill="none" stroke="var(--fail)" stroke-width="1.6"></polyline>
+            <polyline points="14,108 40,104 58,96 78,72 92,32 143,29 196,32 210,72 228,96 248,104 272,108"
+                      fill="none" stroke="var(--ochre)" stroke-width="2.1"></polyline>
+            <text x="14" y="16" font-size="11" fill="var(--petrol)">频谱模板（不得越过）</text>
+                        <line x1="14" y1="124" x2="28" y2="124" stroke="var(--fail)" stroke-width="1.8"></line>
+            <text x="33" y="128" font-size="10" fill="var(--fail)">无 DPD · FAIL</text>
+            <line x1="132" y1="124" x2="146" y2="124" stroke="var(--ochre)" stroke-width="2.2"></line>
+            <text x="151" y="128" font-size="10" fill="var(--ochre)">DPD 之后 · PASS</text>
+          </svg>
+          <figcaption>越线的是肩部，不是主瓣——功率漏进了邻居的频道。</figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= D. capabilities ================= -->
+  <section class="caps-band">
+    <h2 class="sec">平台做什么 <small>SIX CAPABILITIES · 一句人话 + 一个实测数字</small></h2>
+    <div class="caps">
+
+      <article class="cap">
+        <h3><i>01</i>PA 行为建模</h3>
+        <p>用数学模型替代反复的流片与仿真，把功放的脾气写成可计算的东西。</p>
+        <div class="fig">神经 TCN 首次超越经典模型：<b>−34.9</b> vs <b>−33.7</b> dB，算力只要一半（<b>448</b> vs <b>1020</b> 次乘法）。</div>
+      </article>
+
+      <article class="cap">
+        <h3><i>02</i>数字预失真 DPD</h3>
+        <p>事先把信号反向扭曲，让它穿过功放之后正好被掰直。</p>
+        <div class="fig">真实测量数据上邻道干扰做到 <b>−53.1</b> dBc，优于公开发表基准的 <b>−51.9</b>。</div>
+      </article>
+
+      <article class="cap">
+        <h3><i>03</i>前端损伤专用抵消</h3>
+        <p>镜像、本振泄漏、观测通路失真各有各的成因，分开治，不塞进 DPD 硬扛。</p>
+        <div class="fig">镜像残差压到 <b>−88.5</b> dBc；观测通路不处理时，自适应 DPD <b>直接失效</b>。</div>
+      </article>
+
+      <article class="cap">
+        <h3><i>04</i>定点部署交接</h3>
+        <p>算法不停在论文形态，直接产出芯片团队能接手的东西。</p>
+        <div class="fig">ONNX 误差 <b>~1e-6</b>、整数系数、逐位参考向量、可综合 Verilog（逐位验证 <b>0</b> 错误）。</div>
+      </article>
+
+      <article class="cap">
+        <h3><i>05</i>PA/DPD 联合设计</h3>
+        <p>效率与线性度一起定，而不是先定一个、再让另一个收拾残局。</p>
+        <div class="fig">顺序设计冲到 <b>32.3%</b> 效率后不可逆；联合设计 <b>24.1%</b> 效率达标，系数从 <b>149</b> 降到 <b>23</b>。</div>
+      </article>
+
+      <article class="cap">
+        <h3><i>06</i>三个前端 + 内置手册</h3>
+        <p>网页、桌面、手机三个界面跑的是同一套算法，不存在「演示版」。</p>
+        <div class="fig">共用一份服务层契约；内置中英双语手册 <b>8</b> 章；手机端已在真机上实测可用。</div>
+      </article>
+
+    </div>
+  </section>
+
+  <!-- ================= E/F. judgements + wall + evidence ================= -->
+  <section class="lower">
+
+    <div>
+      <h2 class="sec">四条别处没有的判断 <small>WHAT WE LEARNED THE HARD WAY</small></h2>
+      <div class="judge">
+        <div class="j">
+          <span class="n">1</span>
+          <p><b>可逆壁垒是设计约束，不是事后问题。</b>冲到 <code>32.3%</code> 效率之后，<code>149</code> 个系数的 DPD 也只能做到 <code>−20.7</code> dB。先设计、后补救，在物理上走不通。</p>
+        </div>
+        <div class="j">
+          <span class="n">2</span>
+          <p><b>评估用错模型，结论差 12 dB。</b>多项式代理读 <code>−26.2</code> dBc，神经代理读 <code>−38.6</code> dBc（与发表值逐位吻合）——而多项式代理的全局精度<b>反而更好</b>。</p>
+        </div>
+        <div class="j">
+          <span class="n">3</span>
+          <p><b>「模型准」不等于「DPD 好」。</b>DDR 基在正向建模只追平 GMP，做 DPD 却用 <code>55%</code> 的参数领先 <code>8.5</code> dB。选基函数必须直接看 DPD 之后的指标。</p>
+        </div>
+        <div class="j">
+          <span class="n">4</span>
+          <p><b>有些墙要在硬件侧拆。</b>C-IM3 的发射侧抵消系统性试了六种方案，实证出 <code>−35</code> dB 左右的结构天花板；越过它必须改混频器硬件。</p>
+        </div>
+      </div>
+    </div>
+
+    <figure class="wall">
+      <svg viewBox="0 0 300 124" role="img" aria-label="功放效率越高，DPD 能救回的线性度越少，并在某一点突变；顺序设计冲过该点之后不可逆">
+        <line x1="30" y1="16" x2="30" y2="100" stroke="currentColor" opacity=".4"></line>
+        <line x1="30" y1="100" x2="292" y2="100" stroke="currentColor" opacity=".4"></line>
+        <text x="30" y="12" font-size="10" fill="currentColor" opacity=".62">线性度（越高越好）</text>
+        <text x="160" y="120" font-size="10" fill="currentColor" opacity=".62" text-anchor="middle">功放效率 →</text>
+
+        <line x1="30" y1="50" x2="292" y2="50" stroke="var(--petrol)" stroke-width="1.4" stroke-dasharray="4 3"></line>
+        <text x="34" y="46" font-size="10" fill="var(--petrol)">合规线</text>
+
+        <polyline points="38,32 84,34 126,38 158,44 184,54 198,70 207,88 216,96 288,99"
+                  fill="none" stroke="currentColor" stroke-width="2.2" opacity=".85"></polyline>
+
+        <path d="M96 68 L150 48" fill="none" stroke="var(--ochre)" stroke-width="1" opacity=".55"></path>
+        <circle cx="156" cy="43" r="4" fill="var(--ochre)"></circle>
+        <text x="56" y="76" font-size="10.5" fill="var(--ochre)">联合设计</text>
+        <text x="56" y="88" font-size="10" fill="currentColor" opacity=".65">达标</text>
+
+        <path d="M268 64 L226 92" fill="none" stroke="var(--fail)" stroke-width="1" opacity=".55"></path>
+        <circle cx="220" cy="96" r="4" fill="var(--fail)"></circle>
+        <text x="288" y="44" font-size="10.5" fill="var(--fail)" text-anchor="end">顺序设计</text>
+        <text x="288" y="56" font-size="10" fill="currentColor" opacity=".65" text-anchor="end">不可逆</text>
+      </svg>
+      <figcaption>效率越高，能救回的线性度越少，且在某一点突变——冲过那一点，再多系数也回不来。</figcaption>
+    </figure>
+
+    <div>
+      <h2 class="sec">凭什么可信 <small>HOW THE NUMBERS WERE OBTAINED</small></h2>
+      <dl class="evid">
+        <div class="e">
+          <dt>实测，不是引用</dt>
+          <dd>全部数字为脚本实际运行输出。<b>4 核 CPU、无 GPU、单 seed</b>，命令写在文档里，可复现。</dd>
+        </div>
+        <div class="e">
+          <dt>自动化验证</dt>
+          <dd>桌面 <b>463</b> 条测试 × <b>5</b> 个操作系统；手机 <b>41</b> 条设备测试 × <b>4</b> 个构建；<b>28</b> 张图表金图逐像素比对。</dd>
+        </div>
+        <div class="e">
+          <dt>与公开基准对标</dt>
+          <dd>采用 OpenDPD 的数据集与指标口径，<b>3</b> 个数据集逐个比对，差异逐条归因，不挑对自己有利的口径。</dd>
+        </div>
+        <div class="e">
+          <dt>负结果照写</dt>
+          <dd>无法复现的 <b>−43.5</b> dB、未达标的 <b>−47</b> dB 验收项、明确暂缓的方向，都写在文档里而不是删掉。</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ================= G. maturity ================= -->
+  <section class="tail">
+    <div class="maturity">
+      <div class="m done">
+        <h4>✓ 已完成（本环境能做的部分）</h4>
+        <p>Phase 1 → 6.5 六个阶段全部达成；<b>部署交接物料齐备</b>；网页 / 桌面 / 手机三个前端可用。</p>
+      </div>
+      <div class="m wait">
+        <h4>⏸ 需要资源</h4>
+        <p><b>GPU</b>：神经 DPD 长训练，验收表上唯一未达项。<b>硬件 / EDA</b>：FPGA 上板、SDR 在环、Spectre 回环。</p>
+      </div>
+      <div class="m next">
+        <h4>▶ 下一步</h4>
+        <p>上述三项的<b>接口均已就绪</b>，拿到资源后用仓库现有脚本直接推进，不需要重做前面的工作。</p>
+      </div>
+    </div>
+    <div class="colophon">
+      <span>数据出处：docs/05_performance_summary.md · docs/03_roadmap.md</span>
+      <span>padpd · WiFi 7 802.11be PA modelling &amp; DPD</span>
+    </div>
+  </section>
+
+</div>
+
+</body>
+</html>

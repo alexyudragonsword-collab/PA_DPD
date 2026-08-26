@@ -198,6 +198,8 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 
 全部指标汇总见 `docs/05_performance_summary.md`,分阶段细节见 `docs/03_roadmap.md`。
 一页式速览(自包含 HTML,clone 后浏览器直接打开):
+[平台总览](docs/pages/platform-overview.html)(16:9 单页,面向非技术读者:
+为什么需要它、六项能力、四条判断、可信度与边界)、
 [PA 建模框图](docs/pages/modeling-blockdiagram.html)(机制 ↔ 分支一一映射)、
 [DPD 侧框图](docs/pages/dpd-blockdiagram.html)(三环分工与闭合)、
 [实测数据接口指南](docs/pages/measured-data-guide.html)(采集清单 → npz 容器 →
