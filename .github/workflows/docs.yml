@@ -22,6 +22,7 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,9 +35,15 @@ jobs:
 
   deploy:
     # 只有默认分支才发布;其他分支上一步的 --strict 构建即是门禁
+    #
+    # 这一步会以 `HttpError: Not Found` / status 404 失败,直到有人在
+    # 仓库 Settings → Pages 里把 Pages 打开(source 选 GitHub Actions)。
+    # 那不是本 workflow 的 bug,build job 照样是绿的——站点构建过了,
+    # 只是没有地方可发。2026-09-12 实测如此。
     if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}

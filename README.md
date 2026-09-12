@@ -84,17 +84,20 @@ PA 行为建模(测试集 NMSE,~500 实参数):
 ## 图形界面(GUI)
 
 完整功能均可通过 GUI 使用(分析、结果比较、图形化仿真结果、输入/输出
-文件)。两个版本功能同构,共享同一服务层与实验注册表。
-**注意**:PyPI 发行包只含 `padpd` 核心库;GUI(`gui/`、`gui_qt/`、
-`gui_core/`)需 clone 本仓库使用,`[gui]`/`[gui-qt]` extras 只安装其
-第三方依赖:
+文件)。**三个前端**——Web、桌面、Android——功能同构,共享同一服务层与
+实验注册表。
+**注意**:PyPI 发行包只含 `padpd` 核心库;三个前端(`gui/`、`gui_qt/`、
+`android/`,共享 `gui_core/`)需 clone 本仓库使用,`[gui]`/`[gui-qt]`
+extras 只安装其第三方依赖。
+
+### 方案 A / B:Web 工作台与桌面版
 
 ```bash
-# 方案 A:Web 工作台(Streamlit + Plotly,团队共享/远程)
+# A:Web 工作台(Streamlit + Plotly,团队共享/远程)
 pip install -e .[gui]
 streamlit run gui/app.py
 
-# 方案 B:桌面版(PySide6,可打包 Windows exe)
+# B:桌面版(PySide6,可打包 Windows exe)
 pip install -e .[gui-qt]
 python -m gui_qt.main
 ```
@@ -107,6 +110,40 @@ python -m gui_qt.main
 **中/英文切换**与**深色/浅色主题切换**(侧栏底部,偏好持久化且两版
 共享)。exe 打包见 `packaging/README_packaging.md`,导览见
 `docs/06_gui.md`。
+
+### 方案 C:Android app(离线,装在手机上)
+
+`android/` 是一个 **Chaquopy** 工程:APK 里装着一个真正的 CPython 3.10,
+连同 numpy 和 scipy。**算的还是 `padpd` 本身**——同一份代码,同一个
+`gui_core` 服务层——只是界面换成了 Compose,图表由 Kotlin 渲染器按 Python
+发来的规格画。一切在本机跑完,**不联网,清单里零个 `uses-permission`**。
+
+桌面那九个功能页全部在上面,加一个图表画廊。两处选择在**构建时**做,
+互相正交:
+
+| 选择 | 取值 | 怎么选 |
+|---|---|---|
+| 导航壳 | `classic`(顶部横向栏)/ `drawer`(左侧抽屉,横滑开合) | `-PpadpdNav=drawer` |
+| padpd 形态 | 解释(`.pyc`)/ 编译(Cython → `.so`) | `-PpadpdCompiled=true` |
+
+2 × 2 = 四个 release,CI 一次全部装配并分别上传。它们**在 Gradle 眼里
+全叫 `app-release.apk`**,所以每个 APK 里都有一份
+`assets/padpd-build.json` 记着自己是谁,`scripts/android/apk_build_stamp.py`
+把它变成断言。体积:解释版约 57 MB,编译版约 59 MB(精确字节数与测法见
+`android/README.md`)。
+
+编译版**只提高读算法的门槛**——从「解压就能看」变成「得反汇编」。它不是
+授权校验,也不是数据保护:界面上能看到的数值一个都没变。
+
+```bash
+# CI 产物直接下载,或本地构建(需 Android SDK + JDK 17)
+cd android && ./gradlew :app:assembleRelease -PpadpdNav=drawer
+```
+
+没有上架任何应用商店,自己 sideload。**编译版已于 2026-08-25 在 arm64
+真机上实测安装并可用**;模拟器全绿不等于真机 import 得起那些 `.so`,
+这最后一步只能在真设备上做。完整说明(两套壳、手势冲突、依赖版本天花板、
+真机耗时、截图证据链)在 `android/README.md`,那是本仓库最长的一份文档。
 
 ## 仓库结构
 
@@ -148,6 +185,9 @@ manual/                  # 内置双语用户手册(zh/en 各 8 章 + 截图资�
 gui_core/                # GUI 共享服务层(框架无关:计算服务 + 实验注册表)
 gui/                     # Web 工作台(Streamlit + Plotly,8 页)
 gui_qt/                  # 桌面版(PySide6 + matplotlib,8 页,QSS 深色主题)
+android/                 # Android app(Chaquopy + Compose,九页 + 图表画廊)
+  app/src/main/python/padpd_mobile/  #   手机端 Python 适配层与图表规格
+  app/src/main/java/com/padpd/       #   Compose 界面、两套导航壳、图表渲染器
 packaging/               # PyInstaller 打包(spec / Windows bat / 说明)
 scripts/                 # 合成 demo / 数据集生成 / OpenDPD 真实数据 baseline
 examples/                # 可直接 load 的输入范例(双音 IM3 表等)
@@ -168,7 +208,7 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 - **Phase 2 / 2.5**:神经 PA 建模(GRU/DGRU/TCN)+ DLA Neural DPD;TCN 超 GMP ✅
 - **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅
 - **Phase 4**:PA/DPD 联合设计(离散 Pareto + 可微梯度寻优)✅(Spectre 回环需 EDA)
-- **GUI**:双版本图形界面(Streamlit Web 工作台 + PySide6 桌面版/exe 打包)✅
+- **GUI**:三个前端(Streamlit Web 工作台 + PySide6 桌面版/exe 打包 + Android app)✅
 - **Phase 5**:现场硬化与硅前/硅后落地 ✅ —— 自适应 RLS DPD(跟踪 PA 漂移,
   满漂移领先冻结 DPD 10.4 dB EVM)、物理漏极效率、QAT、**RTL 生成器
   (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI、
