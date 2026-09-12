@@ -7,6 +7,65 @@
 
 尚无。
 
+## [0.2.0] - 2026-09
+
+Android app 从可行性 spike 走到真机可用,加上一层此前完全缺席的工程
+保障:静态检查、覆盖率门槛、CI 权限与超时。
+
+### Android app(新增)
+- `android/` **Chaquopy 工程**:APK 里装真正的 CPython 3.10 + numpy +
+  scipy,算的是同一份 `padpd` 与同一个 `gui_core` 服务层;界面 Compose,
+  图表由 Kotlin 渲染器按 Python 发来的规格画。**全程离线,清单里零个
+  `uses-permission`**;
+- 桌面九个功能页全部移植,另加 14 种图表规格的画廊;
+- **两套导航壳,构建时选**:`classic`(顶部横向栏)与 `drawer`(左侧
+  抽屉,横滑开合,与桌面 Qt 的常驻左侧导航同形)。41 条设备测试共用
+  一批 `nav:<id>` 标签,两套壳上都成立;
+- **padpd 可编译出货**:`-PpadpdCompiled=true` 走 Cython 交叉编译成
+  Android `.so`。它只把读算法的成本从「解压就能看」抬到「得反汇编」,
+  不是授权校验也不是数据保护;
+- 壳 × 形态 = **四个 release**,CI 一次全部装配。每个 APK 带一份
+  `assets/padpd-build.json` 自报身份,构建 job 与设备 job 都断言一次
+  ——Gradle 把这四个全叫 `app-release.apk`,重命名之前谁也不知道谁是谁;
+- 体积:解释版 59,668,327 B,编译版 62,127,995 B(+2,459,668);
+- **2026-08-25 编译版在 arm64 真机实测安装并可用**。模拟器全绿不等于
+  那些 `.so` 在真设备上 import 得起来。
+
+### 工程保障(新增)
+- **ruff** 进 CI(配置在 `pyproject.toml`,版本 pin 死),跑在 3.10 上并
+  附带 `compileall`——ruff 的 parser 不管 target-version 都按 PEP 701 收
+  跨行 f-string,而 `scripts/` 没有任何测试 import;
+- 首轮扫出并修掉:19 处并排数组 `zip()` 补 `strict=True`(静默截断会把
+  某个分支的 LUT 增益配到别人的延迟上)、2 处错位一位的写法改
+  `itertools.pairwise`、1 条从来没被读过的死测量、3 处 `subprocess.run`
+  显式 `check=False`;
+- **覆盖率门槛**进 `test-full`(唯一装全可选依赖的 lane),`--cov-fail-under`
+  按棘轮用,只许往上调;
+- 六个 workflow 全部写明 `permissions`。`publish.yml` 原先只列 `id-token`,
+  而 job 级 permissions 块是整体替换——checkout 拿不到读权限,那个
+  workflow 从未跑过所以一直没暴露;
+- 五个没有 `timeout-minutes` 的 job 补上;Nuitka(Windows runner 上最长
+  90 分钟、按 2 倍计费)改为只在 `v*` tag 与手动触发时跑。
+
+### 修复
+- `psd()` 没有下限,常包络输入会让 log10 取到 0 → `-inf`,进到绘图自适应
+  和 Android 图表读的 float32 显示数组里;全零输入更是 0/0 = nan 且不
+  告警。现按峰值下 -200 dB 取平(80 MHz OFDM 实测底噪 -136 dB,留 64 dB
+  余量);
+- 图表 fixture 的浮点比较改为规格 7 位有效数字 + 载荷按 `np.allclose`
+  容差——跨机器 BLAS 不可逐位复现,此前在五个平台上一起红过。
+
+### 文档
+- 根 README 补上 Android 一节(此前只写了两个前端);
+- 新增 16:9 中文平台总览页 `docs/pages/platform-overview.html`;
+- `CONTRIBUTING.md` 新增「静态检查」一节,写清 E402/BLE001/B905 三条规则
+  为什么是打开的。
+
+### 已知限制(本版新增)
+- GitHub Pages 未在仓库开启,`Docs` workflow 的 deploy job 因此 404 失败;
+  构建站点的 build job 是绿的;
+- 仓库默认分支仍是特性分支而非 `main`。
+
 ## [0.1.0] - 2026-08
 
 首个版本。从零到覆盖 WiFi 7(802.11be)PA 行为建模 → DPD → 定点部署
@@ -86,5 +145,6 @@
 - FPGA 上板、SDR/仪器在环、Spectre 在环联合设计需硬件/EDA;
 - 双频段并发 CIM3 基础设施暂缓。
 
-[未发布]: https://github.com/alexyudragonsword-collab/PA_DPD/compare/v0.1.0...HEAD
+[未发布]: https://github.com/alexyudragonsword-collab/PA_DPD/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/alexyudragonsword-collab/PA_DPD/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/alexyudragonsword-collab/PA_DPD/releases/tag/v0.1.0

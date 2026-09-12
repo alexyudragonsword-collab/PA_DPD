@@ -131,8 +131,14 @@ android {
         applicationId "com.padpd"
         minSdk 24
         targetSdk 35
-        versionCode 1
-        versionName "0.1.0"
+        // Packed from versionName: major*10000 + minor*100 + patch.
+        // Android refuses an install whose code is not higher than
+        // the installed one, so deriving it removes the failure where
+        // the name is bumped and the code is not - which ships an
+        // update every existing device rejects. tests/
+        // test_version_sync.py checks the arithmetic.
+        versionCode 200
+        versionName "0.2.0"
 
         // Read by com.padpd.shell.AppShell. A String rather than a
         // boolean so a third shell would not need the field's meaning

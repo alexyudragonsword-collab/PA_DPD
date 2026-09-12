@@ -9,4 +9,4 @@ metrics  : EVM / ACLR / PSD / spectral mask / AM-AM & AM-PM
 data     : IQ dataset container and external data loaders
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
