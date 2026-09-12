@@ -14,6 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
+      # A job-level block replaces the whole permission set, so contents
+      # has to be listed too - without it the checkout has no read access
+      # and this workflow fails on its first step. It has never run: there
+      # is no v* tag yet.
+      contents: read
       id-token: write        # required for trusted publishing
     steps:
       - uses: actions/checkout@v4

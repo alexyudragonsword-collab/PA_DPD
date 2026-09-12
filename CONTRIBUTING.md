@@ -19,7 +19,7 @@ pip install -e ".[dev]"                              # 核心 + pytest
 
 | extra | 内容 | 解锁 |
 |---|---|---|
-| `dev` | pytest | 测试 |
+| `dev` | pytest + pytest-cov | 测试、覆盖率 |
 | `nn` | torch | 神经建模、DLA、直接学习 |
 | `onnx` | onnx + onnxruntime | ONNX 交接与数值验证 |
 | `gui` | streamlit + plotly | Web 工作台 |
@@ -52,18 +52,48 @@ QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q
 
 `-m "slow"` 标记留给长训练;新增耗时 >30 s 的测试请打上 `@pytest.mark.slow`。
 
+## 2.5 静态检查
+
+```bash
+pip install "ruff==0.16.6"
+ruff check .              # CI 用同一个版本、同一份配置
+ruff check . --fix        # 能自动修的都修掉
+```
+
+配置在 `pyproject.toml` 的 `[tool.ruff]`,**不要放宽它去让自己的改动
+过关**,有两条是特意打开的:
+
+- **`E402`(import 不在文件开头)和 `BLE001`(裸 `except Exception`)**
+  仓库里本来就有 77 处 `# noqa: E402`、8 处 `# noqa: BLE001`——这两件事
+  在具体位置上是合理的(`pytest.importorskip` 之后才能 import;GUI 处理
+  函数必须扛住算法抛出的任何异常),项目的规矩是**允许,但要在那一行
+  标出来**。整条关掉会连没标注的那种一起放行。
+- **`B905`(`zip()` 不写 `strict=`)** 这是唯一一条真能抓到 bug 的:
+  长度不等的 `zip` 会静默截断,结果看着还挺合理——某个分支的 LUT 增益
+  配到了别人的延迟上。并排数组写 `strict=True`;`zip(xs, xs[1:])` 这种
+  故意错位一位的写法改用 `itertools.pairwise`。
+
+`ruff check` **不能**替你发现跨行 f-string 表达式在 3.10/3.11 上是语法
+错误(它的 parser 不管 target-version 都按 PEP 701 收),所以 lint job 里
+还跑一遍 `compileall`,而且跑在 3.10 上。`scripts/` 没有任何测试 import,
+那一步是它唯一被解析的机会。
+
 ## 3. CI 门禁
 
-`.github/workflows/ci.yml` 六类 job,PR 必须全绿:
+`.github/workflows/ci.yml` 七类 job,PR 必须全绿:
 
 | job | 环境 | 内容 |
 |---|---|---|
+| `lint` | ubuntu 3.10 | `ruff check .` + `compileall` |
 | `test` 矩阵 | ubuntu 3.10/3.11/3.12 + windows + macos | 快车道 |
-| `test-full` | ubuntu | 全量(装 torch + onnx 全家) |
+| `test-full` | ubuntu | 全量(装 torch + onnx 全家)+ 覆盖率门槛 |
 | `test-gui` | ubuntu | `[gui,gui-qt]`,离屏 |
 | `test-rtl` | ubuntu + iverilog | RTL 位真验证 |
 | `build` | ubuntu | sdist + wheel |
 | `test-opendpd` | 需数据集,默认 skip | 实测数据 baseline |
+
+覆盖率只在 `test-full` 量(那里可选依赖装全,模块不会因为缺 torch 而
+显得没测过),`--cov-fail-under` 是**棘轮不是目标**:只许往上调。
 
 **注意矩阵与 `test-full` 的依赖不同**:快车道装 torch 但不装 onnx。
 写测试时不要假设可选依赖存在,该 `pytest.importorskip` 就写上——曾有

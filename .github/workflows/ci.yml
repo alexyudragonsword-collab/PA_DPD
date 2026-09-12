@@ -8,7 +8,41 @@ on:
   schedule:
     - cron: "0 3 * * 1"   # weekly: full matrix + OpenDPD equivalence job
 
+# Every job here only reads the checkout. Spelling that out keeps the
+# token from carrying whatever the repository default happens to be.
+permissions:
+  contents: read
+
 jobs:
+  # Static checking. There was none at all until this job existed - see
+  # the [tool.ruff] block in pyproject.toml for why E402 and BLE001 are
+  # switched on rather than off.
+  #
+  # Runs on the oldest supported Python on purpose. Ruff's parser accepts
+  # PEP 701 f-strings whatever target-version says, so it will not tell
+  # you that a multi-line f-string expression is a syntax error on 3.10;
+  # compileall will. scripts/ is imported by no test, so without this
+  # step nothing in CI ever parses it.
+  lint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: pip
+      - name: Install ruff
+        # Pinned: an unpinned ruff turns every upstream rule addition
+        # into a red build on an unrelated commit.
+        run: pip install "ruff==0.16.6"
+      - name: Ruff
+        run: ruff check .
+      - name: Byte-compile everything, including what no test imports
+        run: |
+          python -m compileall -q src gui gui_core gui_qt scripts tests \
+                 android/app/src/main/python
+
   # cross-platform fast lane: everything except tests marked "slow"
   test:
     strategy:
@@ -23,6 +57,7 @@ jobs:
           - os: ubuntu-latest
             python-version: "3.12"
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -53,13 +88,25 @@ jobs:
           pip install -e .[dev]
           pip install torch --index-url https://download.pytorch.org/whl/cpu
           pip install onnx onnxscript onnxruntime
-      - name: Test (full)
-        run: pytest tests/ -q
+      # The only lane that measures coverage: it is the only one where
+      # every optional dependency is present, so a module does not look
+      # untested merely because torch or onnxruntime was missing.
+      #
+      # The floor is a ratchet, not a target. It was set from a run
+      # WITHOUT torch (the machine it was written on could not reach
+      # download.pytorch.org), so it understates this job - raise it to
+      # just under whatever the summary below prints.
+      - name: Test (full, with coverage)
+        run: |
+          pytest tests/ -q --cov=padpd --cov=gui_core \
+                 --cov-report=term-missing:skip-covered \
+                 --cov-fail-under=78
 
   # headless GUI suites (web + Qt + i18n + manual) — these silently
   # skipped before because no CI job installed the GUI stacks
   test-gui:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -81,6 +128,7 @@ jobs:
   # dedicated Linux job with iverilog so the RTL bit-true tests actually run
   test-rtl:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -99,6 +147,7 @@ jobs:
   test-opendpd:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -123,6 +172,7 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

@@ -17,6 +17,11 @@ on:
       - pyproject.toml
       - .github/workflows/build-windows.yml
 
+# Both jobs attach their artifact to the GitHub release on a v* tag, which
+# is the only write either of them needs.
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -84,7 +89,17 @@ jobs:
   # Nuitka single-file (.exe) build — slim only (no torch). Independent of
   # the PyInstaller matrix above: Nuitka compiles to C and is much slower,
   # so it must not block or replace the fast onedir path.
+  #
+  # Tags and manual runs only. It compiles to C for up to 90 minutes on a
+  # Windows runner, which GitHub bills at 2x, and the path filters above
+  # include src/** - so on ordinary branch pushes this was the single most
+  # expensive thing in the repository, for an artifact nobody downloads
+  # between releases. The PyInstaller matrix still runs on every push and
+  # catches a broken build long before a tag exists.
   build-nuitka:
+    if: >-
+      startsWith(github.ref, 'refs/tags/v')
+      || github.event_name == 'workflow_dispatch'
     runs-on: windows-latest
     timeout-minutes: 90
     steps:
