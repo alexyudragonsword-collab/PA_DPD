@@ -10,6 +10,7 @@ from padpd.metrics import (
     evm_of_signal,
     psd,
 )
+from padpd.metrics.spectrum import PSD_FLOOR_DB
 from padpd.pa import ReferencePA
 from padpd.waveform import OFDMConfig, generate_ofdm
 
@@ -74,6 +75,26 @@ def test_mask_clean_passes_distorted_margin_smaller(waveform):
     _, margin_pa, _ = check_mask(f, p_pa, mask)
     assert ok_clean
     assert margin_pa < margin_clean
+
+
+def test_psd_is_finite_for_a_degenerate_input(waveform):
+    """A constant-envelope probe puts all its power in one bin and welch
+    returns hard zeros for the rest, so the raw log10 is -inf. That value
+    reaches plot autoscaling and the float32 arrays the mobile charts
+    read, where one -inf collapses the whole y range."""
+    f, db = psd(np.ones(4096, dtype=complex), 100e6)
+    assert np.isfinite(db).all()
+    assert db.min() == pytest.approx(PSD_FLOOR_DB)
+    assert db.max() == pytest.approx(0.0)       # peak is still the 0 dB ref
+
+    # all-zero input has no peak to normalize against at all
+    _, db0 = psd(np.zeros(4096, dtype=complex), 100e6)
+    assert np.isfinite(db0).all()
+
+    # the floor is far below anything a real waveform reaches, so it
+    # cannot quietly clip a measurement
+    _, db_real = psd(waveform.x, waveform.sample_rate_hz)
+    assert db_real.min() > PSD_FLOOR_DB + 50    # measured -136.0 dB
 
 
 def test_amam_detects_compression(waveform):
