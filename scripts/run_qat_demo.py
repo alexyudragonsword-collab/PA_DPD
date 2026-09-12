@@ -41,7 +41,8 @@ def main():
                           frame_length=50, seed=0)
     model.fit(x, y)
     float_nmse = nmse_db(yv, model(xv))
-    print(f"float TCN-H8: NMSE {float_nmse:.1f} dB ({model.n_params} params)\n")
+    print(f"float TCN-H8: NMSE {float_nmse:.1f} dB "
+          f"({model.n_params} params)\n")
 
     print(f"{'bits':>5} {'PTQ':>8} {'QAT+PTQ':>9} {'gain':>7}")
     print("-" * 32)

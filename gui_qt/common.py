@@ -180,7 +180,8 @@ class FnWorker(QThread):
         try:
             self.done.emit(self._fn(*self._args, on_progress=(
                 lambda info: self.progress.emit(info)), **self._kwargs))
-        except Exception as e:  # surfaced to the UI, not swallowed
+        # surfaced to the UI, not swallowed
+        except Exception as e:  # noqa: BLE001
             self.failed.emit(str(e))
 
 

@@ -4,9 +4,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
+from gui import charts, ui
 
 ui.page_setup(ui.tr("结果比较"), "⚖️")
 state = ui.get_state()
@@ -41,7 +41,8 @@ edited = st.data_editor(rows, use_container_width=True, hide_index=True,
                         disabled=[c for c in _all_cols
                                   if c != ui.tr("选择")],
                         column_config={"_id": None})
-picked = [r for r, e in zip(runs, edited) if e[ui.tr("选择")]]
+picked = [r for r, e in zip(runs, edited, strict=True)
+          if e[ui.tr("选择")]]
 
 col1, col2, col3 = st.columns([1, 1, 2])
 with col1:

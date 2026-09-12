@@ -59,7 +59,7 @@ class NeuralPAModel(PAModel):
     def fit(self, x: np.ndarray, y: np.ndarray,
             x_val: np.ndarray | None = None,
             y_val: np.ndarray | None = None,
-            on_epoch=None) -> "NeuralPAModel":
+            on_epoch=None) -> NeuralPAModel:
         """``on_epoch``: optional callback receiving the per-epoch history
         dict (epoch/train_loss/val_nmse_db/lr) - used by GUIs for live
         progress."""
@@ -139,7 +139,7 @@ class NeuralPAModel(PAModel):
                     "state_dict": self.net.state_dict()}, path)
 
     @classmethod
-    def load(cls, path: str) -> "NeuralPAModel":
+    def load(cls, path: str) -> NeuralPAModel:
         d = torch.load(path, map_location="cpu", weights_only=False)
         model = cls(**ast.literal_eval(d["config"]), verbose=False)
         model.net.load_state_dict(d["state_dict"])

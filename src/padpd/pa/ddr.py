@@ -17,11 +17,11 @@ in its coefficients -> least-squares closed form (reuses ``lstsq_fit``).
 Basis (signal factor x(.), envelope factors |x(.)| = a(.); K = order,
 M = memory_depth):
 
-  r=0 (static):    x(n) a(n)^k                              k=0..K-1
-  r=1 signal:      x(n-m) a(n)^k                            m=1..M, k=0..K-1
-  r=1 envelope:    x(n) a(n-m) a(n)^k                       m=1..M, k=0..K-2
-  r=2 signal:      x(n-m1) a(n-m2) a(n)^k                   m1,m2=1..M, k=0..K-2
-  r=2 envelope:    x(n) a(n-m1) a(n-m2) a(n)^k              1<=m1<=m2<=M, k=0..K-3
+  r=0 (static):   x(n) a(n)^k                         k=0..K-1
+  r=1 signal:     x(n-m) a(n)^k                       m=1..M, k=0..K-1
+  r=1 envelope:   x(n) a(n-m) a(n)^k                  m=1..M, k=0..K-2
+  r=2 signal:     x(n-m1) a(n-m2) a(n)^k              m1,m2=1..M, k=0..K-2
+  r=2 envelope:   x(n) a(n-m1) a(n-m2) a(n)^k         1<=m1<=m2<=M, k=0..K-3
 
 ``dynamic_order`` selects the highest r kept (1 or 2). r=0 is always
 included; r=1 is the workhorse (captures the dominant memory effect).
@@ -89,7 +89,7 @@ class DDRVolterraModel(PAModel):
                                           dtype=complex)).shape[1]
 
     def fit(self, x: np.ndarray, y: np.ndarray,
-            regularization: float = 0.0) -> "DDRVolterraModel":
+            regularization: float = 0.0) -> DDRVolterraModel:
         self.coeffs = lstsq_fit(self.basis_matrix(x), y, regularization)
         return self
 

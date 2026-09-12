@@ -254,7 +254,7 @@ class DpdPage(QWidget):
                                self.prog.hide(),
                                self.run_btn.setEnabled(True)))
                 self._worker.start()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.msg.setText(f"❌ {e}")
 
     def run_adaptive(self):

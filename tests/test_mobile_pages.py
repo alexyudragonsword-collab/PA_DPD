@@ -226,7 +226,8 @@ def test_ila_plots_before_and_after_on_both_charts(api):
         series = [s for p in reply["charts"][slot]["panels"]
                   for s in p["series"]]
         labelled = [s for s in series if s.get("label")]
-        assert len(labelled) >= 2, f"{slot}: {[s.get('label') for s in series]}"
+        assert len(labelled) >= 2, (
+            f"{slot}: {[s.get('label') for s in series]}")
 
 
 def test_psd_carries_the_spectral_mask(api):
@@ -235,7 +236,7 @@ def test_psd_carries_the_spectral_mask(api):
     reply = _screen(api, "dpd_ila", "GMP-510 (OpenDPD)", 80, 0.13, None)
     panel = reply["charts"]["psd"]["panels"][0]
     labels = [s.get("label", "") for s in panel["series"]]
-    assert any("ask" in l or "掩码" in l for l in labels), labels
+    assert any("ask" in s or "掩码" in s for s in labels), labels
 
 
 def test_adaptive_beats_the_frozen_dpd(api):
@@ -301,7 +302,6 @@ def test_compare_charts_only_metrics_someone_selected_carries(api):
 
 
 def test_deleting_a_run_removes_it(api):
-    from padpd_mobile import pages
     _screen(api, "modeling", "MP", 5, 4, 0.14, "none")
     rows = _screen(api, "compare", [])["rows"]
     victim = rows[0]["id"]

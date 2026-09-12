@@ -43,7 +43,7 @@ def test_static_pa_flagged_insignificant():
 def test_alpha_conversion(identified):
     alphas = identified.state_alphas()
     assert len(alphas) == len(identified.taus_heat_s)
-    for a, tau in zip(alphas, identified.taus_heat_s):
+    for a, tau in zip(alphas, identified.taus_heat_s, strict=True):
         assert a == pytest.approx(float(np.exp(-1.0 / (tau * FS))))
         assert 0.0 < a < 1.0
 

@@ -1,4 +1,3 @@
-import numpy as np
 
 from padpd.codesign import codesign_point, pae_proxy, saturation_amplitude
 from padpd.pa import ReferencePA

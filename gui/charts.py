@@ -1,4 +1,4 @@
-"""Plotly chart builders with a consistent engineering template (dark/light)."""
+"""Plotly chart builders on one engineering template (dark/light)."""
 
 from __future__ import annotations
 
@@ -202,10 +202,12 @@ def fig_two_tone(res: dict, title: str | None = None) -> go.Figure:
     fig = _fig(tr("双音 IM3 vs 音间距") if title is None else title)
     pal = palette()
     s = np.asarray(res["spacings_hz"]) / 1e6
-    fig.add_trace(go.Scatter(x=s, y=res["im3_lower_dbc"], name=tr("下边带 IM3"),
+    fig.add_trace(go.Scatter(x=s, y=res["im3_lower_dbc"],
+                             name=tr("下边带 IM3"),
                              mode="lines+markers", line=dict(width=1.8,
                              color=pal[0])))
-    fig.add_trace(go.Scatter(x=s, y=res["im3_upper_dbc"], name=tr("上边带 IM3"),
+    fig.add_trace(go.Scatter(x=s, y=res["im3_upper_dbc"],
+                             name=tr("上边带 IM3"),
                              mode="lines+markers", line=dict(width=1.8,
                              color=pal[1])))
     fig.update_xaxes(title=tr("音间距 (MHz)"), type="log")

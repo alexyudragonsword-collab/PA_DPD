@@ -352,15 +352,15 @@ def test_committed_spec_fixture_matches_what_python_emits():
     fixture_path = (ROOT / "android" / "app" / "src" / "test" / "resources"
                     / "gallery_specs.json")
     fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
-    assert set(fixture) == set(e["id"] for e in _gallery_listing())
+    assert set(fixture) == {e["id"] for e in _gallery_listing()}
 
     for entry_id, want in fixture.items():
         got = json.loads(api.gallery_chart(entry_id))["spec"]
         assert len(got["panels"]) == len(want["panels"]), entry_id
-        for gp, wp in zip(got["panels"], want["panels"]):
+        for gp, wp in zip(got["panels"], want["panels"], strict=True):
             assert set(gp) == set(wp), (
                 f"{entry_id}: panel keys drifted from the committed "
                 f"fixture; regenerate it (see android/README.md). "
                 f"added={set(gp) - set(wp)} removed={set(wp) - set(gp)}")
-            for gs, ws in zip(gp["series"], wp["series"]):
+            for gs, ws in zip(gp["series"], wp["series"], strict=True):
                 assert set(gs) == set(ws), f"{entry_id}: series keys drifted"

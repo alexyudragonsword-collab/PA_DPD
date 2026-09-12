@@ -717,7 +717,7 @@ def gain_mod_run_record(res: dict) -> tuple[str, dict, dict]:
                "phase_drift_deg": res["phase_drift_deg"],
                "hysteresis_ratio": res["hysteresis_ratio"]}
     for i, (t, w) in enumerate(zip(res["taus_heat_us"],
-                                   res["weights_heat"])):
+                                   res["weights_heat"], strict=True)):
         metrics[f"tau{i+1}_us"] = t
         metrics[f"w{i+1}"] = w
     if res["state_gain_db"] is not None:
@@ -752,7 +752,7 @@ def consume_source_extras(src: dict) -> dict:
                                 "phase_drift_deg", "taus_heat_us",
                                 "weights_heat", "hysteresis_ratio",
                                 "state_alphas")}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         out["gain_mod_error"] = str(e)
     try:
         alphas = (tuple(gm["state_alphas"])
@@ -762,7 +762,7 @@ def consume_source_extras(src: dict) -> dict:
             out["state_fit"] = {k: st[k] for k in
                                 ("nmse_plain_db", "nmse_state_db",
                                  "state_gain_db", "state_alphas")}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         out["state_fit_error"] = str(e)
     try:
         de, info = deembedder_from_source(src)
@@ -772,7 +772,7 @@ def consume_source_extras(src: dict) -> dict:
                 "fir_fit_nmse_db": info.get("cal_rx",
                                             {}).get("fir_fit_nmse_db"),
                 "rx_im3_dbc": info.get("atten", {}).get("rx_im3_dbc")}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         out["deembed_error"] = str(e)
     try:
         sc = scheduler_from_source(src)
@@ -780,7 +780,7 @@ def consume_source_extras(src: dict) -> dict:
             out["scheduler"] = {"conditions": sc["conditions"],
                                 "nmse_per_point_db":
                                     sc["nmse_per_point_db"]}
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         out["scheduler_error"] = str(e)
     return out
 

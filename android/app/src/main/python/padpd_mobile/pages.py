@@ -108,7 +108,8 @@ def waveform(bandwidth_mhz: float, qam: int, symbols: int, seed: int,
         "psd": ("psd", (curves, w["fs"]), {}),
         "ccdf": ("ccdf", (curves,), {}),
         "constellation": ("constellation",
-                          ({tr("发送星座", lang): wf.tx_symbols.ravel()},), {}),
+                          ({tr("发送星座", lang):
+                            wf.tx_symbols.ravel()},), {}),
         "time": ("time", (curves, w["fs"]), {}),
     }
     return {"result": w, "metrics": metrics, "charts": charts, "lang": lang}
@@ -149,7 +150,8 @@ def modeling(model_type: str, order: int, memory: int, drive: float,
     ]
     charts = {
         "psd": ("psd", ({tr("实测输出", lang): res["y_eval"][:n],
-                         tr("模型预测", lang): res["pred"][:n]}, src["fs"]), {}),
+                         tr("模型预测", lang): res["pred"][:n]},
+                         src["fs"]), {}),
         "amam": ("amam", (res["x_eval"][:n], res["pred"][:n]), {}),
     }
     name = f"{model_type} @ {src['name']}"
@@ -194,7 +196,8 @@ def gain_modulation(dut: str, drive: float, fit_state: bool, *,
     else:
         taus = ", ".join(
             tr("{t:.1f}µs(权重 {w:.2f})", lang).format(t=t, w=w)
-            for t, w in zip(res["taus_heat_us"], res["weights_heat"]))
+            for t, w in zip(res["taus_heat_us"], res["weights_heat"],
+                            strict=True))
         extra = ""
         if res["state_gain_db"] is not None:
             extra = tr(";状态样条 vs 纯 SMP:{a:.1f} → {b:.1f} dB"
@@ -246,7 +249,8 @@ def dpd_ila(basis: str, bandwidth_mhz: float, drive: float,
                 else "—")
 
     metrics = [
-        _metric(tr("无 DPD", lang) + " EVM", f"{m['no DPD']['evm_db']:.1f} dB"),
+        _metric(tr("无 DPD", lang) + " EVM",
+                f"{m['no DPD']['evm_db']:.1f} dB"),
         _metric(tr("DPD 后", lang) + " EVM", f"{m['DPD']['evm_db']:.1f} dB",
                 f"{m['DPD']['evm_db'] - m['no DPD']['evm_db']:+.1f} dB"),
         _metric(tr("无 DPD", lang) + " ACLR", _aclr(m["no DPD"]),

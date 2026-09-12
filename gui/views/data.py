@@ -4,10 +4,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
-from gui_core import services  # noqa: E402
+from gui import charts, ui
+from gui_core import services
 
 ui.page_setup(ui.tr("数据管理"), "🗂️")
 state = ui.get_state()
@@ -73,7 +73,8 @@ with tab_up:
                 st.info(ui.tr("对齐:整数延迟 {lag},总延迟 {total} 采样")
                         .format(lag=src["align_info"]["lag"],
                                 total=f"{src['align_info']['lag_total']:.2f}"))
-        except Exception as e:  # surface load errors to the user
+        # surface load errors to the user
+        except Exception as e:  # noqa: BLE001
             st.error(ui.tr("加载失败:{e}").format(e=e))
 
 with tab_tt:
@@ -92,7 +93,7 @@ with tab_tt:
             tt_tmp = f.name
         try:
             res = services.analyze_two_tone_csv(tt_tmp)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             st.error(ui.tr("加载失败:{e}").format(e=e))
     if res is not None:
         m1, m2, m3, m4 = st.columns(4)

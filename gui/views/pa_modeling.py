@@ -3,12 +3,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import numpy as np  # noqa: E402
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
-from gui_core import Run, services  # noqa: E402
-from padpd.metrics.amam import am_am_am_pm  # noqa: E402
+from gui import charts, ui
+from gui_core import Run, services
+from padpd.metrics.amam import am_am_am_pm
 
 ui.page_setup(ui.tr("PA 建模"), "📈")
 state = ui.get_state()

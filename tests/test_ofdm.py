@@ -14,7 +14,8 @@ def test_config_numerology():
     assert cfg20.n_active == 242
 
 
-@pytest.mark.parametrize("bw,order", [(20e6, 256), (80e6, 1024), (160e6, 1024)])
+@pytest.mark.parametrize("bw,order",
+                         [(20e6, 256), (80e6, 1024), (160e6, 1024)])
 def test_loopback_recovers_symbols(bw, order):
     cfg = OFDMConfig(bandwidth_hz=bw, qam_order=order, n_symbols=4, seed=3)
     wf = generate_ofdm(cfg)

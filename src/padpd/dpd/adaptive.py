@@ -44,7 +44,7 @@ still diverge (see ``scripts/run_lms_vs_rls.py``).
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 
@@ -197,7 +197,7 @@ class AdaptiveDPD:
                  method=self.method)
 
     @classmethod
-    def load(cls, path: str) -> "AdaptiveDPD":
+    def load(cls, path: str) -> AdaptiveDPD:
         """Load a predistorter saved with :meth:`save`.
 
         ``predistort`` works immediately from the saved coefficients.

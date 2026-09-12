@@ -3,8 +3,8 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from padpd.codesign_torch import DiffSalehPA, joint_codesign
-from padpd.waveform import OFDMConfig, generate_ofdm
+from padpd.codesign_torch import DiffSalehPA, joint_codesign  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 
 def _sig(seed=0):

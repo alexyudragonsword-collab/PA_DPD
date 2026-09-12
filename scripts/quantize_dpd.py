@@ -66,7 +66,8 @@ def main():
             row += f"{dpd_aclr(lambda x, m=fp: m(x)):>9.2f}"
         print(row)
         c = mac_cost(nc, fs)
-        print(f"           HW cost: {c['real_macs_per_sample']} real MAC/sample"
+        print(f"           HW cost: {c['real_macs_per_sample']} "
+              f"real MAC/sample"
               f"  ->  {c['real_gmac_per_s']:.1f} GMAC/s @ {fs/1e6:.0f} MSPS")
 
 

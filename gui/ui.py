@@ -139,7 +139,7 @@ def apply_theme() -> None:
     for opt, val in _ST_THEME[cur_theme()].items():
         try:
             st._config.set_option(f"theme.{opt}", val)
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
 
 

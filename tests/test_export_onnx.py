@@ -1,4 +1,3 @@
-import numpy as np
 import pytest
 
 torch = pytest.importorskip("torch")
@@ -6,10 +5,10 @@ torch = pytest.importorskip("torch")
 # exporter needs the onnx package itself, not just torch
 pytest.importorskip("onnx")
 
-from padpd.deploy import export_onnx
-from padpd.nn import NeuralPAModel
-from padpd.pa import ReferencePA
-from padpd.waveform import OFDMConfig, generate_ofdm
+from padpd.deploy import export_onnx  # noqa: E402
+from padpd.nn import NeuralPAModel  # noqa: E402
+from padpd.pa import ReferencePA  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 
 def test_export_onnx_tcn(tmp_path):

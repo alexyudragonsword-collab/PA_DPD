@@ -50,7 +50,8 @@ class RunStore:
         runs = []
         for p in sorted(self.root.glob("*.json")):
             try:
-                runs.append(Run(**json.load(open(p))))
+                runs.append(Run(
+                    **json.loads(p.read_text(encoding="utf-8"))))
             except (json.JSONDecodeError, TypeError):
                 continue  # skip corrupt entries rather than crash the GUI
         runs.sort(key=lambda r: r.timestamp, reverse=True)

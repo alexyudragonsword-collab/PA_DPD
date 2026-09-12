@@ -40,7 +40,7 @@ def write_demo_csvs(out_dir: Path) -> dict:
     amam.write_text("\n".join(
         ["r_in,r_out,phase_deg"] +
         [f"{a:.6f},{abs(b):.6f},{np.rad2deg(np.angle(b)):.4f}"
-         for a, b in zip(r, y)]))
+         for a, b in zip(r, y, strict=True)]))
 
     f = np.linspace(-160e6, 160e6, 33)
     s21_in = out_dir / "s21_in.csv"

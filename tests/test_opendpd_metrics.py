@@ -21,8 +21,10 @@ def _random_pair(n=4 * NPERSEG, seed=0):
 
 def test_nmse_segmented_uniform_equals_global():
     rng = np.random.default_rng(1)
-    y = rng.standard_normal(2 * NPERSEG) + 1j * rng.standard_normal(2 * NPERSEG)
-    err = 0.01 * (rng.standard_normal(len(y)) + 1j * rng.standard_normal(len(y)))
+    y = (rng.standard_normal(2 * NPERSEG)
+         + 1j * rng.standard_normal(2 * NPERSEG))
+    err = 0.01 * (rng.standard_normal(len(y))
+                  + 1j * rng.standard_normal(len(y)))
     got = nmse_segmented(y + err, y, NPERSEG)
     expected = 10 * np.log10(np.sum(np.abs(err) ** 2)
                              / np.sum(np.abs(y) ** 2))

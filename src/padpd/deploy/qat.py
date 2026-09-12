@@ -63,7 +63,7 @@ def quantize_aware_finetune(model, x: np.ndarray, y: np.ndarray,
     same bit width. ``a_bits`` additionally fake-quantizes Conv1d/Linear
     activations during training.
     """
-    from ..nn.torch_model import iq_to_complex, nmse_db  # local: heavy deps
+    from ..nn.torch_model import nmse_db  # local: heavy deps
 
     q = copy.deepcopy(model)
     net = q.net

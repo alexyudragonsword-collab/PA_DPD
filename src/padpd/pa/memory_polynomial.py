@@ -62,7 +62,7 @@ class MemoryPolynomialModel(PAModel):
                          for m in range(self.memory_depth)])
 
     def fit(self, x: np.ndarray, y: np.ndarray,
-            regularization: float = 0.0) -> "MemoryPolynomialModel":
+            regularization: float = 0.0) -> MemoryPolynomialModel:
         self.coeffs = lstsq_fit(self.basis_matrix(x), y, regularization)
         return self
 

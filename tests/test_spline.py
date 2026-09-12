@@ -1,5 +1,7 @@
 """Spline basis + SplineMemoryPolynomial: math, fitting, integration."""
 
+from itertools import pairwise
+
 import numpy as np
 import pytest
 
@@ -54,7 +56,7 @@ def test_place_knots_variants(ofdm_signal):
     for placement in ("uniform", "quantile", "hybrid"):
         ks = place_knots(amps, n_knots=8, placement=placement)
         assert len(ks) == 8
-        assert all(b > a for a, b in zip(ks, ks[1:]))
+        assert all(b > a for a, b in pairwise(ks))
         assert ks[0] == 0.0 and ks[-1] == pytest.approx(amps.max())
     # quantile knots hit the empirical quantiles
     ks = place_knots(amps, n_knots=6, placement="quantile")
@@ -352,7 +354,7 @@ def _iq_pa():
 
 
 def test_iq_imbalance_pa_irr():
-    from padpd.pa import IQImbalancePA, iq_imbalance_coeffs
+    from padpd.pa import iq_imbalance_coeffs
     pa = _iq_pa()
     assert 28 < pa.irr_db < 33            # 0.3 dB / 3 deg -> ~30 dB IRR
     a, b = iq_imbalance_coeffs(0.0, 0.0)  # perfect modulator

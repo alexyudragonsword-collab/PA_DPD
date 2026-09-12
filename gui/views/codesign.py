@@ -3,9 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
+from gui import charts, ui
 
 ui.page_setup(ui.tr("PA/DPD 联合设计"), "🧭")
 ui.get_state()

@@ -3,10 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
-from gui_core import Run, services  # noqa: E402
+from gui import charts, ui
+from gui_core import Run, services
 
 ui.page_setup(ui.tr("部署"), "🚀")
 state = ui.get_state()
@@ -101,7 +101,8 @@ with col2:
     if st.button(ui.tr("📦 生成产物"), use_container_width=True):
         entry = models[exp_model]
         src = services.eval_source_for(entry["meta"], state.sources)
-        out_dir = f"deploy_export/gui_{exp_model.split(' @')[0].replace(' ', '_')}"
+        stem = exp_model.split(" @")[0].replace(" ", "_")
+        out_dir = f"deploy_export/gui_{stem}"
         with st.spinner(ui.tr("导出中…")):
             paths = services.export_artifacts(entry["model"], src, out_dir,
                                               w_bits=w_bits)
@@ -115,7 +116,7 @@ if paths:
         if key.endswith("verified"):
             continue
         with cols[i]:
-            data = open(p, "rb").read()
+            data = Path(p).read_bytes()
             st.download_button(f"⬇️ {key} ({Path(p).name})", data,
                                file_name=Path(p).name, key=f"dl_{key}")
         i += 1

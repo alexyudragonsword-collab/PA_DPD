@@ -6,8 +6,7 @@ from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
 
 from gui_core import services
 from gui_qt import figs
-from gui_qt.common import (FigurePane, MetricCard, card_row, hline,
-                           page_scaffold, tr)
+from gui_qt.common import (FigurePane, MetricCard, card_row, page_scaffold, tr)
 
 
 class WaveformPage(QWidget):

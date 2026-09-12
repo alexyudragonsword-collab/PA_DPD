@@ -43,6 +43,51 @@ packaging = ["pyinstaller", "nuitka[onefile]>=2.4"]   # desktop exe builders
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.ruff]
+# This code was written against flake8's defaults - 79 columns, imports at
+# the top unless a guard has to run first. Ruff replaces flake8 here and is
+# configured to say the same thing, so the 77 `# noqa: E402` and 8
+# `# noqa: BLE001` comments already in the tree keep meaning what their
+# authors meant instead of turning into stale directives.
+line-length = 79
+target-version = "py310"
+extend-exclude = [
+    # Vendored verbatim from the python-android-apk skill; see
+    # scripts/android/README.md. Reformatting them destroys the one property
+    # that makes them auditable - they are the upstream files plus a single
+    # documented change.
+    "scripts/android/android_wheel.py",
+    "scripts/android/inspect_apk.py",
+]
+
+[tool.ruff.lint]
+# B905 is the reason bugbear is here: a zip() that silently truncates is a
+# whole class of quiet numerical bug in this codebase, where the two arms
+# are usually a signal and its per-sample annotation.
+#
+# E402 and BLE001 are kept enabled rather than switched off wholesale. Both
+# are legitimate here in specific places - a guarded import after
+# `pytest.importorskip`, a GUI handler that must survive whatever an
+# algorithm throws - and the rule the project already follows is "allowed,
+# but marked at the line". Disabling them would silently permit the
+# unmarked case too.
+select = ["E", "W", "F", "I", "B", "C4", "UP",
+          "BLE001", "PLE", "PLW1510", "SIM115", "RUF100"]
+ignore = [
+    # `dict(a=1, b=2)` is how this codebase builds plot kwargs and JSON
+    # payloads, and it reads better there than a brace literal. The rule
+    # would rewrite 48 call sites to no benefit.
+    "C408",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# A translation table: one Chinese UI string and its English on each line.
+# The strings are the data. Wrapping them hides which pairs with which.
+"gui_core/i18n.py" = ["E501"]
+# The long lines here are inside the Verilog this module emits, where a
+# Python-side wrap would land in the generated file.
+"src/padpd/deploy/rtl.py" = ["E501"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [

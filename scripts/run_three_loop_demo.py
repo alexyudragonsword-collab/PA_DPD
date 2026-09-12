@@ -24,7 +24,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from padpd.three_loop import run_three_loop  # noqa: E402
+from padpd.three_loop import run_three_loop
 
 OUT_DEFAULT = str(Path(__file__).resolve().parent.parent
                   / "manual" / "assets" / "three_loop_demo.png")

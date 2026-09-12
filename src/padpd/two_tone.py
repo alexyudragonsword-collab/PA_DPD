@@ -118,7 +118,7 @@ class TwoToneResult:
 
     @classmethod
     def from_curves(cls, spacings_hz, im3_lower_dbc, im3_upper_dbc,
-                    im5_avg_dbc=None) -> "TwoToneResult":
+                    im5_avg_dbc=None) -> TwoToneResult:
         s = np.asarray(spacings_hz, dtype=float)
         lo = np.asarray(im3_lower_dbc, dtype=float)
         hi = np.asarray(im3_upper_dbc, dtype=float)

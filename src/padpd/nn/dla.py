@@ -73,7 +73,7 @@ class DLAPredistorter:
 
     def fit(self, pa: NeuralPAModel, x: np.ndarray,
             x_val: np.ndarray | None = None,
-            on_epoch=None) -> "DLAPredistorter":
+            on_epoch=None) -> DLAPredistorter:
         """Train the DPD against a frozen differentiable PA model.
 
         ``on_epoch``: optional callback receiving the per-epoch history
@@ -161,7 +161,7 @@ class DLAPredistorter:
                     "state_dict": self.net.state_dict()}, path)
 
     @classmethod
-    def load(cls, path: str) -> "DLAPredistorter":
+    def load(cls, path: str) -> DLAPredistorter:
         d = torch.load(path, map_location="cpu", weights_only=False)
         dpd = cls(**ast.literal_eval(d["config"]), verbose=False)
         dpd.target_gain = d["target_gain"]

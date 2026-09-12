@@ -117,8 +117,10 @@ def test_align_delay_fractional():
     # band-limited signal so a fractional shift is well defined
     n = 8192
     spec = np.zeros(n, complex)
-    spec[:n // 8] = rng.standard_normal(n // 8) + 1j * rng.standard_normal(n // 8)
-    spec[-n // 8:] = rng.standard_normal(n // 8) + 1j * rng.standard_normal(n // 8)
+    spec[:n // 8] = (rng.standard_normal(n // 8)
+                     + 1j * rng.standard_normal(n // 8))
+    spec[-n // 8:] = (rng.standard_normal(n // 8)
+                      + 1j * rng.standard_normal(n // 8))
     x = np.fft.ifft(spec)
     delay = 3.4
     freq = np.fft.fftfreq(n)

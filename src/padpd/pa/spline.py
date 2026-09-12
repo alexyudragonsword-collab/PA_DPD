@@ -40,7 +40,8 @@ huge drive values).
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
+from itertools import pairwise
 
 import numpy as np
 
@@ -168,7 +169,7 @@ def _validate_knots(knots: Sequence[float]) -> list[float]:
         raise ValueError("need at least 2 knots (breakpoints)")
     if ks[0] < 0:
         raise ValueError("knots must be >= 0 (amplitude axis)")
-    if any(b <= a for a, b in zip(ks, ks[1:])):
+    if any(b <= a for a, b in pairwise(ks)):
         raise ValueError("knots must be strictly ascending")
     return ks
 
@@ -226,7 +227,7 @@ class SplineMemoryPolynomial(PAModel):
                     memory_depth: int = 4, conjugate: bool = False,
                     cim3: bool = False, dc_term: bool = False,
                     placement: str = "hybrid",
-                    headroom: float = 1.05) -> "SplineMemoryPolynomial":
+                    headroom: float = 1.05) -> SplineMemoryPolynomial:
         """Resolve data-driven knots from a calibration signal, then build.
 
         ``headroom`` scales the top knot beyond the observed peak so the
@@ -335,7 +336,7 @@ class SplineMemoryPolynomial(PAModel):
 
     def fit(self, x: np.ndarray, y: np.ndarray,
             regularization: float = 0.0, smoothness: float = 0.0,
-            weights: np.ndarray | None = None) -> "SplineMemoryPolynomial":
+            weights: np.ndarray | None = None) -> SplineMemoryPolynomial:
         """LS fit; ``smoothness`` adds the P-spline second-difference
         penalty (relative, like ``regularization``), ``weights`` are
         per-sample WLS weights."""
@@ -403,7 +404,7 @@ class SplineGMP(PAModel):
                     memory_depth: int = 4, lag_memory: int = 2,
                     lag_span: int = 1, lead_memory: int = 2,
                     lead_span: int = 1, placement: str = "hybrid",
-                    headroom: float = 1.05) -> "SplineGMP":
+                    headroom: float = 1.05) -> SplineGMP:
         amps = np.abs(np.asarray(x))
         r_max = float(headroom * amps.max())
         ks = place_knots(amps, n_knots=n_knots, placement=placement,
@@ -509,7 +510,7 @@ class SplineGMP(PAModel):
 
     def fit(self, x: np.ndarray, y: np.ndarray,
             regularization: float = 0.0, smoothness: float = 0.0,
-            weights: np.ndarray | None = None) -> "SplineGMP":
+            weights: np.ndarray | None = None) -> SplineGMP:
         self.coeffs = lstsq_fit(
             self.basis_matrix(x), y, regularization, weights=weights,
             penalty=self.smoothness_penalty() if smoothness > 0 else None,

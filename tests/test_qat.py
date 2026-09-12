@@ -15,11 +15,11 @@ pytest.importorskip("torch")
 
 pytestmark = pytest.mark.slow  # minutes-long trainings; full CI lane only
 
-from padpd.deploy.neural_ptq import quantize_neural_ptq
-from padpd.deploy.qat import fake_quant, quantize_aware_finetune
-from padpd.nn.torch_model import NeuralPAModel, nmse_db
-from padpd.pa import ReferencePA
-from padpd.waveform import OFDMConfig, generate_ofdm
+from padpd.deploy.neural_ptq import quantize_neural_ptq  # noqa: E402
+from padpd.deploy.qat import fake_quant, quantize_aware_finetune  # noqa: E402
+from padpd.nn.torch_model import NeuralPAModel, nmse_db  # noqa: E402
+from padpd.pa import ReferencePA  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 
 def _data():

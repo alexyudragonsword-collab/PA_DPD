@@ -9,7 +9,7 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from gui_core import manual
+from gui_core import manual  # noqa: E402
 
 CJK = re.compile(r"[一-鿿]")
 

@@ -108,7 +108,7 @@ class LUTDPD:
         return [o < 0 for o in self.phase_orders]
 
     @classmethod
-    def from_table(cls, lut: dict) -> "LUTDPD":
+    def from_table(cls, lut: dict) -> LUTDPD:
         orders = lut.get("phase_orders")
         if orders is None:
             orders = [-1 if c else 1
@@ -131,7 +131,7 @@ class LUTDPD:
         a = np.abs(x)
         out = np.full_like(x, self.dc)
         for (mc, me), g, order in zip(self.delays, self.gains,
-                                      self.phase_orders):
+                                      self.phase_orders, strict=True):
             env = np.clip(delayed(a, me), self.r_grid[0], self.r_grid[-1])
             gain = (np.interp(env, self.r_grid, g.real)
                     + 1j * np.interp(env, self.r_grid, g.imag))

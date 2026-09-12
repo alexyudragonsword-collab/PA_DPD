@@ -8,7 +8,6 @@ hidden state.
 from __future__ import annotations
 
 import numpy as np
-import torch
 from torch.utils.data import Dataset
 
 from .features import complex_to_iq

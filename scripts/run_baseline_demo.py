@@ -16,7 +16,6 @@ Outputs are printed to the console and saved under results/.
 import argparse
 import os
 
-import numpy as np
 
 from padpd.cfr import cfr_clip_filter
 from padpd.dpd import ILAPredistorter

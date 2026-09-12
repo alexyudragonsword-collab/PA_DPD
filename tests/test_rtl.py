@@ -12,11 +12,11 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.deploy.rtl import (emit_rtl, generate_verilog, quantize_to_int,
+from padpd.deploy.rtl import (emit_rtl, generate_verilog, quantize_to_int,  # noqa: E402
                               verify_with_iverilog)
-from padpd.dpd import ILAPredistorter
-from padpd.pa import GMPModel, ReferencePA
-from padpd.waveform import OFDMConfig, generate_ofdm
+from padpd.dpd import ILAPredistorter  # noqa: E402
+from padpd.pa import GMPModel, ReferencePA  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 HAVE_IVERILOG = shutil.which("iverilog") is not None
 
@@ -73,7 +73,7 @@ def test_generated_module_is_valid_verilog(tmp_path):
     import subprocess
     r = subprocess.run(["iverilog", "-g2012", "-o", str(tmp_path / "a.out"),
                         str(tmp_path / "dpd_mac.v"), str(tmp_path / "tb.v")],
-                       capture_output=True, text=True)
+                       capture_output=True, text=True, check=False)
     assert r.returncode == 0, r.stderr
 
 
@@ -114,7 +114,7 @@ def test_lut_fixed_eval_tracks_float_model(tmp_path):
     """The integer golden model, dequantized, matches the float LUTDPD
     within quantization error."""
     from padpd.deploy import LUTDPD, lut_from_model
-    from padpd.deploy.rtl import emit_lut_rtl, lut_fixed_eval, \
+    from padpd.deploy.rtl import lut_fixed_eval, \
         quantize_to_int
     import numpy as np
     smp = _fitted_smp()
@@ -199,7 +199,8 @@ def test_lut_rtl_conjugate_branches_bit_true(tmp_path):
         wf.x, n_knots=5, memory_depth=2, conjugate=True).fit(wf.x, y)
     emit_lut_rtl(wl, str(tmp_path), addr_bits=5, frac_bits=7,
                  n_vectors=128)
-    assert "carrier x^-1" in (tmp_path / "dpd_lut.v").read_text(encoding="utf-8")
+    assert "carrier x^-1" in (tmp_path / "dpd_lut.v").read_text(
+        encoding="utf-8")
     res = verify_with_iverilog(str(tmp_path),
                                sources=("dpd_lut.v", "tb_lut.v"))
     assert res["available"] and res["passed"], res["output"]

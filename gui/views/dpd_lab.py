@@ -3,10 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
-from gui_core import Run, services  # noqa: E402
+from gui import charts, ui
+from gui_core import Run, services
 
 ui.page_setup(ui.tr("DPD 实验室"), "🎛️")
 state = ui.get_state()
@@ -104,7 +104,7 @@ if go:
                      "aclr_high_dbc": m["DPD"]["aclr_high"],
                      "aclr_before_dbc": m["no DPD"]["aclr_high"],
                      "convention": out["convention"]}))
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         st.error(ui.tr("运行失败:{e}").format(e=e))
 
 last = st.session_state.get("last_dpd")

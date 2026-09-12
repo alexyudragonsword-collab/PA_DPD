@@ -8,10 +8,10 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-import re
+import re  # noqa: E402
 
-from gui_core import i18n
-from gui_core.prefs import DEFAULTS, load_prefs, save_prefs
+from gui_core import i18n  # noqa: E402
+from gui_core.prefs import DEFAULTS, load_prefs, save_prefs  # noqa: E402
 
 CJK = re.compile(r"[一-鿿]")
 

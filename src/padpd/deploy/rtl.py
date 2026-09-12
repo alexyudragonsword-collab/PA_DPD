@@ -173,7 +173,7 @@ def emit_rtl(model, out_dir: str, w_bits: int = 12, data_bits: int = 12,
     prod_bits = data_bits + w_bits + 1
     acc_bits = prod_bits + math.ceil(math.log2(2 * n)) + 1
 
-    (out / f"dpd_mac.v").write_text(
+    (out / "dpd_mac.v").write_text(
         generate_verilog(cr_i, ci_i, data_bits, w_bits))
     (out / "tb.v").write_text(
         generate_testbench(n, data_bits, acc_bits, n_vectors))
@@ -211,11 +211,12 @@ def verify_with_iverilog(out_dir: str,
     vvp = out / "sim.vvp"
     comp = subprocess.run(
         ["iverilog", "-g2012", "-o", str(vvp)]
-        + [str(out / s) for s in sources], capture_output=True, text=True)
+        + [str(out / s) for s in sources],
+        capture_output=True, text=True, check=False)
     if comp.returncode != 0:
         return {"available": True, "passed": False, "errors": None,
                 "n_vectors": None, "output": comp.stderr.strip()}
-    run = subprocess.run(["vvp", str(vvp)], cwd=str(out),
+    run = subprocess.run(["vvp", str(vvp)], cwd=str(out), check=False,
                          capture_output=True, text=True)
     text = run.stdout.strip()
     errors = n_vec = None
@@ -551,7 +552,7 @@ def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
     # sum — exact (shifts only add zero LSBs), hence still bit-true.
     gains = np.asarray(lut["gains"])
     g_re_i, g_im_i, steps_g, scales = [], [], [], []
-    for g, order in zip(gains, orders):
+    for g, order in zip(gains, orders, strict=True):
         gr, gi, sg = quantize_to_int(np.asarray(g), entry_bits)
         g_re_i.append(gr)
         g_im_i.append(gi)
@@ -569,7 +570,7 @@ def emit_lut_rtl(model, out_dir: str, addr_bits: int = 6,
     carrier_bits = [3 * data_bits + 2 if o == -3 else data_bits + 1
                     for o in orders]
     prod_bits = max((entry_bits + 2) + cb + sh
-                    for cb, sh in zip(carrier_bits, shifts))
+                    for cb, sh in zip(carrier_bits, shifts, strict=True))
     acc_bits = prod_bits + math.ceil(math.log2(2 * len(delays))) + 2
     acc_bits = max(acc_bits,
                    max(abs(v) for v in dc_int).bit_length() + 2)

@@ -70,7 +70,7 @@ def test_quantize_lut_and_export_roundtrip(fitted_smp, tmp_path):
     assert loaded == json.loads(json.dumps(payload))
     assert loaded["n_entries"] == 128 and loaded["n_branches"] == 4
     # dequantized entries match the float table within 1 LSB
-    for b, g in zip(loaded["branches"], lut["gains"]):
+    for b, g in zip(loaded["branches"], lut["gains"], strict=True):
         step = 2.0 ** b["scale_exp"]
         got = (np.array(b["gains_real"]) + 1j * np.array(b["gains_imag"])
                ) * step

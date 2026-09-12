@@ -81,7 +81,8 @@ def export_lut(lut: dict, w_bits: int, path: str) -> dict:
         orders = [-1 if c else 1
                   for c in lut.get("conjugate",
                                    [False] * len(lut["delays"]))]
-    for g, (mc, me), order in zip(lut["gains"], lut["delays"], orders):
+    for g, (mc, me), order in zip(lut["gains"], lut["delays"], orders,
+                                  strict=True):
         cr, ci, e = _int_codes(np.asarray(g), w_bits)
         branches.append({"carrier_delay": int(mc), "envelope_delay": int(me),
                          "phase_order": int(order),
@@ -115,7 +116,7 @@ def export_reference_vectors(model, x: np.ndarray, path: str,
     y = model(x)
     with open(path, "w") as f:
         f.write("i_in,q_in,i_out,q_out\n")
-        for xi, yi in zip(x, y):
+        for xi, yi in zip(x, y, strict=True):
             f.write(f"{xi.real:.10e},{xi.imag:.10e},"
                     f"{yi.real:.10e},{yi.imag:.10e}\n")
 

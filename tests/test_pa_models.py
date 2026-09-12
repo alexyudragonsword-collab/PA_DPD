@@ -50,7 +50,8 @@ def test_mp_exact_recovery():
     x = (rng.standard_normal(20_000) + 1j * rng.standard_normal(20_000))
     x /= np.sqrt(2)
     truth = MemoryPolynomialModel(order=5, memory_depth=3)
-    truth.coeffs = (rng.standard_normal(15) + 1j * rng.standard_normal(15)) * 0.1
+    truth.coeffs = (rng.standard_normal(15)
+                    + 1j * rng.standard_normal(15)) * 0.1
     truth.coeffs[0] = 1.0
     y = truth(x)
     fitted = MemoryPolynomialModel(order=5, memory_depth=3).fit(x, y)

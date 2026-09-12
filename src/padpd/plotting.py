@@ -43,7 +43,8 @@ def plot_constellation(points_by_label: dict[str, np.ndarray],
     """Scatter one or more received constellations side by side."""
     n = len(points_by_label)
     fig, axes = plt.subplots(1, n, figsize=(5 * n, 5), squeeze=False)
-    for ax, (label, pts) in zip(axes[0], points_by_label.items()):
+    for ax, (label, pts) in zip(axes[0], points_by_label.items(),
+                                strict=True):
         pts = np.asarray(pts).ravel()
         step = max(1, len(pts) // 20_000)  # cap point count
         ax.plot(pts.real[::step], pts.imag[::step], ".", ms=1, alpha=0.5)

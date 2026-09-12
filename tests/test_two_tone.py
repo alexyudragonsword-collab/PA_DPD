@@ -17,8 +17,8 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.pa import GMPModel, ReferencePA, SalehPA
-from padpd.two_tone import (TwoToneResult, load_two_tone_csv, measure_imd,
+from padpd.pa import GMPModel, ReferencePA, SalehPA  # noqa: E402
+from padpd.two_tone import (TwoToneResult, load_two_tone_csv, measure_imd,  # noqa: E402
                             memory_strength_from_table, recommend_dpd_budget,
                             sweep_two_tone, two_tone_signal)
 

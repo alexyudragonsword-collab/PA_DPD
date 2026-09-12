@@ -16,7 +16,6 @@ discrete method stays the robust production tool.
 import argparse
 import os
 
-import numpy as np
 
 from padpd.codesign_torch import joint_codesign
 from padpd.plotting import plt
@@ -48,8 +47,10 @@ def main():
                         evm_spec_db=args.evm_spec,
                         lambda_eff=args.lambda_eff, steps=args.steps)
 
-    print(f"EVM spec {args.evm_spec:.0f} dB | LS-DPD {base['n_coeffs']} coeffs")
-    print(f"{'design':<24}{'drive':>8}{'PAE%':>8}{'EVM(dB)':>10}{'meets spec':>12}")
+    print(f"EVM spec {args.evm_spec:.0f} dB | "
+          f"LS-DPD {base['n_coeffs']} coeffs")
+    print(f"{'design':<24}{'drive':>8}{'PAE%':>8}"
+          f"{'EVM(dB)':>10}{'meets spec':>12}")
     for label, r in [("conservative (fixed)", base),
                      ("gradient co-design", co)]:
         print(f"{label:<24}{r['drive']:>8.3f}{100*r['efficiency']:>8.1f}"

@@ -158,7 +158,7 @@ class MainWindow(QMainWindow):
                                 (self.cmb_theme, THEME_ITEMS, "theme")):
             cmb.blockSignals(True)
             cmb.clear()
-            for code, label in items:
+            for _code, label in items:
                 cmb.addItem(tr(label) if cur == "theme" else label)
             cmb.setCurrentIndex(
                 [c for c, _ in items].index(common.PREFS[cur]))

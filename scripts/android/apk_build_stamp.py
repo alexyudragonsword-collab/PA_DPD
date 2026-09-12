@@ -43,7 +43,7 @@ def read_stamp(apk: Path) -> dict:
             raise SystemExit(
                 f"{apk.name}: no {STAMP}. Either this APK predates the "
                 f"build stamp, or writePadpdBuildStamp did not run - check "
-                f"that an assets task depends on it.")
+                f"that an assets task depends on it.") from None
     return json.loads(raw)
 
 

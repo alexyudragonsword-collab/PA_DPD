@@ -18,7 +18,6 @@ Example:
 import argparse
 import os
 
-import numpy as np
 
 from padpd.data import load_opendpd_dataset
 from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
@@ -57,7 +56,8 @@ def main():
         fp = FixedPointPolyModel(model, args.w_bits, args.w_bits)
         vpath = os.path.join(out, f"{label}_w{args.w_bits}_refvec.csv")
         export_reference_vectors(fp, te.x, vpath, n=args.n_vectors)
-        print(f"{label}: {p['n_coeffs']} coeffs (scale 2^{p['coeff_scale_exp']})"
+        print(f"{label}: {p['n_coeffs']} coeffs "
+              f"(scale 2^{p['coeff_scale_exp']})"
               f" -> {os.path.basename(cpath)}, {os.path.basename(vpath)}")
 
     # optional neural ONNX export

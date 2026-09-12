@@ -45,8 +45,8 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from padpd.data import extras_summary, save_complete_npz  # noqa: E402
-from padpd.data.io import read_csv_columns  # noqa: E402
+from padpd.data import extras_summary, save_complete_npz
+from padpd.data.io import read_csv_columns
 
 REQUIRED_COLS = ("time", "i_in", "q_in", "i_out", "q_out")
 OP_RE = re.compile(r"^op_(-?\d+(?:\.\d+)?)$")
@@ -279,7 +279,7 @@ def main():
                          meta=_parse_meta(args.meta))
     except PackError as e:
         print(f"error: {e}", file=sys.stderr)
-        raise SystemExit(1)
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

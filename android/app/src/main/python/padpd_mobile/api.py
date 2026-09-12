@@ -261,7 +261,8 @@ def chart(name: str, args_json: str = "{}") -> str:
         payload = json.loads(args_json) if args_json else {}
         args = _deref(payload.get("args", []))
         kwargs = _deref(payload.get("kwargs", {}))
-        return json.dumps({"ok": True, "spec": _build_chart(name, args, kwargs)})
+        return json.dumps(
+            {"ok": True, "spec": _build_chart(name, args, kwargs)})
     except Exception as e:                       # noqa: BLE001
         return json.dumps({"ok": False, "error": f"{type(e).__name__}: {e}",
                            "traceback": traceback.format_exc(limit=8)})

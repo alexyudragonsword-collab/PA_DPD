@@ -57,7 +57,7 @@ def main():
     dpd.fit_measured(train.x, train.y)
     u = dpd(np.concatenate([val.x[-200:], test.x]))
 
-    print(f"\n-- same ILA-GMP-510 DPD, different evaluation surrogates --")
+    print("\n-- same ILA-GMP-510 DPD, different evaluation surrogates --")
     print(f"{'surrogate':<12}{'ACLR_L':>9}{'ACLR_R':>9}{'ACLR_AVG':>10}"
           f"{'EVM(spec)':>11}")
     for label, sur in (("GMP-510", gmp_sur), ("neural", nn_sur)):

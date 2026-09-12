@@ -25,12 +25,12 @@ import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from padpd.data import load_complete_npz, save_complete_npz  # noqa: E402
-from padpd.gain_modulation import step_probe_drive  # noqa: E402
-from padpd.loopback import LoopbackChannel  # noqa: E402
-from padpd.pa import (DriftingReferencePA, ThermalReferencePA,  # noqa: E402
+from padpd.data import load_complete_npz, save_complete_npz
+from padpd.gain_modulation import step_probe_drive
+from padpd.loopback import LoopbackChannel
+from padpd.pa import (DriftingReferencePA, ThermalReferencePA,
                       TxFrontEndPA, burst_stimulus)
-from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm
 
 OUT_DEFAULT = str(Path(__file__).resolve().parent.parent / "examples"
                   / "complete_source_demo.npz")

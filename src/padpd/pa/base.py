@@ -18,7 +18,7 @@ class PAModel(ABC):
     def __call__(self, x: np.ndarray) -> np.ndarray:
         """Apply the model to a complex baseband sequence."""
 
-    def fit(self, x: np.ndarray, y: np.ndarray) -> "PAModel":
+    def fit(self, x: np.ndarray, y: np.ndarray) -> PAModel:
         raise NotImplementedError(f"{type(self).__name__} is not trainable")
 
     def get_config(self) -> dict:

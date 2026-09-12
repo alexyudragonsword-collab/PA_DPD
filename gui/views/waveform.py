@@ -4,11 +4,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import numpy as np  # noqa: E402
-import streamlit as st  # noqa: E402
+import numpy as np
+import streamlit as st
 
-from gui import charts, ui  # noqa: E402
-from gui_core import services  # noqa: E402
+from gui import charts, ui
+from gui_core import services
 
 ui.page_setup(ui.tr("波形工作台"), "🌊")
 ui.get_state()
@@ -84,7 +84,6 @@ st.divider()
 st.subheader(ui.tr("导出"))
 col1, col2 = st.columns(2)
 with col1:
-    from padpd.data import IQDataset
     x_out = w["x_cfr"] if w["x_cfr"] is not None else w["x"]
     buf = io.BytesIO()
     np.savez_compressed(buf, x=x_out, y=x_out, sample_rate_hz=fs,

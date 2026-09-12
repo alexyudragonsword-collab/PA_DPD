@@ -11,10 +11,10 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.dpd import AdaptiveDPD
-from padpd.metrics import evm
-from padpd.pa import GMPModel, ReferencePA
-from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm
+from padpd.dpd import AdaptiveDPD  # noqa: E402
+from padpd.metrics import evm  # noqa: E402
+from padpd.pa import GMPModel, ReferencePA  # noqa: E402
+from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm  # noqa: E402
 
 BW = 80e6
 
@@ -128,8 +128,9 @@ def test_spline_basis_adaptive_converges():
     from padpd.pa import SplineMemoryPolynomial
     pa = ReferencePA(drive=0.14)
     wf = _wf(0)
-    factory = lambda: SplineMemoryPolynomial.from_signal(
-        wf.x, n_knots=8, memory_depth=4)                   # noqa: E731
+    def factory():
+        return SplineMemoryPolynomial.from_signal(
+            wf.x, n_knots=8, memory_depth=4)
     dpd = AdaptiveDPD(factory, forget=0.85)
     e0 = _evm(pa, dpd, wf)
     dpd.update(pa, wf.x)

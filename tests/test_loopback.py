@@ -4,13 +4,14 @@ import sys
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
 for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.loopback import LoopbackChannel
+from padpd.loopback import LoopbackChannel  # noqa: E402
 
 FS = 320e6
 RNG = np.random.default_rng(7)
@@ -39,9 +40,10 @@ def test_irr_formula_matches_injected_image():
     # image power = |b|^2 * signal power (X is circular)
     g = 10 ** (0.3 / 20)
     b = 0.5 * (1 - g * np.exp(1j * np.deg2rad(2.0)))
-    img_db = 10 * np.log10(_pow(y - (1 - abs(b) ** 2) ** 0 * y) + 1e-30)
-    # simpler: correlate with conj(X)
+    # correlate with conj(X) to pull the image term out. For a
+    # circular X, sum(X^2) ~ 0, so this lands on b itself.
     img = np.vdot(X.conj(), y) / np.vdot(X.conj(), X.conj())
+    assert abs(img) == pytest.approx(abs(b), rel=0.05)  # measured 1.9%
     meas_irr = 20 * np.log10(
         abs(np.vdot(X, y) / np.vdot(X, X)) / abs(img))
     assert abs(meas_irr - ch.irr_db()) < 0.5

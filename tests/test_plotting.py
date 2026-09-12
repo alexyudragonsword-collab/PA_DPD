@@ -8,10 +8,10 @@ import matplotlib
 
 matplotlib.use("Agg")
 
-import numpy as np  # noqa: E402
-import pytest  # noqa: E402
+import numpy as np
+import pytest
 
-from padpd.plotting import (plot_am_curves, plot_ccdf,  # noqa: E402
+from padpd.plotting import (plot_am_curves, plot_ccdf,
                             plot_constellation, plot_psd_comparison)
 
 RNG = np.random.default_rng(0)

@@ -10,8 +10,10 @@ experiment:
 
     1. short full-power burst   (lets stateful DUTs calibrate, then cool)
     2. long low-power settle    (reach the cold steady state)
-    3. step up to full power    -> gain droop:    dG(t) = Sum a_k (1 - e^{-t/tau_k})
-    4. step back down           -> gain recovery: dG(t) = Sum b_k e^{-t/tau_k}
+    3. step up to full power    -> gain droop:
+           dG(t) = Sum a_k (1 - e^{-t/tau_k})
+    4. step back down           -> gain recovery:
+           dG(t) = Sum b_k e^{-t/tau_k}
 
 A constant-envelope drive isolates the state dynamics: within a segment
 the static AM/AM contribution is constant, so any gain trajectory IS the
@@ -185,14 +187,16 @@ class GainModulationResult:
         bits = [f"gain drifts {self.droop_db:+.2f} dB / "
                 f"{self.phase_drift_deg:+.1f} deg after a power step; "
                 f"heating taus [{taus}] -> "
-                f"state_alphas {tuple(round(a, 6) for a in self.state_alphas())}"]
+                f"state_alphas "
+                f"{tuple(round(a, 6) for a in self.state_alphas())}"]
         r = self.hysteresis_ratio
         if not self.hysteresis_reliable:
             slowest = max(self.taus_heat_s[-1] if self.taus_heat_s else 0.0,
                           self.taus_cool_s[-1] if self.taus_cool_s else 0.0)
             bits.append(
                 f"heating/cooling asymmetry NOT assessed (ratio {r:.2f} "
-                f"unreliable): the observation is {self.observation_s*1e6:.0f}us "
+                f"unreliable): the observation is "
+                f"{self.observation_s*1e6:.0f}us "
                 f"but the slowest tau is {slowest*1e6:.1f}us — re-run the "
                 f"probe with t_obs >= {self.min_tau_spans*slowest*1e6:.0f}us "
                 "to judge trapping/bias hysteresis")

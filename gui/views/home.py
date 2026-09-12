@@ -3,9 +3,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import ui  # noqa: E402
+from gui import ui
 
 ui.page_setup(ui.tr("padpd 工作台总览"), "🏠")
 state = ui.get_state()

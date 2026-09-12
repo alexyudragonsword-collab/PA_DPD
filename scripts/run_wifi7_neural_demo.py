@@ -74,7 +74,7 @@ def main():
 
     # 4. evaluate everything on the REAL (reference) PA
     mask = default_wifi_mask(bw)
-    print(f"\n-- validation signal, real ReferencePA in the loop --")
+    print("\n-- validation signal, real ReferencePA in the loop --")
     print(f"{'case':<22}{'EVM (dB)':>10}{'ACLR+ (dBc)':>13}{'mask':>7}")
     cases = {
         "no DPD": pa(x_val),

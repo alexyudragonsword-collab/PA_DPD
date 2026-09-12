@@ -267,7 +267,8 @@ class ModelingPage(QWidget):
                 d=res["droop_db"], p=res["phase_drift_deg"]))
             return
         taus = ", ".join(f"{t:.1f}µs(权重 {w:.2f})" for t, w in
-                         zip(res["taus_heat_us"], res["weights_heat"]))
+                         zip(res["taus_heat_us"], res["weights_heat"],
+                             strict=True))
         extra = ""
         if res["state_gain_db"] is not None:
             extra = tr(";状态样条 vs 纯 SMP:{a:.1f} → {b:.1f} dB"

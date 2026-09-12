@@ -14,7 +14,7 @@ ReferencePA today, a Cadence/measurement replay tomorrow.
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 
@@ -44,7 +44,7 @@ class ILAPredistorter:
         self.fit_kwargs = fit_kwargs or {}
 
     def fit(self, pa: Callable[[np.ndarray], np.ndarray],
-            x: np.ndarray) -> "ILAPredistorter":
+            x: np.ndarray) -> ILAPredistorter:
         """Learn the predistorter against a black-box PA on signal ``x``."""
         u = x
         for it in range(self.n_iterations):
@@ -59,7 +59,7 @@ class ILAPredistorter:
                 u = model(x)
         return self
 
-    def fit_measured(self, x: np.ndarray, y: np.ndarray) -> "ILAPredistorter":
+    def fit_measured(self, x: np.ndarray, y: np.ndarray) -> ILAPredistorter:
         """Single-shot ILA from a measured input/output pair.
 
         Fits the post-inverse directly on measured data (y/G -> x) without
@@ -106,7 +106,7 @@ class ILAPredistorter:
                  n_iterations=self.n_iterations)
 
     @classmethod
-    def load(cls, path: str) -> "ILAPredistorter":
+    def load(cls, path: str) -> ILAPredistorter:
         """Load a predistorter saved with :meth:`save`.
 
         Restores the model factory (same class/config as the saved

@@ -11,8 +11,8 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.pa import (ReferencePA, SalehPA, WienerHammersteinPA,
-                      load_amam_table, load_hb_pa, load_model, s21_to_fir)
+from padpd.pa import (ReferencePA, SalehPA, WienerHammersteinPA,  # noqa: E402
+                      load_amam_table, load_model, s21_to_fir)
 
 FS = 320e6
 
@@ -42,7 +42,7 @@ def test_amam_csv_both_conventions(tmp_path):
     r, r_out, ph, _ = _saleh_tables(50)
     p1 = tmp_path / "amam_lin.csv"
     lines = ["r_in,r_out,phase_deg"] + [
-        f"{a},{b},{c}" for a, b, c in zip(r, r_out, ph)]
+        f"{a},{b},{c}" for a, b, c in zip(r, r_out, ph, strict=True)]
     p1.write_text("\n".join(lines), encoding="utf-8")
     r1, o1, p1_ = load_amam_table(str(p1))
     assert np.allclose(r1, r) and np.allclose(o1, r_out)
@@ -52,7 +52,7 @@ def test_amam_csv_both_conventions(tmp_path):
     pout = 10 * np.log10(r_out ** 2 / (2 * 50) / 1e-3)
     p2 = tmp_path / "amam_dbm.csv"
     lines = ["pin_dbm,pout_dbm,phase_deg"] + [
-        f"{a},{b},{c}" for a, b, c in zip(pin, pout, ph)]
+        f"{a},{b},{c}" for a, b, c in zip(pin, pout, ph, strict=True)]
     p2.write_text("\n".join(lines), encoding="utf-8")
     r2, o2, _ = load_amam_table(str(p2))
     assert np.allclose(r2, r, rtol=1e-6)
@@ -65,14 +65,15 @@ def test_s21_fir_reproduces_table(tmp_path):
     ph_deg = 8.0 * np.sin(2 * np.pi * f_tab / 200e6)
     p = tmp_path / "s21.csv"
     lines = ["freq_hz,mag_db,phase_deg"] + [
-        f"{a},{b},{c}" for a, b, c in zip(f_tab, mag_db, ph_deg)]
+        f"{a},{b},{c}"
+        for a, b, c in zip(f_tab, mag_db, ph_deg, strict=True)]
     p.write_text("\n".join(lines), encoding="utf-8")
     taps = s21_to_fir(str(p), FS, n_taps=31)
     # check realized response at in-band table points
     n = 4096
     h = np.fft.fft(taps, n)
     f = np.fft.fftfreq(n, d=1 / FS)
-    for ft, md in zip(f_tab[5:-5], mag_db[5:-5]):
+    for ft, md in zip(f_tab[5:-5], mag_db[5:-5], strict=True):
         k = np.argmin(np.abs(f - ft))
         realized_db = 20 * np.log10(np.abs(h[k]))
         assert abs(realized_db - md) < 0.35

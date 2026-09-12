@@ -17,7 +17,6 @@ point that is expensive or impossible to linearize.
 import argparse
 import os
 
-import numpy as np
 
 from padpd.codesign import codesign_sweep
 from padpd.plotting import plt  # matplotlib Agg-configured
@@ -67,9 +66,10 @@ def main():
     co = max(feasible, key=lambda r: r["pae"]) if feasible else None
 
     print("\n-- design decision --")
+    seq_ok = seq["feasible"] and seq["dpd_cost"] <= args.dpd_budget
+    verdict = "FEASIBLE" if seq_ok else "over budget / uninvertible"
     print(f"Sequential (max PAE, DPD after): drive {seq['drive']:.2f}, "
-          f"PAE {100*seq['pae']:.1f}%, "
-          f"{'FEASIBLE' if seq['feasible'] and seq['dpd_cost']<=args.dpd_budget else 'over budget / uninvertible'} "
+          f"PAE {100*seq['pae']:.1f}%, {verdict} "
           f"(needs {seq['dpd_cost']} coeffs, EVM {seq['evm_dpd']:.1f})")
     if co:
         print(f"Co-design  (max PAE within budget): drive {co['drive']:.2f}, "

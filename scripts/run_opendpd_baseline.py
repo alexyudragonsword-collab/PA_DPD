@@ -35,12 +35,12 @@ import numpy as np
 
 WARMUP = 200  # samples of context, > any model's memory span (incl. DPD+PA)
 
-from padpd.data import load_opendpd_dataset
-from padpd.dpd import ILAPredistorter
-from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,
+from padpd.data import load_opendpd_dataset  # noqa: E402
+from padpd.dpd import ILAPredistorter  # noqa: E402
+from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,  # noqa: E402
                            target_gain_opendpd)
-from padpd.pa import gmp_opendpd_510, mp_opendpd_500, nmse_db
-from padpd.plotting import plot_am_curves, plot_psd_comparison
+from padpd.pa import gmp_opendpd_510, mp_opendpd_500, nmse_db  # noqa: E402
+from padpd.plotting import plot_am_curves, plot_psd_comparison  # noqa: E402
 
 # Published numbers from OpenDPD benchmark/benchmark_report.md
 # (~500-param fair comparison): (ACLR_AVG dB, EVM dB)
@@ -103,8 +103,8 @@ def run_dataset(root: str, name: str, results_dir: str):
               f"{a['avg_dbc']:>10.2f}{e:>11.2f}")
 
     if name in PUBLISHED:
-        print(f"\n-- published OpenDPD benchmark (~500 params, "
-              f"GRU-surrogate protocol) --")
+        print("\n-- published OpenDPD benchmark (~500 params, "
+              "GRU-surrogate protocol) --")
         for label, (a, e) in PUBLISHED[name].items():
             print(f"{label:<28}{'':>9}{'':>9}{a:>10.2f}{e:>11.2f}")
     else:

@@ -10,9 +10,9 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.codesign import drain_efficiency, saturation_amplitude
-from padpd.pa import ReferencePA
-from padpd.waveform import OFDMConfig, generate_ofdm
+from padpd.codesign import drain_efficiency, saturation_amplitude  # noqa: E402
+from padpd.pa import ReferencePA  # noqa: E402
+from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 
 def _sig():

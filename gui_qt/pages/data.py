@@ -144,7 +144,7 @@ class DataPage(QWidget):
             src = services.load_source(
                 "opendpd", str(Path(self.root.text()) / name))
             self._register(src)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
 
     def load_file(self):
@@ -163,7 +163,7 @@ class DataPage(QWidget):
             if src.get("align_info"):
                 self.msg.setText(tr("对齐:延迟 {lag:.2f} 采样").format(
                     lag=src["align_info"]["lag_total"]))
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
 
     def load_complete_example(self):
@@ -171,7 +171,7 @@ class DataPage(QWidget):
             src = services.load_source("npz",
                                        services.EXAMPLE_COMPLETE_NPZ)
             self._register(src)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.msg.setText(tr("❌ 加载失败:{e}").format(e=e))
 
     def consume_extras(self):
@@ -228,7 +228,7 @@ class DataPage(QWidget):
                 return
         try:
             res = services.analyze_two_tone_csv(path)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             self.tt_msg.setText(tr("❌ 加载失败:{e}").format(e=e))
             return
         self.tt_msg.setText(tr(

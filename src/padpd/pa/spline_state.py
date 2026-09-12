@@ -32,7 +32,7 @@ self-heating virtual DUT.
 
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 import numpy as np
 
@@ -93,7 +93,7 @@ class StateConditionedSpline(PAModel):
                     state_alphas: Sequence[float] = (0.99, 0.9999),
                     n_state_knots: int = 4, state_degree: int = 2,
                     interaction: bool = True, placement: str = "hybrid",
-                    headroom: float = 1.05) -> "StateConditionedSpline":
+                    headroom: float = 1.05) -> StateConditionedSpline:
         """Resolve amplitude knots and the state normalization from a
         calibration signal (which should exercise the power dynamics —
         bursts/steps, not just one stationary capture)."""
@@ -201,7 +201,7 @@ class StateConditionedSpline(PAModel):
 
     def fit(self, x: np.ndarray, y: np.ndarray,
             regularization: float = 0.0, smoothness: float = 0.0,
-            weights: np.ndarray | None = None) -> "StateConditionedSpline":
+            weights: np.ndarray | None = None) -> StateConditionedSpline:
         self.coeffs = lstsq_fit(
             self.basis_matrix(x), y, regularization, weights=weights,
             penalty=self.smoothness_penalty() if smoothness > 0 else None,
@@ -258,7 +258,7 @@ class CoefficientScheduler:
     def fit_conditions(cls, model_factory,
                        captures: Sequence[tuple],
                        kind: str = "pchip", **fit_kwargs
-                       ) -> "CoefficientScheduler":
+                       ) -> CoefficientScheduler:
         """Fit ``model_factory()`` on each ``(condition, x, y)`` capture."""
         models, conds = [], []
         for cond, x, y in captures:
@@ -295,7 +295,7 @@ class CoefficientScheduler:
                  conditions=self.conditions, coeff_table=self.coeff_table)
 
     @classmethod
-    def load(cls, path: str) -> "CoefficientScheduler":
+    def load(cls, path: str) -> CoefficientScheduler:
         import ast
         from . import _MODEL_CLASSES
         d = np.load(path, allow_pickle=False)

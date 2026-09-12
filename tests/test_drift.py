@@ -10,10 +10,10 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.dpd import AdaptiveDPD, ILAPredistorter
-from padpd.metrics import evm
-from padpd.pa import DriftingReferencePA, GMPModel
-from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm
+from padpd.dpd import AdaptiveDPD, ILAPredistorter  # noqa: E402
+from padpd.metrics import evm  # noqa: E402
+from padpd.pa import DriftingReferencePA, GMPModel  # noqa: E402
+from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm  # noqa: E402
 
 
 def _wf(seed):

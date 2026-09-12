@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -6,7 +7,7 @@ import pytest
 from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
                           export_reference_vectors)
 from padpd.deploy.export import _int_codes
-from padpd.pa import ddr_volterra_default, ReferencePA, nmse_db
+from padpd.pa import ddr_volterra_default, ReferencePA
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 
@@ -35,7 +36,9 @@ def test_export_linear_coeffs(fitted, tmp_path):
     _, _, ddr = fitted
     p = str(tmp_path / "coeffs.json")
     payload = export_linear_coeffs(ddr, w_bits=16, path=p)
-    d = json.load(open(p))
+    d = json.loads(Path(p).read_text(encoding="utf-8"))
+    # what the call returns and what it wrote are the same payload
+    assert payload == d
     assert d["model_class"] == "DDRVolterraModel"
     assert d["n_coeffs"] == len(ddr.coeffs)
     assert len(d["coeffs_real"]) == len(ddr.coeffs)

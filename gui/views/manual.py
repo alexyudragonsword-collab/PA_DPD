@@ -3,10 +3,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-import streamlit as st  # noqa: E402
+import streamlit as st
 
-from gui import ui  # noqa: E402
-from gui_core import manual  # noqa: E402
+from gui import ui
+from gui_core import manual
 
 ui.page_setup("用户手册", "📖")
 ui.note(ui.tr("内置双语用户手册:整合快速入门、工作流、逐页操作指南、"
