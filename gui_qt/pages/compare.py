@@ -1,9 +1,16 @@
 import json
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QFileDialog, QHBoxLayout, QLabel,
-                               QPushButton, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QFileDialog,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_qt import figs
 from gui_qt.common import FigurePane, get_state, page_scaffold, tr

@@ -30,7 +30,6 @@ from pathlib import Path
 
 from gui_core.i18n import tr
 
-
 _RUNSTORE = None
 
 

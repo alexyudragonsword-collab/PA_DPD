@@ -1,11 +1,15 @@
 import numpy as np
 import pytest
 
-from padpd.pa import (DDRVolterraModel, ddr_volterra_default, load_model,
-                      nmse_db)
-from padpd.pa import MemoryPolynomialModel
+from padpd.pa import (
+    DDRVolterraModel,
+    MemoryPolynomialModel,
+    ReferencePA,
+    ddr_volterra_default,
+    load_model,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
-from padpd.pa import ReferencePA
 
 
 @pytest.fixture(scope="module")

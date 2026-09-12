@@ -20,7 +20,6 @@ import sys
 from dataclasses import replace
 from pathlib import Path
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from padpd.data import align_delay
@@ -28,8 +27,7 @@ from padpd.dpd import ILAPredistorter
 from padpd.loopback import LoopbackChannel
 from padpd.metrics import aclr, evm
 from padpd.pa import GMPModel, ReferencePA
-from padpd.waveform import (OFDMConfig, demodulate_ofdm,
-                            generate_ofdm)
+from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm
 
 DRIVE = 0.14
 BW = 80e6

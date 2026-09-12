@@ -1,10 +1,14 @@
-from .evm import EVMResult, evm, evm_of_signal
-from .spectrum import psd, default_wifi_mask, check_mask
 from .aclr import aclr
 from .amam import am_am_am_pm
 from .ccdf import ccdf
-from .opendpd_compat import (aclr_opendpd, evm_spectral, nmse_segmented,
-                             target_gain_opendpd)
+from .evm import EVMResult, evm, evm_of_signal
+from .opendpd_compat import (
+                             aclr_opendpd,
+                             evm_spectral,
+                             nmse_segmented,
+                             target_gain_opendpd,
+)
+from .spectrum import check_mask, default_wifi_mask, psd
 
 __all__ = [
     "ccdf",

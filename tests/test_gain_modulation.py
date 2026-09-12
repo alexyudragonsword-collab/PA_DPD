@@ -4,9 +4,14 @@ import numpy as np
 import pytest
 
 from padpd.gain_modulation import identify_gain_modulation
-from padpd.pa import (ReferencePA, SplineMemoryPolynomial,
-                      StateConditionedSpline, ThermalReferencePA,
-                      burst_stimulus, nmse_db)
+from padpd.pa import (
+    ReferencePA,
+    SplineMemoryPolynomial,
+    StateConditionedSpline,
+    ThermalReferencePA,
+    burst_stimulus,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 FS = 320e6

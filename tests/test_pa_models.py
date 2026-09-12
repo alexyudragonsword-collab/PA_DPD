@@ -1,8 +1,13 @@
 import numpy as np
 import pytest
 
-from padpd.pa import (GMPModel, MemoryPolynomialModel, ReferencePA, SalehPA,
-                      nmse_db)
+from padpd.pa import (
+    GMPModel,
+    MemoryPolynomialModel,
+    ReferencePA,
+    SalehPA,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 
@@ -89,6 +94,7 @@ def test_unfitted_model_raises():
 
 def test_gmp_constructor_validates():
     import pytest
+
     from padpd.pa import GMPModel
     with pytest.raises(ValueError):
         GMPModel(order=0)

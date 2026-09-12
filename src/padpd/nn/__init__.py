@@ -12,13 +12,12 @@ except ImportError as e:  # pragma: no cover
         "(CPU-only: pip install torch --index-url "
         "https://download.pytorch.org/whl/cpu)") from e
 
-from .features import iq_features, complex_to_iq, iq_to_complex
-from .backbones import (GRUBackbone, DGRUBackbone, TCNBackbone,
-                        count_params)
+from ..deploy.neural_ptq import quantize_neural_ptq
+from .backbones import DGRUBackbone, GRUBackbone, TCNBackbone, count_params
+from .dla import DLAPredistorter
+from .features import complex_to_iq, iq_features, iq_to_complex
 from .frame_data import FrameDataset
 from .torch_model import NeuralPAModel
-from .dla import DLAPredistorter
-from ..deploy.neural_ptq import quantize_neural_ptq
 
 __all__ = [
     "quantize_neural_ptq",

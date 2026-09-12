@@ -17,7 +17,6 @@ point that is expensive or impossible to linearize.
 import argparse
 import os
 
-
 from padpd.codesign import codesign_sweep
 from padpd.plotting import plt  # matplotlib Agg-configured
 from padpd.waveform import OFDMConfig, generate_ofdm

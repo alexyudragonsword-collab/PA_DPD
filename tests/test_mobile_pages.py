@@ -505,6 +505,7 @@ def test_a_missing_figure_is_reported_not_dropped(api, monkeypatch):
     """Silently omitting it would leave a chapter looking complete while
     a figure its text refers to is simply gone."""
     from padpd_mobile import pages
+
     from gui_core import manual as manual_mod
 
     real_split = manual_mod.split_segments

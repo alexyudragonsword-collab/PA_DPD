@@ -1,14 +1,32 @@
 from pathlib import Path
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QDoubleSpinBox,
-                               QFileDialog, QGroupBox, QHBoxLayout, QLabel,
-                               QProgressBar, QPushButton, QSpinBox,
-                               QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QDoubleSpinBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import Run, services
 from gui_qt import figs
-from gui_qt.common import (FigurePane, FnWorker, MetricCard, card_row,
-                           get_state, page_scaffold, tr)
+from gui_qt.common import (
+    FigurePane,
+    FnWorker,
+    MetricCard,
+    card_row,
+    get_state,
+    page_scaffold,
+    tr,
+)
 
 
 class ModelingPage(QWidget):

@@ -44,7 +44,7 @@ def test_class_a_below_class_b_at_backoff():
 
 def test_works_on_hb_imported_pa():
     # efficiency must be computable from any PAModel, incl. WH from HB
-    from padpd.pa import WienerHammersteinPA, SalehPA
+    from padpd.pa import SalehPA, WienerHammersteinPA
     saleh = SalehPA()
     r = np.linspace(1e-3, 2.0, 200)
     y = saleh(r.astype(complex))

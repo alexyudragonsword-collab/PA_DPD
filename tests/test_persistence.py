@@ -2,8 +2,15 @@ import numpy as np
 import pytest
 
 from padpd.dpd import ILAPredistorter
-from padpd.pa import (GMPModel, MemoryPolynomialModel, ReferencePA, SalehPA,
-                      SplineGMP, SplineMemoryPolynomial, load_model)
+from padpd.pa import (
+    GMPModel,
+    MemoryPolynomialModel,
+    ReferencePA,
+    SalehPA,
+    SplineGMP,
+    SplineMemoryPolynomial,
+    load_model,
+)
 
 
 @pytest.fixture(scope="module")
@@ -84,10 +91,11 @@ def test_ila_load_restores_factory_and_iterations(tmp_path):
 
 
 def test_adaptive_dpd_save_load_roundtrip(tmp_path):
+    import numpy as np
+
     from padpd.dpd import AdaptiveDPD
     from padpd.pa import GMPModel, ReferencePA
     from padpd.waveform import OFDMConfig, generate_ofdm
-    import numpy as np
     x = generate_ofdm(OFDMConfig(bandwidth_hz=20e6, qam_order=256,
                                  n_symbols=4, seed=0)).x
     pa = ReferencePA(drive=0.14)

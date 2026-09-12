@@ -51,7 +51,11 @@ sys.path.insert(0, str(ROOT / "src"))
 from padpd.dpd import AdaptiveDPD  # noqa: E402
 from padpd.metrics import evm  # noqa: E402
 from padpd.pa import GMPModel, ReferencePA  # noqa: E402
-from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm  # noqa: E402
+from padpd.waveform import (  # noqa: E402
+    OFDMConfig,
+    demodulate_ofdm,
+    generate_ofdm,
+)
 
 BW = 80e6
 CEILING = 6.0   # plot cap for the diverging curve (dB)

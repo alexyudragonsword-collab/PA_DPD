@@ -24,8 +24,7 @@ import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
 from padpd.dpd import ILAPredistorter
-from padpd.metrics import (aclr, check_mask, default_wifi_mask,
-                           evm, psd)
+from padpd.metrics import aclr, check_mask, default_wifi_mask, evm, psd
 from padpd.pa import GMPModel, SalehPA, load_hb_pa, nmse_db
 from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm
 

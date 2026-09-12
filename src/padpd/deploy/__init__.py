@@ -9,10 +9,18 @@ is evaluated bit-true. This module provides that quantization and a
 hardware-cost estimate.
 """
 
-from .fixed_point import (quantize_symmetric, FixedPointPolyModel,
-                          mac_cost, spline_mac_cost)
-from .export import (export_linear_coeffs, export_lut,
-                     export_reference_vectors, export_onnx)
+from .export import (
+                          export_linear_coeffs,
+                          export_lut,
+                          export_onnx,
+                          export_reference_vectors,
+)
+from .fixed_point import (
+                          FixedPointPolyModel,
+                          mac_cost,
+                          quantize_symmetric,
+                          spline_mac_cost,
+)
 from .lut import LUTDPD, lut_from_model, quantize_lut
 
 __all__ = ["quantize_symmetric", "FixedPointPolyModel", "mac_cost",

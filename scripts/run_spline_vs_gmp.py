@@ -24,14 +24,26 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "src"))
 
-from padpd.deploy import (LUTDPD, lut_from_model, mac_cost,  # noqa: E402
-                          spline_mac_cost)
+from padpd.deploy import (  # noqa: E402
+    LUTDPD,
+    lut_from_model,
+    mac_cost,
+    spline_mac_cost,
+)
 from padpd.dpd import ILAPredistorter  # noqa: E402
 from padpd.metrics import aclr, evm_of_signal  # noqa: E402
-from padpd.pa import (GMPModel, MemoryPolynomialModel,  # noqa: E402
-                      ReferencePA, SplineGMP, SplineMemoryPolynomial,
-                      StateConditionedSpline, ThermalReferencePA,
-                      basis_cond, burst_stimulus, nmse_db)
+from padpd.pa import (  # noqa: E402
+    GMPModel,
+    MemoryPolynomialModel,
+    ReferencePA,
+    SplineGMP,
+    SplineMemoryPolynomial,
+    StateConditionedSpline,
+    ThermalReferencePA,
+    basis_cond,
+    burst_stimulus,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 

@@ -1,8 +1,12 @@
 import numpy as np
 import pytest
 
-from padpd.data import (IQDataset, load_cadence_csv, load_matlab_mat,
-                        load_opendpd_csv)
+from padpd.data import (
+    IQDataset,
+    load_cadence_csv,
+    load_matlab_mat,
+    load_opendpd_csv,
+)
 
 
 @pytest.fixture

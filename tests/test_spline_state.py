@@ -3,10 +3,16 @@
 import numpy as np
 import pytest
 
-from padpd.pa import (CoefficientScheduler, DriftingReferencePA,
-                      SplineMemoryPolynomial, StateConditionedSpline,
-                      ThermalReferencePA, burst_stimulus, load_model,
-                      nmse_db)
+from padpd.pa import (
+    CoefficientScheduler,
+    DriftingReferencePA,
+    SplineMemoryPolynomial,
+    StateConditionedSpline,
+    ThermalReferencePA,
+    burst_stimulus,
+    load_model,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 

@@ -12,8 +12,12 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.deploy.rtl import (emit_rtl, generate_verilog, quantize_to_int,  # noqa: E402
-                              verify_with_iverilog)
+from padpd.deploy.rtl import (  # noqa: E402
+    emit_rtl,
+    generate_verilog,
+    quantize_to_int,
+    verify_with_iverilog,
+)
 from padpd.dpd import ILAPredistorter  # noqa: E402
 from padpd.pa import GMPModel, ReferencePA  # noqa: E402
 from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
@@ -113,10 +117,10 @@ def test_emit_lut_rtl_writes_files(tmp_path):
 def test_lut_fixed_eval_tracks_float_model(tmp_path):
     """The integer golden model, dequantized, matches the float LUTDPD
     within quantization error."""
-    from padpd.deploy import LUTDPD, lut_from_model
-    from padpd.deploy.rtl import lut_fixed_eval, \
-        quantize_to_int
     import numpy as np
+
+    from padpd.deploy import LUTDPD, lut_from_model
+    from padpd.deploy.rtl import lut_fixed_eval, quantize_to_int
     smp = _fitted_smp()
     addr_bits, frac_bits, entry_bits, data_bits = 6, 8, 14, 14
     nent = (1 << addr_bits) + 1

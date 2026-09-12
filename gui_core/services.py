@@ -22,17 +22,39 @@ import os
 import numpy as np
 
 from padpd.cfr import cfr_clip_filter
-from padpd.data import (IQDataset, align_delay, load_cadence_csv,
-                        load_matlab_mat, load_opendpd_dataset)
+from padpd.data import (
+    IQDataset,
+    align_delay,
+    load_cadence_csv,
+    load_matlab_mat,
+    load_opendpd_dataset,
+)
 from padpd.dpd import ILAPredistorter
-from padpd.metrics import (aclr, aclr_opendpd, ccdf, check_mask,
-                           default_wifi_mask, evm_of_signal, evm_spectral,
-                           psd, target_gain_opendpd)
+from padpd.metrics import (
+    aclr,
+    aclr_opendpd,
+    ccdf,
+    check_mask,
+    default_wifi_mask,
+    evm_of_signal,
+    evm_spectral,
+    psd,
+    target_gain_opendpd,
+)
 from padpd.metrics.amam import am_am_am_pm
-from padpd.pa import (DDRVolterraModel, GMPModel, MemoryPolynomialModel,
-                      ReferencePA, SplineGMP, SplineMemoryPolynomial,
-                      ddr_volterra_default, gmp_opendpd_510,
-                      load_model, mp_opendpd_500, nmse_db)
+from padpd.pa import (
+    DDRVolterraModel,
+    GMPModel,
+    MemoryPolynomialModel,
+    ReferencePA,
+    SplineGMP,
+    SplineMemoryPolynomial,
+    ddr_volterra_default,
+    gmp_opendpd_510,
+    load_model,
+    mp_opendpd_500,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm, papr_db
 
 WARMUP = 200
@@ -435,8 +457,12 @@ def lut_sweep(model, src: dict, entries=(1024, 256, 128, 64, 32),
     prediction target. ``entry_bits`` optionally adds entry quantization
     on top (the two axes are orthogonal).
     """
-    from padpd.deploy import (LUTDPD, lut_from_model, quantize_lut,
-                              spline_mac_cost)
+    from padpd.deploy import (
+        LUTDPD,
+        lut_from_model,
+        quantize_lut,
+        spline_mac_cost,
+    )
     x_e, y_e = _eval_split(src)
     out = {"float": nmse_db(y_e, _warm_predict(model, src, x_e)),
            "entries": {}}
@@ -453,8 +479,11 @@ def lut_sweep(model, src: dict, entries=(1024, 256, 128, 64, 32),
 
 def export_artifacts(model, src: dict, out_dir: str, w_bits: int = 16,
                      n_vectors: int = 2048) -> dict:
-    from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
-                              export_reference_vectors)
+    from padpd.deploy import (
+        FixedPointPolyModel,
+        export_linear_coeffs,
+        export_reference_vectors,
+    )
     os.makedirs(out_dir, exist_ok=True)
     paths = {}
     x_e, _ = _eval_split(src)
@@ -530,8 +559,11 @@ def run_adaptive_dpd(method: str = "rls", n_blocks: int = 10,
     if n_blocks < 2:
         raise ValueError("n_blocks must be >= 2")
     from padpd.dpd import AdaptiveDPD, ILAPredistorter
-    from padpd.pa import (DriftingReferencePA, SplineMemoryPolynomial,
-                          ThermalReferencePA)
+    from padpd.pa import (
+        DriftingReferencePA,
+        SplineMemoryPolynomial,
+        ThermalReferencePA,
+    )
 
     blocks = [generate_ofdm(OFDMConfig(bandwidth_hz=bw, qam_order=qam,
                                        n_symbols=n_symbols, seed=seed + s))

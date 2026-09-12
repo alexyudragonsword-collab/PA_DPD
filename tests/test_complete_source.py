@@ -5,10 +5,16 @@ import numpy as np
 import pytest
 
 from gui_core import services
-from padpd.data import (IQDataset, extras_summary, load_complete_npz,
-                        save_complete_npz)
-from padpd.gain_modulation import (identify_gain_modulation_capture,
-                                   step_probe_drive)
+from padpd.data import (
+    IQDataset,
+    extras_summary,
+    load_complete_npz,
+    save_complete_npz,
+)
+from padpd.gain_modulation import (
+    identify_gain_modulation_capture,
+    step_probe_drive,
+)
 
 
 def test_roundtrip_all_groups(tmp_path):

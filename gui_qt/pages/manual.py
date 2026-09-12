@@ -1,5 +1,10 @@
-from PySide6.QtWidgets import (QHBoxLayout, QListWidget, QTextBrowser,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QHBoxLayout,
+    QListWidget,
+    QTextBrowser,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import manual
 from gui_qt import common

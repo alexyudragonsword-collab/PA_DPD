@@ -5,10 +5,18 @@ torch = pytest.importorskip("torch")
 
 pytestmark = pytest.mark.slow  # minutes-long trainings; full CI lane only
 
-from padpd.nn import (DGRUBackbone, DLAPredistorter, FrameDataset,  # noqa: E402
-                      GRUBackbone, NeuralPAModel, TCNBackbone,
-                      complex_to_iq, count_params, iq_features,
-                      iq_to_complex)
+from padpd.nn import (  # noqa: E402
+    DGRUBackbone,
+    DLAPredistorter,
+    FrameDataset,
+    GRUBackbone,
+    NeuralPAModel,
+    TCNBackbone,
+    complex_to_iq,
+    count_params,
+    iq_features,
+    iq_to_complex,
+)
 from padpd.pa import MemoryPolynomialModel, ReferencePA, nmse_db  # noqa: E402
 from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 

@@ -21,8 +21,12 @@ import numpy as np
 
 from padpd.data import load_opendpd_dataset
 from padpd.dpd import ILAPredistorter
-from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,
-                           target_gain_opendpd)
+from padpd.metrics import (
+    aclr_opendpd,
+    evm_spectral,
+    nmse_segmented,
+    target_gain_opendpd,
+)
 from padpd.nn import NeuralPAModel
 from padpd.pa import gmp_opendpd_510, nmse_db
 

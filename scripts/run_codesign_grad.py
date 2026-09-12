@@ -16,7 +16,6 @@ discrete method stays the robust production tool.
 import argparse
 import os
 
-
 from padpd.codesign_torch import joint_codesign
 from padpd.plotting import plt
 from padpd.waveform import OFDMConfig, generate_ofdm

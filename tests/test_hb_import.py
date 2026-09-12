@@ -11,8 +11,14 @@ for p in (str(ROOT), str(ROOT / "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from padpd.pa import (ReferencePA, SalehPA, WienerHammersteinPA,  # noqa: E402
-                      load_amam_table, load_model, s21_to_fir)
+from padpd.pa import (  # noqa: E402
+    ReferencePA,
+    SalehPA,
+    WienerHammersteinPA,
+    load_amam_table,
+    load_model,
+    s21_to_fir,
+)
 
 FS = 320e6
 

@@ -239,6 +239,7 @@ def test_fnworker_live_registry(window):
     """Language/theme switches consult this registry to avoid destroying
     pages that own running QThreads."""
     import time
+
     from gui_qt import common as C
     assert C.live_worker_count() == 0
     w = C.FnWorker(lambda on_progress=None: time.sleep(0.3) or 42)
@@ -265,6 +266,7 @@ def test_dpd_three_loop_panel_runs(app, window):
     """End-to-end: the front-end three-loop demo runs from the panel,
     draws the figure and registers a run."""
     import time
+
     from gui_qt import common as C
     from gui_qt.common import get_state
     page = window._pages["dpd"]
@@ -287,6 +289,7 @@ def test_modeling_gain_mod_panel_runs(app, window):
     """The identification panel runs (static control DUT: fast path)
     and registers a run."""
     import time
+
     from gui_qt import common as C
     from gui_qt.common import get_state
     page = window._pages["modeling"]

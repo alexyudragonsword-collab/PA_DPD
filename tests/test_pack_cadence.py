@@ -11,8 +11,12 @@ for p in (str(ROOT), str(ROOT / "src"), str(ROOT / "scripts")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-from pack_cadence_source import (PackError,  # noqa: E402
-                                 pack_cadence_dir, read_capture)
+from pack_cadence_source import (  # noqa: E402
+    PackError,
+    pack_cadence_dir,
+    read_capture,
+)
+
 from padpd.data import load_complete_npz  # noqa: E402
 
 FS = 80e6

@@ -3,20 +3,28 @@ import ast
 import numpy as np
 
 from .base import PAModel, basis_cond, nmse_db
-from .saleh import SalehPA
-from .memory_polynomial import MemoryPolynomialModel
-from .gmp import GMPModel
 from .ddr import DDRVolterraModel
-from .reference_pa import ReferencePA
 from .drift import DriftingReferencePA
-from .hb_import import (WienerHammersteinPA, load_amam_table, load_hb_pa,
-                        s21_to_fir)
-from .spline import (SplineGMP, SplineMemoryPolynomial,
-                     bspline_design_matrix, place_knots)
+from .gmp import GMPModel
+from .hb_import import (
+    WienerHammersteinPA,
+    load_amam_table,
+    load_hb_pa,
+    s21_to_fir,
+)
+from .iq import IQImbalancePA, TxFrontEndPA, iq_imbalance_coeffs
+from .memory_polynomial import MemoryPolynomialModel
+from .presets import ddr_volterra_default, gmp_opendpd_510, mp_opendpd_500
+from .reference_pa import ReferencePA
+from .saleh import SalehPA
+from .spline import (
+    SplineGMP,
+    SplineMemoryPolynomial,
+    bspline_design_matrix,
+    place_knots,
+)
 from .spline_state import CoefficientScheduler, StateConditionedSpline
 from .thermal import ThermalReferencePA, burst_stimulus
-from .iq import IQImbalancePA, TxFrontEndPA, iq_imbalance_coeffs
-from .presets import mp_opendpd_500, gmp_opendpd_510, ddr_volterra_default
 
 _MODEL_CLASSES = {cls.__name__: cls
                   for cls in (SalehPA, MemoryPolynomialModel, GMPModel,

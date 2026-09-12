@@ -4,10 +4,13 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
-                          export_reference_vectors)
+from padpd.deploy import (
+    FixedPointPolyModel,
+    export_linear_coeffs,
+    export_reference_vectors,
+)
 from padpd.deploy.export import _int_codes
-from padpd.pa import ddr_volterra_default, ReferencePA
+from padpd.pa import ReferencePA, ddr_volterra_default
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 

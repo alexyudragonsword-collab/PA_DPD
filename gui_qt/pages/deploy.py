@@ -1,14 +1,25 @@
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (QComboBox, QFileDialog, QGroupBox, QHBoxLayout,
-                               QLabel, QListWidget, QListWidgetItem,
-                               QProgressBar, QPushButton, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QListWidgetItem,
+    QProgressBar,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import Run, services
 from gui_qt import figs
-from gui_qt.common import (FigurePane, FnWorker, get_state, page_scaffold, tr)
+from gui_qt.common import FigurePane, FnWorker, get_state, page_scaffold, tr
 
 ALL_BITS = [16, 14, 12, 10, 8]
 

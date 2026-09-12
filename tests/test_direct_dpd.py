@@ -5,10 +5,17 @@ import pytest
 
 torch = pytest.importorskip("torch")
 
-from padpd.dpd import (ILAPredistorter, direct_learn_spline_dpd,  # noqa: E402
-                       torch_spline_basis)
-from padpd.pa import (ReferencePA, SplineMemoryPolynomial,  # noqa: E402
-                      TxFrontEndPA, nmse_db)
+from padpd.dpd import (  # noqa: E402
+    ILAPredistorter,
+    direct_learn_spline_dpd,
+    torch_spline_basis,
+)
+from padpd.pa import (  # noqa: E402
+    ReferencePA,
+    SplineMemoryPolynomial,
+    TxFrontEndPA,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm  # noqa: E402
 
 

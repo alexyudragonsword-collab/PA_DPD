@@ -38,8 +38,12 @@ import numpy as np
 
 from .base import PAModel, lstsq_fit
 from .memory_polynomial import delayed
-from .spline import (_second_difference, _validate_knots,
-                     bspline_design_matrix, place_knots)
+from .spline import (
+    _second_difference,
+    _validate_knots,
+    bspline_design_matrix,
+    place_knots,
+)
 
 
 class StateConditionedSpline(PAModel):
@@ -297,6 +301,7 @@ class CoefficientScheduler:
     @classmethod
     def load(cls, path: str) -> CoefficientScheduler:
         import ast
+
         from . import _MODEL_CLASSES
         d = np.load(path, allow_pickle=False)
         model_class = _MODEL_CLASSES[str(d["model_class"])]

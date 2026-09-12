@@ -5,9 +5,15 @@ from itertools import pairwise
 import numpy as np
 import pytest
 
-from padpd.pa import (MemoryPolynomialModel, ReferencePA, SplineGMP,
-                      SplineMemoryPolynomial, bspline_design_matrix,
-                      nmse_db, place_knots)
+from padpd.pa import (
+    MemoryPolynomialModel,
+    ReferencePA,
+    SplineGMP,
+    SplineMemoryPolynomial,
+    bspline_design_matrix,
+    nmse_db,
+    place_knots,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 BREAKPOINTS = [0.0, 0.1, 0.25, 0.4, 0.6, 1.0]

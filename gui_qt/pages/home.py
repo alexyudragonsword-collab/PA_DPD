@@ -1,11 +1,15 @@
 from pathlib import Path
 
-from PySide6.QtWidgets import (QLabel, QTableWidget, QTableWidgetItem,
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QLabel,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import services
-from gui_qt.common import (MetricCard, card_row, get_state, page_scaffold,
-                           tr)
+from gui_qt.common import MetricCard, card_row, get_state, page_scaffold, tr
 
 
 class HomePage(QWidget):

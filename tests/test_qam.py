@@ -53,6 +53,7 @@ def test_gray_neighbors_differ_by_one_bit():
 def test_qam_demodulate_rejects_unsupported_order():
     import numpy as np
     import pytest
+
     from padpd.waveform.qam import qam_demodulate
     pts = np.array([0.5 + 0.5j])
     for bad in (8, 32, 2048):

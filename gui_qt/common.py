@@ -14,11 +14,16 @@ import matplotlib  # noqa: E402
 
 matplotlib.use("Agg")  # canvases render via FigureCanvasQTAgg explicitly
 
-from matplotlib.backends.backend_qtagg import (  # noqa: E402
-    FigureCanvasQTAgg)
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg  # noqa: E402
 from PySide6.QtCore import Qt, QThread, Signal  # noqa: E402
-from PySide6.QtWidgets import (QFrame, QHBoxLayout, QLabel, QScrollArea,  # noqa: E402
-                               QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (  # noqa: E402
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import i18n  # noqa: E402
 from gui_core.prefs import load_prefs, save_prefs  # noqa: E402

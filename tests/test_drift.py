@@ -13,7 +13,11 @@ for p in (str(ROOT), str(ROOT / "src")):
 from padpd.dpd import AdaptiveDPD, ILAPredistorter  # noqa: E402
 from padpd.metrics import evm  # noqa: E402
 from padpd.pa import DriftingReferencePA, GMPModel  # noqa: E402
-from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm  # noqa: E402
+from padpd.waveform import (  # noqa: E402
+    OFDMConfig,
+    demodulate_ofdm,
+    generate_ofdm,
+)
 
 
 def _wf(seed):

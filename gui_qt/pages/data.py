@@ -1,13 +1,29 @@
 from pathlib import Path
 
-from PySide6.QtWidgets import (QCheckBox, QComboBox, QFileDialog, QGroupBox,
-                               QHBoxLayout, QLabel, QLineEdit, QPushButton,
-                               QTabWidget, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QComboBox,
+    QFileDialog,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_core import services
 from gui_qt import figs
-from gui_qt.common import (FigurePane, MetricCard, card_row, get_state,
-                           page_scaffold, tr)
+from gui_qt.common import (
+    FigurePane,
+    MetricCard,
+    card_row,
+    get_state,
+    page_scaffold,
+    tr,
+)
 
 
 class DataPage(QWidget):

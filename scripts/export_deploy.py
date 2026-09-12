@@ -18,10 +18,12 @@ Example:
 import argparse
 import os
 
-
 from padpd.data import load_opendpd_dataset
-from padpd.deploy import (FixedPointPolyModel, export_linear_coeffs,
-                          export_reference_vectors)
+from padpd.deploy import (
+    FixedPointPolyModel,
+    export_linear_coeffs,
+    export_reference_vectors,
+)
 from padpd.dpd import ILAPredistorter
 from padpd.metrics import target_gain_opendpd
 from padpd.pa import ddr_volterra_default, gmp_opendpd_510

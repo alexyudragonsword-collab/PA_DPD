@@ -37,8 +37,12 @@ WARMUP = 200  # samples of context, > any model's memory span (incl. DPD+PA)
 
 from padpd.data import load_opendpd_dataset  # noqa: E402
 from padpd.dpd import ILAPredistorter  # noqa: E402
-from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,  # noqa: E402
-                           target_gain_opendpd)
+from padpd.metrics import (  # noqa: E402
+    aclr_opendpd,
+    evm_spectral,
+    nmse_segmented,
+    target_gain_opendpd,
+)
 from padpd.pa import gmp_opendpd_510, mp_opendpd_500, nmse_db  # noqa: E402
 from padpd.plotting import plot_am_curves, plot_psd_comparison  # noqa: E402
 

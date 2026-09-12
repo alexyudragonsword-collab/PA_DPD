@@ -28,8 +28,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 from padpd.data import load_complete_npz, save_complete_npz
 from padpd.gain_modulation import step_probe_drive
 from padpd.loopback import LoopbackChannel
-from padpd.pa import (DriftingReferencePA, ThermalReferencePA,
-                      TxFrontEndPA, burst_stimulus)
+from padpd.pa import (
+    DriftingReferencePA,
+    ThermalReferencePA,
+    TxFrontEndPA,
+    burst_stimulus,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 OUT_DEFAULT = str(Path(__file__).resolve().parent.parent / "examples"

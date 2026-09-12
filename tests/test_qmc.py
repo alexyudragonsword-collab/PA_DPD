@@ -4,8 +4,7 @@ import numpy as np
 import pytest
 
 from padpd.dpd import ILAPredistorter, QMCCorrector
-from padpd.pa import (ReferencePA, SplineMemoryPolynomial, TxFrontEndPA,
-                      nmse_db)
+from padpd.pa import ReferencePA, SplineMemoryPolynomial, TxFrontEndPA, nmse_db
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 

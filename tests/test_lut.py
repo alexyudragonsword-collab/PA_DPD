@@ -5,8 +5,13 @@ import json
 import numpy as np
 import pytest
 
-from padpd.deploy import (LUTDPD, export_lut, lut_from_model, quantize_lut,
-                          spline_mac_cost)
+from padpd.deploy import (
+    LUTDPD,
+    export_lut,
+    lut_from_model,
+    quantize_lut,
+    spline_mac_cost,
+)
 from padpd.pa import ReferencePA, SplineGMP, SplineMemoryPolynomial, nmse_db
 from padpd.waveform import OFDMConfig, generate_ofdm
 

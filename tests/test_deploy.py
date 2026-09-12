@@ -2,8 +2,13 @@ import numpy as np
 import pytest
 
 from padpd.deploy import FixedPointPolyModel, mac_cost, quantize_symmetric
-from padpd.pa import (DDRVolterraModel, ReferencePA, ddr_volterra_default,
-                      gmp_opendpd_510, nmse_db)
+from padpd.pa import (
+    DDRVolterraModel,
+    ReferencePA,
+    ddr_volterra_default,
+    gmp_opendpd_510,
+    nmse_db,
+)
 from padpd.waveform import OFDMConfig, generate_ofdm
 
 

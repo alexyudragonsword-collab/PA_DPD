@@ -4,9 +4,9 @@ import pytest
 
 pytest.importorskip("streamlit")
 
-from streamlit.testing.v1 import AppTest
-
 from pathlib import Path
+
+from streamlit.testing.v1 import AppTest
 
 ROOT = Path(__file__).resolve().parent.parent
 

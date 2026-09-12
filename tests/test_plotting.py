@@ -11,8 +11,12 @@ matplotlib.use("Agg")
 import numpy as np
 import pytest
 
-from padpd.plotting import (plot_am_curves, plot_ccdf,
-                            plot_constellation, plot_psd_comparison)
+from padpd.plotting import (
+    plot_am_curves,
+    plot_ccdf,
+    plot_constellation,
+    plot_psd_comparison,
+)
 
 RNG = np.random.default_rng(0)
 X = (RNG.standard_normal(4096) + 1j * RNG.standard_normal(4096)) / 2 ** 0.5

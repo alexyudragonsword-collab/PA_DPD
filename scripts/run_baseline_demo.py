@@ -16,16 +16,22 @@ Outputs are printed to the console and saved under results/.
 import argparse
 import os
 
-
 from padpd.cfr import cfr_clip_filter
 from padpd.dpd import ILAPredistorter
-from padpd.metrics import (aclr, check_mask, default_wifi_mask, evm_of_signal,
-                           psd)
+from padpd.metrics import (
+    aclr,
+    check_mask,
+    default_wifi_mask,
+    evm_of_signal,
+    psd,
+)
 from padpd.pa import GMPModel, MemoryPolynomialModel, ReferencePA, nmse_db
-from padpd.plotting import (plot_am_curves, plot_constellation,
-                            plot_psd_comparison)
-from padpd.waveform import (OFDMConfig, demodulate_ofdm, generate_ofdm,
-                            papr_db)
+from padpd.plotting import (
+    plot_am_curves,
+    plot_constellation,
+    plot_psd_comparison,
+)
+from padpd.waveform import OFDMConfig, demodulate_ofdm, generate_ofdm, papr_db
 
 
 def main():

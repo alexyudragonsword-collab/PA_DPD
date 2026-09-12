@@ -13,10 +13,18 @@ for p in (str(ROOT), str(ROOT / "src")):
 
 from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtGui import QIcon  # noqa: E402
-from PySide6.QtWidgets import (QApplication, QComboBox, QHBoxLayout,  # noqa: E402
-                               QLabel, QListWidget, QMainWindow,
-                               QMessageBox, QStackedWidget, QVBoxLayout,
-                               QWidget)
+from PySide6.QtWidgets import (  # noqa: E402
+    QApplication,
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QListWidget,
+    QMainWindow,
+    QMessageBox,
+    QStackedWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_qt import common  # noqa: E402
 from gui_qt.common import apply_theme, set_pref, tr  # noqa: E402

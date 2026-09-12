@@ -4,8 +4,12 @@ import os
 import numpy as np
 import pytest
 
-from padpd.metrics import (aclr_opendpd, evm_spectral, nmse_segmented,
-                           target_gain_opendpd)
+from padpd.metrics import (
+    aclr_opendpd,
+    evm_spectral,
+    nmse_segmented,
+    target_gain_opendpd,
+)
 
 OPENDPD_ROOT = os.environ.get("OPENDPD_ROOT", "/home/user/OpenDPD")
 FS, BW, N_SUB, NPERSEG = 800e6, 200e6, 10, 2560
@@ -121,6 +125,7 @@ def test_target_gain_matches_opendpd_reference():
 def test_aclr_opendpd_rejects_too_narrow_guard_band():
     import numpy as np
     import pytest
+
     from padpd.metrics import aclr_opendpd
     y = (np.random.default_rng(0).standard_normal(65536)
          + 1j * np.random.default_rng(1).standard_normal(65536))

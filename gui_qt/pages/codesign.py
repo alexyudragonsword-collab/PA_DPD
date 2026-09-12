@@ -1,11 +1,28 @@
-from PySide6.QtWidgets import (QComboBox, QDoubleSpinBox, QGroupBox,
-                               QHBoxLayout, QLabel, QProgressBar, QPushButton,
-                               QSpinBox, QTabWidget, QTableWidget,
-                               QTableWidgetItem, QVBoxLayout, QWidget)
+from PySide6.QtWidgets import (
+    QComboBox,
+    QDoubleSpinBox,
+    QGroupBox,
+    QHBoxLayout,
+    QLabel,
+    QProgressBar,
+    QPushButton,
+    QSpinBox,
+    QTableWidget,
+    QTableWidgetItem,
+    QTabWidget,
+    QVBoxLayout,
+    QWidget,
+)
 
 from gui_qt import figs
-from gui_qt.common import (FigurePane, FnWorker, MetricCard, card_row,
-                           page_scaffold, tr)
+from gui_qt.common import (
+    FigurePane,
+    FnWorker,
+    MetricCard,
+    card_row,
+    page_scaffold,
+    tr,
+)
 
 
 class CodesignPage(QWidget):

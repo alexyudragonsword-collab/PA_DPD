@@ -1,8 +1,15 @@
 import numpy as np
 import pytest
 
-from padpd.metrics import (aclr, am_am_am_pm, check_mask, default_wifi_mask,
-                           evm, evm_of_signal, psd)
+from padpd.metrics import (
+    aclr,
+    am_am_am_pm,
+    check_mask,
+    default_wifi_mask,
+    evm,
+    evm_of_signal,
+    psd,
+)
 from padpd.pa import ReferencePA
 from padpd.waveform import OFDMConfig, generate_ofdm
 

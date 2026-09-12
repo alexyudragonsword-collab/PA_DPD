@@ -6,7 +6,7 @@ bookkeeping, and artifact I/O live here so the two GUIs behave
 identically and algorithms are never duplicated.
 """
 
-from .runstore import RunStore, Run
 from . import services
+from .runstore import Run, RunStore
 
 __all__ = ["RunStore", "Run", "services"]
