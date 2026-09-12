@@ -39,8 +39,8 @@ Android app 从可行性 spike 走到真机可用,加上一层此前完全缺席
   某个分支的 LUT 增益配到别人的延迟上)、2 处错位一位的写法改
   `itertools.pairwise`、1 条从来没被读过的死测量、3 处 `subprocess.run`
   显式 `check=False`;
-- **覆盖率门槛**进 `test-full`(唯一装全可选依赖的 lane),`--cov-fail-under`
-  按棘轮用,只许往上调;
+- **覆盖率门槛**进 `test-full`(唯一装全可选依赖的 lane):实测 **92.10%**
+  (3960 条语句漏 313),门槛设 90 并按棘轮用,只许往上调;
 - 六个 workflow 全部写明 `permissions`。`publish.yml` 原先只列 `id-token`,
   而 job 级 permissions 块是整体替换——checkout 拿不到读权限,那个
   workflow 从未跑过所以一直没暴露;

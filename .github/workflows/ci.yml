@@ -92,15 +92,15 @@ jobs:
       # every optional dependency is present, so a module does not look
       # untested merely because torch or onnxruntime was missing.
       #
-      # The floor is a ratchet, not a target. It was set from a run
-      # WITHOUT torch (the machine it was written on could not reach
-      # download.pytorch.org), so it understates this job - raise it to
-      # just under whatever the summary below prints.
+      # The floor is a ratchet, not a target: raise it when the number
+      # rises, never lower it to make a change fit. Measured here on
+      # 2026-09-12: 92.10% of 3960 statements. The 2-point gap absorbs a
+      # refactor that moves lines around without removing tests.
       - name: Test (full, with coverage)
         run: |
           pytest tests/ -q --cov=padpd --cov=gui_core \
                  --cov-report=term-missing:skip-covered \
-                 --cov-fail-under=78
+                 --cov-fail-under=90
 
   # headless GUI suites (web + Qt + i18n + manual) — these silently
   # skipped before because no CI job installed the GUI stacks
