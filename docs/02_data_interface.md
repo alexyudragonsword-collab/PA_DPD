@@ -185,6 +185,19 @@ services 侧一键消费 `consume_source_extras`。示例文件
 RX-IM3 估计 -28.8 dBc(配置 -28)、IRR 30.2 dB(真值 30.1)。GUI 数据
 页载入 npz 后显示采集组清单并可"运行完整源工具"。
 
+**下游 polar_tx 怎么消费这个容器**(`polartx.measured.dpa_from_complete_source`,
+2026-10-02 起):主采集 `x/y` 给极坐标 DPA 的静态 AM-AM/AM-PM;`step` 组离线
+辨识 τ;`burst` 组先过静态模型,再训练残差 `StateConditionedSpline`,挂在极坐标
+链路 DPA 输出之后。缺 `step` 或 `burst` 时直接报错并点名缺哪一组。两条对采集的
+要求:
+
+- **参考平面**:`x` 必须是极坐标 DPA 的**输入幅度域**(进包络编码之前的复基带),
+  不是 PA 栅极,也不是经过 TX 前端 I/Q 损伤之后的信号;`y` 在 PA 输出。
+- **主采集必须真平稳**:热稳态下录制(先用同一波形预热),长度为最慢 τ 的数倍。
+  本仓示例文件的主采集是冷启动、约 54 µs,对 polar_tx 来说是一段加热暂态——
+  在它上面"有状态 vs 无状态"的对照会假性地好出约 5 dB。polar_tx 的合成源
+  (`synthetic_thermal_source`)用预热两遍、218 µs 的主采集,对照差 0.1 dB。
+
 ### 9.1 从 Cadence 导出目录一键打包(`scripts/pack_cadence_source.py`)
 
 把每个采集导出成一个 Cadence Envelope CSV(列 `time,i_in,q_in,i_out,
