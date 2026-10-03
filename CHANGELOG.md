@@ -64,7 +64,7 @@ Android app 从可行性 spike 走到真机可用,加上一层此前完全缺席
 ### 已知限制(本版新增)
 - GitHub Pages 未在仓库开启,`Docs` workflow 的 deploy job 因此 404 失败;
   构建站点的 build job 是绿的;
-- 仓库默认分支仍是特性分支而非 `main`。
+- ~~仓库默认分支仍是特性分支而非 `main`~~——已于 2026-10-03 改为 `main`。
 
 ## [0.1.0] - 2026-08
 

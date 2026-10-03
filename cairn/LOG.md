@@ -3,6 +3,16 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-10-03 · 默认分支改为 main(用户操作)
+
+- 用户在仓库设置里把默认分支改成了 `main`,`gh api` 核实
+  `default_branch=main`。Pages 仍是 `has_pages=false`。
+- 后果:`docs.yml` 的 deploy 现在跟着 main 走,下一次触及 docs/src 的 main
+  推送会 404 红,直到开 Pages;`ci.yml` 的 `pull_request: branches: [main]`
+  从此真正生效。
+- 更正了 `cairn/工程约束与陷阱.md`「仓库设置」一节与 CHANGELOG 0.2.0 的
+  已知限制,旧说法以更正说明保留。
+
 ## 2026-10-03 · 分支快进合入 main
 
 - 用户明确指示「推送到 main」。`main` 原在 `3aa1c24`(08-24),是本分支的
