@@ -102,3 +102,8 @@ def test_hysteresis_verdict_needs_a_long_enough_window():
     assert long.hysteresis_reliable
     assert "NOT assessed" not in long.rationale()
     assert abs(long.taus_heat_s[-1] - taus[-1]) < 1e-5
+    # Linear RC, 8 tau spans: measured 0.999. This exact case read 0.510
+    # before the 2026-10 thermal-DUT fix and was recorded as a ~2x
+    # estimator bias; it was the DUT. The cooling fit now resolves both
+    # poles (7.3/47.8 us vs truth 8/50).
+    assert abs(long.hysteresis_ratio - 1.0) < 0.1

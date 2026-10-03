@@ -243,7 +243,9 @@ def test_run_gain_modulation_thermal_closes_the_loop():
     assert abs(res["taus_heat_us"][0] - 5.0) < 1.5
     assert abs(res["taus_heat_us"][1] - 30.0) < 6.0
     assert 0.5 < res["hysteresis_ratio"] < 2.0     # linear thermal RC
-    assert res["state_gain_db"] > 6.0              # measured +10.5
+    # measured +17.4 (+10.5 before the 2026-10 thermal-DUT fix, which was
+    # the DUT's floor, not the model's limit)
+    assert res["state_gain_db"] > 13.0
     name, config, metrics = services.gain_mod_run_record(res)
     assert config["algo"] == "gain_modulation"
     assert metrics["tau1_us"] == res["taus_heat_us"][0]

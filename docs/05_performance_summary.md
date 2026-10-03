@@ -140,9 +140,12 @@ drive 0.24)**不可逆**,149 系数 DPD 只到 -20.7;联合设计 drive 0.17、
   无关(24 vs 112、48 vs 208);LUT256 部署形态 EVM 零损失;
 - **条件数低 2-3 个量级**(2e2/1.9e3 vs 1.2e5)——LS/RLS 数值健壮;
   SplineGMP 交叉分支去首基列修复了单位分解秩亏(修复前 2.6e16);
-- **热场景**(自热 ThermalReferencePA,突发激励):纯 SMP -24.6 dB →
-  状态条件化样条 -34.8 dB(**+10.2 dB**);LUT 插值 RTL 经 iverilog
-  逐位验证 0 错误;
+- **热场景**(自热 ThermalReferencePA,突发激励):纯 SMP -25.0 dB →
+  状态条件化样条 -43.1 dB(**+18.2 dB**);LUT 插值 RTL 经 iverilog
+  逐位验证 0 错误。*更正(2026-10-03)*:此前登的 -24.6 → -34.8
+  (+10.2 dB)是被虚拟 DUT 自己的 -35 dB 地板压住的下界——它每 128 个
+  采样重启一次 FIR,块首几个采样出错,任何因果模型都拟不掉;修复后
+  重测为上值;
 - **镜像场景**(IQImbalancePA,0.3 dB/3° → IRR≈30 dB):相位等变纯 x
   基 DPD EVM 被镜像钉死在 -30.5 dB,widely-linear 共轭分支
   (`conjugate=True`)后 **-52.8 dB(+22.3 dB)**,硬件代价仅为镜像

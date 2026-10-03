@@ -275,8 +275,9 @@ identify_gain_modulation(pa, fs)` 执行经典阶跃响应实验(恒包络探针
 **GUI 入口**:PA 建模页「增益调制辨识」面板(Web 版为同名折叠区)
 选虚拟 DUT(thermal 自热 / static 对照)一键跑阶跃实验:加热/冷却
 增益轨迹图、τ/权重/迟滞比,并可勾选"拟合状态样条"直接用辨识 α 配置
-StateConditionedSpline 与纯 SMP 对比(实测 -24.6 → -35.0 dB,
-**+10.5 dB**),结果注册为 run。注意虚拟 DUT 的耗散功率参考在首采集
+StateConditionedSpline 与纯 SMP 对比(实测 -24.9 → -42.3 dB,
+**+17.4 dB**;2026-10-03 前登的 -35.0 / +10.5 是虚拟 DUT 地板压出的下界,
+已修复重测),结果注册为 run。注意虚拟 DUT 的耗散功率参考在首采集
 冻结——表征探针与建模采集要用各自新建的 DUT 实例(GUI 已处理)。
 
 **C-IM3(counter-IM3)与相位谐波分支**:直变发射机里混频器 LO 三次

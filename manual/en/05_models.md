@@ -355,8 +355,10 @@ version) picks a virtual DUT (thermal self-heating / static control)
 and runs the step experiment in one click: heating/cooling gain
 trajectories, taus/weights/hysteresis ratio, and an optional "fit
 state spline" step that configures a StateConditionedSpline with the
-identified alphas against a plain SMP (measured -24.6 -> -35.0 dB,
-**+10.5 dB**), registered as a run. Note the virtual DUT freezes its
+identified alphas against a plain SMP (measured -24.9 -> -42.3 dB,
+**+17.4 dB**; the -35.0 / +10.5 published before 2026-10-03 was a lower
+bound set by the virtual DUT's own floor, since fixed and re-measured),
+registered as a run. Note the virtual DUT freezes its
 dissipated-power reference on its first capture — the
 characterization probe and the modeling capture must each use a fresh
 DUT instance (the GUI handles this).

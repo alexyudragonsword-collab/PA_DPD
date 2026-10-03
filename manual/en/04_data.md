@@ -147,9 +147,11 @@ and a "run complete-source tools" button that sweeps the available
 groups (tau identification, state-spline comparison, RX calibration,
 scheduler). The example `examples/complete_source_demo.npz` (one-click
 load on the data page) verifies against virtual-DUT ground truth: taus
-identified at 5.1/29.6 µs (truth 5/30), state spline +8.5 dB, RX-IM3
-estimated at -28.8 dBc (configured -28). Array conventions are in
-`docs/02_data_interface.md`, section 9.
+identified at 5.1/29.6 µs (truth 5/30), state spline +14.2 dB, RX-IM3
+estimated at -28.7 dBc (configured -28). Array conventions are in
+`docs/02_data_interface.md`, section 9. (Before 2026-10-03 this read
++8.5 dB: a lower bound set by the virtual DUT's own floor, since fixed
+and re-measured.)
 
 ### 4.9.1 Packing a Cadence Export Directory
 

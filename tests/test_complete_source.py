@@ -101,13 +101,20 @@ def test_demo_offline_tau_identification(demo_src):
     assert gm["significant"]
     assert abs(gm["taus_heat_us"][0] - 5.0) < 1.5
     assert abs(gm["taus_heat_us"][1] - 30.0) < 6.0
+    # The DUT is a linear RC, so heating and cooling taus agree. Measured
+    # 0.989. Before the 2026-10 thermal-DUT fix this capture read 0.432 -
+    # the DUT's block-edge error steered the cooling fit, and that reading
+    # was mistaken for an estimator bias. Guard it.
+    assert abs(gm["hysteresis_ratio"] - 1.0) < 0.15
 
 
 def test_demo_state_spline_from_burst(demo_src):
     """Identified alphas + burst capture -> real state-spline gain
-    (measured +8.5 dB; full-capture prediction, tail-scored)."""
+    (measured +14.2 dB, -24.2 -> -38.4; full-capture prediction,
+    tail-scored). It read +8.5 before the 2026-10 thermal-DUT fix, which
+    was the DUT's -35 dB floor; the threshold sits above that."""
     st = services.fit_state_spline_from_source(demo_src)
-    assert st["state_gain_db"] > 5.0
+    assert st["state_gain_db"] > 11.0
 
 
 def test_demo_rx_calibrations(demo_src):

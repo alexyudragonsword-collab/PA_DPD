@@ -565,8 +565,9 @@ def test_capture_group_tools_run_and_report_what_they_found(api):
     verdict = reply["notes"][0]
     assert verdict.startswith("✅"), verdict
     # All four consumers reported, not just the first one to succeed:
-    # measured "τ 辨识 5.1/29.6 µs;状态样条 -23.8→-32.3 dB(+8.5);
-    # RX 标定 IRR 30.2 dB · IM3 -28.8 dBc;调度器 3 工况点".
+    # measured "τ 辨识 5.1/29.6 µs;状态样条 -24.2→-38.4 dB(+14.2);
+    # RX 标定 IRR 30.2 dB · IM3 -28.7 dBc;调度器 3 工况点" (state spline
+    # read -23.8→-32.3 (+8.5) before the 2026-10 thermal-DUT fix).
     for expected in ("τ 辨识", "状态样条", "RX 标定", "调度器"):
         assert expected in verdict, (expected, verdict)
     assert "⚠" not in verdict, verdict
@@ -599,7 +600,7 @@ def test_a_registered_source_can_be_modelled(api):
     fitted = [k for k in pages._MODELS if k.endswith(name)]
     assert fitted, list(pages._MODELS)
     nmse = float(reply["metrics"][0]["value"].split()[0])
-    assert nmse < -20.0, nmse   # measured -23.81 on this container
+    assert nmse < -20.0, nmse   # measured -24.10 (-23.81 pre-2026-10 DUT)
 
 
 def test_the_sources_listing_is_names_only(api):

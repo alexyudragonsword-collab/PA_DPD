@@ -83,8 +83,12 @@ def test_state_model_beats_plain_smp_on_thermal_pa(thermal_data):
     scs = StateConditionedSpline.from_signal(
         x, n_knots=8, memory_depth=4, state_alphas=alphas
     ).fit(x, y, regularization=1e-9)
-    assert nmse_db(y, scs(x)) < nmse_db(y, smp(x)) - 6
-    assert nmse_db(y_val, scs(x_val)) < nmse_db(y_val, smp(x_val)) - 6
+    # Measured gain train/val: +18.3/+17.0 dB. Before the 2026-10 fix to
+    # ThermalReferencePA (FIRs restarted every block) it read +10.4/+10.4,
+    # pinned by the DUT's -35 dB floor; the margin is set above that so
+    # the floor coming back fails here.
+    assert nmse_db(y, scs(x)) < nmse_db(y, smp(x)) - 13
+    assert nmse_db(y_val, scs(x_val)) < nmse_db(y_val, smp(x_val)) - 13
 
 
 def test_state_recursion_is_causal(thermal_data):

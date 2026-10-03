@@ -181,9 +181,16 @@ API:`save_complete_npz` / `load_complete_npz` / `extras_summary`;
 services 侧一键消费 `consume_source_extras`。示例文件
 `examples/complete_source_demo.npz`(由
 `scripts/make_complete_source_demo.py` 生成,含全部五组)在虚拟 DUT
-真值下验证:离线 τ 辨识 5.1/29.6 µs(真值 5/30)、状态样条 +8.5 dB、
-RX-IM3 估计 -28.8 dBc(配置 -28)、IRR 30.2 dB(真值 30.1)。GUI 数据
-页载入 npz 后显示采集组清单并可"运行完整源工具"。
+真值下验证:离线 τ 辨识 5.1/29.6 µs(真值 5/30)、迟滞比 0.99(真值 1)、
+状态样条 -24.2 → -38.4 dB(+14.2 dB)、RX-IM3 估计 -28.7 dBc(配置 -28)、
+IRR 30.2 dB(真值 30.1)。GUI 数据页载入 npz 后显示采集组清单并可
+"运行完整源工具"。
+
+> 更正(2026-10-03):此前登的「状态样条 +8.5 dB」是下界,迟滞比当时
+> 读 0.43。两者都出自虚拟 DUT 的 bug:`ThermalReferencePA` 每 128 个采样
+> 重启一次 FIR,给一切用它测的数压了一个 -35 dB 的非物理地板。修复后
+> 示例文件已重新生成并重测为上值;τ 辨识与 RX 两项基本不变(RX-IM3
+> -28.751 → -28.750,一位小数的显示从 -28.8 变 -28.7,并非真变化)。
 
 **下游 polar_tx 怎么消费这个容器**(`polartx.measured.dpa_from_complete_source`,
 2026-10-02 起):主采集 `x/y` 给极坐标 DPA 的静态 AM-AM/AM-PM;`step` 组离线
@@ -197,6 +204,8 @@ RX-IM3 估计 -28.8 dBc(配置 -28)、IRR 30.2 dB(真值 30.1)。GUI 数据
   本仓示例文件的主采集是冷启动、约 54 µs,对 polar_tx 来说是一段加热暂态——
   在它上面"有状态 vs 无状态"的对照会假性地好出约 5 dB。polar_tx 的合成源
   (`synthetic_thermal_source`)用预热两遍、218 µs 的主采集,对照差 0.1 dB。
+  (这组 5 dB / 0.1 dB 是 polar_tx 在 2026-10-03 修复虚拟 DUT 之前的示例
+  文件上测的;示例文件已重新生成,本仓未复测。)
 
 ### 9.1 从 Cadence 导出目录一键打包(`scripts/pack_cadence_source.py`)
 
