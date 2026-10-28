@@ -729,11 +729,16 @@ _EXTRA_GROUP_NAMES = {"burst": "突发", "step": "阶跃探针",
 
 def _preview(name: str, lang: str) -> tuple:
     """(metrics, charts, rows, notes) for the selected source."""
-    import gui_core.services as services
-
     src = _SOURCES.get(name)
     if src is None:
         return [], {}, [], []
+    return present_source(src, lang)
+
+
+def present_source(src: dict, lang: str = "zh") -> tuple:
+    """(metrics, charts, rows, notes) describing one loaded source."""
+    import gui_core.services as services
+
     prev = services.source_preview(src)
     spec = src.get("spec") or {}
     metrics = [
@@ -882,6 +887,9 @@ def _consume_summary(out: dict, lang: str) -> str:
         bits.append("⚠ " + "; ".join(errs))
     return "✅ " + ";".join(bits) if bits \
         else tr("该源没有可消费的采集组", lang)
+
+
+consume_summary = _consume_summary
 
 
 

@@ -802,7 +802,99 @@ CHOICE_LABELS = {
     "ILA": "ILA · 经典 LS", "DLA": "DLA · 神经直学",
     "thermal": "自热 (thermal)", "static": "静态对照 (static)",
     "drift": "漂移 (drift)",
+    "none": "无", "iq": "IQ 失衡", "iq+lo": "IQ 失衡 + LO 泄漏",
+    "iq+lo+cim3": "IQ + LO + C-IM3",
 }
+
+
+# ---------------------------------------------------------------------
+# sources and comparison
+# ---------------------------------------------------------------------
+
+# The synthetic source form. Not an Experiment - it produces a source,
+# not a result - but the same schema, so the same form renders it.
+SYNTHETIC_SOURCE = [
+    Param("bw", "带宽", "choice", 160, (20, 40, 80, 160, 320), unit="MHz",
+          group="激励"),
+    Param("qam", "调制", "choice", 1024, (256, 1024, 4096), unit="QAM",
+          group="激励"),
+    Param("symbols", "OFDM 符号数", "int", 8, lo=2, hi=32, group="激励"),
+    Param("cfr", "CFR 削峰", "bool", False, group="激励"),
+    Param("papr", "目标 PAPR", "float", 8.0, lo=5.0, hi=10.0, step=0.5,
+          decimals=1, unit="dB", group="激励", show=_is("cfr", True)),
+    Param("drive", "PA 驱动 drive", "float", 0.14, lo=0.06, hi=0.24,
+          step=0.01, decimals=2, group="虚拟 PA"),
+    Param("frontend", "TX 前端损伤", "choice", "none",
+          ("none", "iq", "iq+lo", "iq+lo+cim3"), group="虚拟 PA"),
+]
+
+
+def synthetic_source_params(v: dict) -> dict:
+    """SYNTHETIC_SOURCE form values -> Workspace.add_synthetic params."""
+    v = {p.key: p.default for p in SYNTHETIC_SOURCE} | dict(v)
+    return {"bandwidth_hz": float(v["bw"]) * 1e6, "qam": int(v["qam"]),
+            "symbols": int(v["symbols"]), "drive": float(v["drive"]),
+            "cfr_papr_db": float(v["papr"]) if v["cfr"] else None,
+            "frontend": v["frontend"]}
+
+
+KIND_LABELS = {"pa_model": "PA 模型", "dpd": "DPD", "deploy": "部署"}
+
+# metric keys that are labels, not numbers to plot
+_NOT_PLOTTED = {"convention"}
+
+
+def compare_runs(runs: list, lang: str = "zh") -> dict:
+    """Side by side for runs of one kind: their numbers, and which inputs
+    differ between them.
+
+    The old compare page put every run in one table and plotted whatever
+    metrics the picked runs carried, so a DPD run's EVM sat next to a PA
+    model's NMSE as if one could be traded for the other. Comparing runs
+    of one kind makes the columns mean the same thing; the config diff
+    says what changed to produce the difference.
+    """
+    kinds = {r.kind for r in runs}
+    if len(kinds) > 1:
+        raise ValueError(tr("只能比较同一类运行", lang))
+    names = [r.name for r in runs]
+    if len(set(names)) < len(names):
+        names = [f"{r.name} #{r.run_id[:4]}" for r in runs]
+    keys: list[str] = []
+    for r in runs:
+        keys += [k for k, v in r.metrics.items()
+                 if isinstance(v, (int, float)) and not isinstance(v, bool)
+                 and k not in _NOT_PLOTTED and k not in keys]
+    rows = []
+    for n, r in zip(names, runs):
+        row = {tr("运行", lang): n, tr("时间", lang): r.when}
+        for k in keys:
+            v = r.metrics.get(k)
+            row[k] = f"{v:.2f}" if isinstance(v, (int, float)) else ""
+        rows.append(row)
+    ckeys: list[str] = []
+    for r in runs:
+        ckeys += [k for k in r.config if k not in ckeys]
+    diff = []
+    for k in ckeys:
+        vals = [r.config.get(k) for r in runs]
+        if len({repr(v) for v in vals}) > 1:
+            diff.append({tr("参数", lang): k,
+                         **{n: "—" if v is None else str(v)
+                            for n, v in zip(names, vals)}})
+    charts = {}
+    # dB metrics share an axis; a bit count or a MAC count does not
+    plot = [k for k in keys if k.endswith(("_db", "_dbc"))]
+    if len(runs) >= 2 and plot:
+        charts["bars"] = ("bars", (names, {k: [r.metrics.get(k)
+                                                for r in runs]
+                                           for k in plot}), {})
+    notes = []
+    if len(runs) >= 2 and not diff:
+        notes.append(tr("这些运行的输入完全相同;差异只来自随机性或数据源"
+                        "内容。", lang))
+    return {"rows": rows, "diff": diff, "charts": charts, "notes": notes,
+            "metrics": [], "verdicts": [], "callout": ""}
 
 
 # ---------------------------------------------------------------------

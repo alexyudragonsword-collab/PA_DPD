@@ -51,7 +51,12 @@ def _strings():
             yield p.label
             yield p.group
             yield p.help
+    for p in experiments.SYNTHETIC_SOURCE:
+        yield p.label
+        yield p.group
+        yield p.help
     yield from experiments.CHOICE_LABELS.values()
+    yield from experiments.KIND_LABELS.values()
 
 
 def test_every_schema_string_has_an_english_translation():

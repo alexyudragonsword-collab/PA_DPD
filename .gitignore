@@ -22,6 +22,7 @@ deploy_export/
 *.onnx
 *.onnx.data
 gui_runs/
+workspace/
 packaging/dist/
 packaging/build/
 packaging/build_nuitka/

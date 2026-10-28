@@ -1025,6 +1025,123 @@ _EN.update({
 })
 
 
+# desktop workbench shell (gui_qt main/pages/experiment_page/form)
+_EN.update({
+    "ACLR 上限": "ACLR limit",
+    "EVM 上限": "EVM limit",
+    "IQ 失衡": "IQ imbalance",
+    "IQ 失衡 + LO 泄漏": "IQ imbalance + LO leakage",
+    "PA + DPD 工作台": "PA + DPD workbench",
+    "examples/complete_source_demo.npz:含 burst/step/cal_rx/atten/"
+    "operating_points 五个采集组":
+        "examples/complete_source_demo.npz: carries all five capture groups "
+        "(burst/step/cal_rx/atten/operating_points)",
+    "{n} 次运行": "{n} runs",
+    "上次用时 {s:.1f} s": "Last run took {s:.1f} s",
+    "下面是上一次运行的结果。": "the result below is from the last run.",
+    "不通过": "failed",
+    "专题实验": "Studies",
+    "个模型": "models",
+    "仅本次会话": "this session only",
+    "余量": "margin",
+    "内置示例": "built-in example",
+    "分析": "Analysis",
+    "删除所选": "Delete selected",
+    "勾选左侧的运行;勾选两个以上即并排比较。":
+        "Tick runs on the left; two or more are compared side by side.",
+    "发射 Mask 固定用 802.11 模板。改动后,已有结果会按新 spec 重新判定,"
+    "不必重跑。":
+        "The emission mask is the 802.11 template. After a change, existing "
+        "results are re-judged against the new spec without re-running.",
+    "只能比较同一类运行": "Only runs of one kind can be compared",
+    "合成": "synthetic",
+    "实测": "measured",
+    "在结果比较中打开": "Open in Compare",
+    "在顶栏的 Spec 处修改;已有结果会按新 spec 重新判定。":
+        "Change it from Spec in the top bar; existing results are re-judged "
+        "against the new spec.",
+    "复现": "Reproduce",
+    "存在": "present",
+    "对照": "baseline",
+    "导入实测": "Import measured",
+    "导出 JSON": "Export JSON",
+    "工作区中的模型": "Models in the workspace",
+    "工作区数据源": "Workspace sources",
+    "已保存": "saved",
+    "把产生这个结果的参数填回左侧":
+        "Put the inputs that produced this result back into the form",
+    "拖选一段放大,双击复原;悬停读数。":
+        "Drag to zoom, double-click to reset; hover to read values.",
+    "拟合新模型…": "Fit a new model…",
+    "数据源已切换": "the data source changed",
+    "新建合成源": "New synthetic source",
+    "最近运行": "Recent runs",
+    "未找到数据集": "no datasets found",
+    "来源": "Provenance",
+    "次运行": "runs",
+    "添加合成源": "Add synthetic source",
+    "激励": "Stimulus",
+    "点击修改项目 Spec": "Click to edit the project spec",
+    "环境": "Environment",
+    "用时 {s:.1f} s": "took {s:.1f} s",
+    "留空用内置示例": "empty: built-in example",
+    "管理数据源…": "Manage sources…",
+    "至少保留一个数据源": "Keep at least one source",
+    "虚拟 PA": "Virtual PA",
+    "设为当前": "Make active",
+    "设定左侧参数后点「运行」。结果会按项目 spec 判定,并记下产生它的参数和数据源。":
+        "Set the inputs on the left and press Run. The result is judged "
+        "against the project spec and keeps the inputs and source that "
+        "produced it.",
+    "载入中…": "Loading…",
+    "输入差异": "Inputs that differ",
+    "输入已改动": "inputs changed",
+    "运行": "Run",
+    "运行中…": "Running…",
+    "运行类型": "Run kind",
+    "还没有模型": "No models yet",
+    "还没有模型。拟合的模型会保存在这里,供 DPD 评估和部署使用。":
+        "No models yet. Fitted models are kept here for DPD evaluation and "
+        "deployment.",
+    "还没有运行记录。": "No runs yet.",
+    "这一类还没有运行记录。": "No runs of this kind yet.",
+    "这些运行的输入完全相同;差异只来自随机性或数据源内容。":
+        "These runs had identical inputs; any difference comes from "
+        "randomness or the source contents.",
+    "这是当前数据源。": "This is the active source.",
+    "选择左侧的数据源查看": "Pick a source on the left to inspect it",
+    "采集组": "Capture group",
+    "重新运行": "Run again",
+    "限值": "limit",
+    "项目 Spec": "Project spec",
+    "频谱:输入 vs 输出": "Spectrum: input vs output",
+    "指标对比": "Metrics",
+    "高级设置": "Advanced",
+    "ACLR 下邻道 (dBc)": "ACLR lower (dBc)",
+    "ACLR 上邻道 (dBc)": "ACLR upper (dBc)",
+    "工作区里的数据源。每个实验都在当前数据源上运行;数据源以引用保存"
+    "(合成参数或文件路径),重启后仍在。":
+        "The workspace's sources. Every experiment runs on the active "
+        "source; sources are kept as references (generator parameters or a "
+        "file path) and survive a restart.",
+    "同一类运行并排比较:指标,以及产生差异的输入。每次运行都记在这里,"
+    "重启后仍在。":
+        "Runs of one kind side by side: their metrics, and the inputs that "
+        "made the difference. Every run is recorded here and survives a "
+        "restart.",
+    "WiFi 7(802.11be)PA 行为建模与数字预失真工作台。按左侧工作流从数据源走到"
+    "部署;专题实验各自独立。":
+        "A WiFi 7 (802.11be) PA behavioral modeling and digital "
+        "predistortion workbench. Follow the workflow on the left from a "
+        "source to deployment; the studies stand on their own.",
+    "内置双语用户手册:快速入门、工作流、逐页指南、数据接口、算法速览、性能基准、"
+    "部署打包与 FAQ;语言随顶栏切换,工程级细节见仓库 docs/ 目录。":
+        "Built-in bilingual manual: quick start, workflow, page-by-page "
+        "guide, data interfaces, algorithms, benchmarks, packaging and FAQ; "
+        "the language follows the top bar, engineering detail lives in the "
+        "repository's docs/.",
+})
+
 def tr(s: str, lang: str = "zh") -> str:
     """Translate a Chinese UI string; unknown strings pass through."""
     if lang == "en":
