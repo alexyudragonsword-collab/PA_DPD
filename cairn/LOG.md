@@ -20,6 +20,8 @@
   `mask_margin_db`,默认 DPD 实为 +18.7 dB;PySide6 6.12.0 在 Python 3.11
   上每次 `emit()` 少一个 `True` 引用,约两千次后中止 → <3.12 限 `<6.12`。
 - 手册 01/02/03 章中英重写,截图由 `scripts/make_gui_screenshots.py` 重新生成。
+- 验证:快车道 491 过 / 17 跳;59c0b28 上 CI、Docs、Windows exe(slim+full
+  启动冒烟)、Android 构建 job 与 classic/drawer 两个设备 job 全绿。
 - 指针:`docs/06_gui.md`、`cairn/工程约束与陷阱.md`「GUI:界面契约」「GUI:
   PySide6 / pyqtgraph 的坑」。
 
