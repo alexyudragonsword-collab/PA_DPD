@@ -552,7 +552,8 @@ class ExperimentPage(QWidget):
         self.btn_repro.setText(tr("复现"))
         self.btn_repro.setToolTip(tr("把产生这个结果的参数填回左侧"))
         self.btn_cmp.setText(tr("在结果比较中打开"))
-        for (_aid, lab), b in zip(self.exp.actions, self.action_btns):
+        for (_aid, lab), b in zip(self.exp.actions, self.action_btns,
+                                  strict=True):
             b.setText(tr(lab))
         if self.outcome is not None and not self._worker:
             self.status.setText(tr("上次用时 {s:.1f} s").format(

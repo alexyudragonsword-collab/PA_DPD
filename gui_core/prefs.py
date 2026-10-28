@@ -1,7 +1,7 @@
 """Shared GUI preferences (language / theme), persisted next to gui_runs.
 
-Both the Streamlit and the Qt GUI read this at startup and write it on
-every switch, so the choice carries across sessions and across GUIs.
+The desktop GUI reads this at startup and writes it on every switch, so
+the choice carries across sessions.
 """
 
 from __future__ import annotations

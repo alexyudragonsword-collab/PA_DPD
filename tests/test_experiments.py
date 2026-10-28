@@ -65,6 +65,22 @@ def test_every_schema_string_has_an_english_translation():
     assert not missing, f"add to gui_core/i18n.py: {missing}"
 
 
+def test_live_warnings_have_an_english_translation(monkeypatch):
+    """Warnings come from predicates, out of reach of the AST guard."""
+    monkeypatch.setattr(experiments, "_neural_available", lambda: False)
+    seen = 0
+    for e in experiments.EXPERIMENTS.values():
+        for p in e.params:
+            if p.warn is None:
+                continue
+            for c in p.choices:
+                msg = p.warn({p.key: c}, None)
+                if msg:
+                    seen += 1
+                    assert msg in i18n._EN, msg
+    assert seen >= 2                     # neural PA model, DLA
+
+
 def test_hidden_inputs_do_not_reach_a_run(ws):
     """Neural settings are irrelevant to an LS fit; they must not end up
     in its record, where they would read as if they had been used."""

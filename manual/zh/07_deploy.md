@@ -67,11 +67,12 @@ https://download.pytorch.org/whl/cpu`),避免把数 GB CUDA 运行库打进包�
 其余细节(杀软误报、缺 DLL、中文字体)见
 `packaging/README_packaging.md`。
 
-## 7.4 Web 版部署
+## 7.4 Web 版(已退役)
 
-Web 版定位为团队工作台,不做 exe:任何有 Python 的机器
-`pip install -e .[gui] && streamlit run gui/app.py` 即可;局域网共享
-加 `--server.address 0.0.0.0`。两版共享 `gui_runs/` 注册表。
+Streamlit Web 版(`gui/`)已于 2026-10-28 退役。它与桌面版各自手写页面,
+功能逐渐分叉,维护两套界面的成本超过了"浏览器里打开"的便利。现在只有
+一套界面契约(`gui_core/experiments.py`),由桌面工作台与 Android 应用
+共用。`pip install -e .[gui]` 仍可用,装的是桌面工作台。
 
 ## 7.5 QAT 与 RTL 生成(硅前落地)
 

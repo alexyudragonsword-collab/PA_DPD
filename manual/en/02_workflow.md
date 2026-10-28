@@ -52,14 +52,18 @@ linearity later", the platform emphasizes:
 
 | Workflow stage | GUI page | Artifacts |
 |---|---|---|
-| Waveform/stimulus | Waveform Studio | IQDataset `.npz` |
-| Data intake | Data Manager | Registered data sources |
-| Behavioral modeling | PA Modeling | Model (checkpoint savable) + run |
-| Predistortion | DPD Lab | Pre/post-DPD metrics + run |
-| Comparative analysis | Compare Runs | Metric bar charts / JSON export |
-| Deployment | Deployment | Bit-width curves, ONNX/coefficients/vectors |
-| Co-design | Co-Design | Pareto table + optimization trajectory |
+| Waveform/stimulus | Waveform | IQDataset `.npz` |
+| Data ingestion | Data source | Sources in the workspace (generator parameters or a file reference) |
+| Behavioral modeling | PA model | Models in the workspace (with source and run) + run |
+| Predistortion | DPD | Verdicts against the spec + before/after metrics + run |
+| Deployment | Deployment | Bit-width curves, ONNX/coefficients/vectors/RTL |
+| Studies | Gain modulation / Adaptive tracking / Front-end 3-loop / Co-Design / Two-tone diagnosis | Verdicts + run |
+| Analysis | Compare Runs | Runs of one kind side by side, input differences, JSON export |
 
-Command-line scripts (`scripts/`) provide batch entry points with the same
-capabilities as the GUI; long neural training runs (paper-grade reproduction)
-are best executed via the scripts in a GPU environment.
+Every result carries the inputs, source and run id that produced it; if an
+input is changed without re-running, the result is marked stale instead of
+passing for a current one.
+
+The command-line scripts (`scripts/`) offer batch entry points with the same
+capabilities as the GUI; long neural training runs (paper-grade
+reproduction) are best run from the scripts on a GPU machine.

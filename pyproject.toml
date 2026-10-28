@@ -36,8 +36,20 @@ Repository = "https://github.com/alexyudragonsword-collab/PA_DPD"
 dev = ["pytest>=7.0", "pytest-cov>=4.0"]
 nn = ["torch>=2.0"]
 onnx = ["onnx>=1.15", "onnxruntime"]   # ONNX handoff (export + verify)
-gui = ["streamlit>=1.36", "plotly>=5.20"]
-gui-qt = ["pyside6>=6.6", "markdown>=3.5"]
+# The desktop workbench. "gui" was the Streamlit web GUI until it was
+# retired on 2026-10-28; it now installs the same desktop stack so an old
+# `pip install .[gui]` still gets a working GUI.
+# PySide6 6.12.0 drops a reference to True on every Signal.emit(); on
+# Python < 3.12, where True is not immortal, the interpreter aborts
+# ("bool_dealloc") after a couple of thousand emits - a few minutes of
+# hovering a chart. 6.11.3 does not (measured 2026-10-28; guarded by
+# tests/test_gui_qt.py::test_signal_emit_does_not_leak_true).
+gui-qt = ["pyside6>=6.6,<6.12; python_version < '3.12'",
+          "pyside6>=6.6; python_version >= '3.12'",
+          "markdown>=3.5", "pyqtgraph>=0.13"]
+gui = ["pyside6>=6.6,<6.12; python_version < '3.12'",
+       "pyside6>=6.6; python_version >= '3.12'",
+       "markdown>=3.5", "pyqtgraph>=0.13"]
 packaging = ["pyinstaller", "nuitka[onefile]>=2.4"]   # desktop exe builders
 
 [tool.setuptools.packages.find]

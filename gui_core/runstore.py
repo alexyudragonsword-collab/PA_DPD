@@ -1,9 +1,8 @@
-"""Experiment run registry shared by both GUIs.
+"""Experiment run registry shared by the front ends.
 
 Each modeling / DPD / deployment experiment is recorded as a Run and
 persisted as one JSON file under ``gui_runs/``, so results survive
-restarts and are visible from either GUI (web or desktop) for
-comparison.
+restarts and can be compared on the desktop's compare page.
 """
 
 from __future__ import annotations

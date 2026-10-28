@@ -40,7 +40,7 @@ jobs:
         run: ruff check .
       - name: Byte-compile everything, including what no test imports
         run: |
-          python -m compileall -q src gui gui_core gui_qt scripts tests \
+          python -m compileall -q src gui_core gui_qt scripts tests \
                  android/app/src/main/python
 
   # cross-platform fast lane: everything except tests marked "slow"
@@ -102,8 +102,8 @@ jobs:
                  --cov-report=term-missing:skip-covered \
                  --cov-fail-under=90
 
-  # headless GUI suites (web + Qt + i18n + manual) — these silently
-  # skipped before because no CI job installed the GUI stacks
+  # headless GUI suites (Qt + i18n + manual + experiments) — these
+  # silently skipped before because no CI job installed the GUI stack
   test-gui:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -116,12 +116,12 @@ jobs:
       - name: System Qt deps
         run: sudo apt-get update && sudo apt-get install -y libegl1
       - name: Install
-        run: pip install -e .[dev,gui,gui-qt]
+        run: pip install -e .[dev,gui-qt]
       - name: GUI tests (offscreen)
         env:
           QT_QPA_PLATFORM: offscreen
         run: |
-          pytest tests/test_gui_core.py tests/test_gui_web.py \
+          pytest tests/test_gui_core.py tests/test_experiments.py \
                  tests/test_gui_qt.py tests/test_gui_i18n.py \
                  tests/test_manual.py -q
 

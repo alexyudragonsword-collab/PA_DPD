@@ -58,9 +58,10 @@ _IMG = re.compile(r"^!\[([^\]]*)\]\((assets/[^)]+)\)\s*$")
 def split_segments(md: str) -> list[tuple]:
     """Slice Markdown into ("md", text) and ("img", abs_path, caption).
 
-    Streamlit's st.markdown cannot reference local image files, so
-    standalone image lines are lifted out for st.image; everything else
-    stays as Markdown blocks.
+    Written for Streamlit's st.markdown, which could not reference local
+    image files (the web GUI was retired on 2026-10-28). Android's manual
+    screen still uses it: standalone image lines are lifted out to travel
+    as blobs; everything else stays as Markdown blocks.
     """
     segments: list[tuple] = []
     buf: list[str] = []

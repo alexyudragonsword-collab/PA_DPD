@@ -22,8 +22,8 @@ pip install -e ".[dev]"                              # 核心 + pytest
 | `dev` | pytest + pytest-cov | 测试、覆盖率 |
 | `nn` | torch | 神经建模、DLA、直接学习 |
 | `onnx` | onnx + onnxruntime | ONNX 交接与数值验证 |
-| `gui` | streamlit + plotly | Web 工作台 |
-| `gui-qt` | pyside6 + markdown | 桌面版 |
+| `gui-qt` | pyside6 + pyqtgraph + markdown | 桌面工作台 |
+| `gui` | 同 `gui-qt`(Web 版已退役,保留为别名) | 桌面工作台 |
 | `packaging` | pyinstaller + nuitka | exe 打包 |
 
 RTL 测试另需系统级 `iverilog`(`apt install iverilog`);缺了对应测试
@@ -48,7 +48,12 @@ QT_QPA_PLATFORM=offscreen python -m pytest tests/ -q
   顺序问题。真正的根因是 Qt widget 析构函数被 GC 到 streamlit 的
   ScriptRunner 线程上执行,`tests/test_gui_qt.py` 的 fixture 因此显式
   `deleteLater()` + `processEvents()` + `gc.collect()` 拆除,**新增 Qt
-  测试请沿用这个 fixture,不要自己造**。
+  测试请沿用这个 fixture,不要自己造**。(Streamlit 与其测试已于
+  2026-10-28 退役;这些拆除与预导入保留,它们对任何非 Qt 线程上的析构
+  都成立。)
+- Python 3.11 上不要用 PySide6 6.12.0:它每次 `Signal.emit()` 少一个
+  `True` 引用,几千次后进程中止。`pyproject.toml` 已限定,
+  `test_signal_emit_does_not_leak_true` 守护。
 
 `-m "slow"` 标记留给长训练;新增耗时 >30 s 的测试请打上 `@pytest.mark.slow`。
 
@@ -152,8 +157,8 @@ GUI),两个 GUI 各接一次,新增中文 UI 串**必须**在 `gui_core/i18n.py`
 
 ```
 src/padpd/     核心库(英文代码/注释)
-gui_core/      两个 GUI 共享的服务层与 i18n(框架无关)
-gui/           Streamlit Web 工作台      gui_qt/  PySide6 桌面版
+gui_core/      前端共享层:服务、界面契约(experiments)、图表规格、工作区、i18n
+gui_qt/        PySide6 桌面工作台        android/ Android 应用(Chaquopy)
 docs/          工程文档(中文) + pages/ 三页速览 HTML
 manual/        内置双语用户手册(zh/en 各 8 章 + 截图)
 scripts/       研究脚本与数据打包工具

@@ -1,7 +1,7 @@
 # 4. 数据接入
 
 所有外部数据在内部统一为 **IQDataset**:一对采样对齐的复基带序列
-(PA 输入 `x`、输出 `y`)+ 采样率 + 元信息。GUI 数据管理页与
+(PA 输入 `x`、输出 `y`)+ 采样率 + 元信息。GUI 数据源页与
 `padpd.data` 加载器接受以下四种来源。
 
 ## 4.1 通用约定
@@ -22,10 +22,10 @@
 | split_csv | `{train,val,test}_{input,output}.csv`(各含 I,Q 两列) | 预切分、逐样本对齐 |
 | single_csv | `data.csv`(I_in,Q_in,I_out,Q_out 四列) | 按 0.6/0.2/0.2 连续切分 |
 
-GUI 操作:数据管理页填目录 → 扫描 → 选择 → 加载。数据集已预对齐,
-无需再做延迟对齐。
+GUI 操作:数据源页"导入实测"下填 OpenDPD 目录(或"浏览…")→ 选数据集
+→ "加载数据集"。数据集已预对齐,无需再做延迟对齐。
 
-![数据管理页加载 OpenDPD 数据集](assets/qt_data.png)
+![数据源页:导入实测与预览](assets/qt_data.png)
 
 ## 4.3 Cadence Envelope CSV
 

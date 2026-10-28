@@ -48,7 +48,7 @@ class _NoWheel:
     """Spin boxes and combos ignore the wheel unless focused, so scrolling
     the setup column does not silently change an input under the cursor."""
 
-    def wheelEvent(self, e):                           # noqa: N802
+    def wheelEvent(self, e):
         if self.hasFocus():
             super().wheelEvent(e)
         else:
@@ -241,7 +241,8 @@ class _Field:
         if p.kind == "bool":
             return w.isChecked()
         if p.kind == "multi":
-            return tuple(c for c, b in zip(p.choices, self.buttons)
+            return tuple(c for c, b in zip(p.choices, self.buttons,
+                                           strict=True)
                          if b.isChecked())
         if p.kind == "model":
             return w.currentData() or ""
@@ -270,7 +271,7 @@ class _Field:
         elif p.kind == "bool":
             w.setChecked(bool(v))
         elif p.kind == "multi":
-            for c, b in zip(p.choices, self.buttons):
+            for c, b in zip(p.choices, self.buttons, strict=True):
                 b.setChecked(c in tuple(v))
         elif p.kind == "model":
             i = w.findData(v)
@@ -296,7 +297,7 @@ class _Field:
         self.help.setVisible(bool(p.help))
         if p.kind == "choice":
             if hasattr(self, "group"):
-                for c, b in zip(p.choices, self.buttons):
+                for c, b in zip(p.choices, self.buttons, strict=True):
                     b.setText(choice_text(c, p.unit))
                 # side by side when both labels fit the setup column,
                 # stacked when a translation makes them too long

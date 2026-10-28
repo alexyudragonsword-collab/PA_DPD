@@ -184,27 +184,24 @@ def test_release_frees_handles_and_blobs():
 
 # ---------------------------------------------------------------- charts
 
-def test_every_figs_builder_has_a_spec_builder():
-    """chart_spec must not quietly fall behind figs.py.
+def test_the_chart_set_changes_only_on_purpose():
+    """chart_spec is the only definition of every chart.
 
-    Read figs.py with ast rather than importing it: importing pulls in
-    matplotlib and PySide6 (via gui_qt.common), neither of which the CI
-    fast lane installs, and this guard is worth more running everywhere
-    than it costs to parse one file.
+    This test used to check that chart_spec kept up with gui_qt/figs.py,
+    the desktop's matplotlib builders. figs.py was removed on 2026-10-28
+    when the desktop started rendering these specs itself (pyqtgraph,
+    gui_qt/chartview.py), so there is nothing left to drift from. What
+    can still drift is the two renderers against the builders: Android's
+    ChartView and its goldens, and the desktop's. Pinning the set makes
+    adding or dropping a chart a visible decision.
     """
-    import ast
-    tree = ast.parse((ROOT / "gui_qt" / "figs.py")
-                     .read_text(encoding="utf-8"))
-    fig_names = {n.name[:-4] for n in ast.walk(tree)
-                 if isinstance(n, ast.FunctionDef)
-                 and n.name.endswith("_fig") and not n.name.startswith("_")}
-    spec_names = set(chart_spec.BUILDERS)
-    assert fig_names == spec_names, (
-        f"only in figs.py: {sorted(fig_names - spec_names)}; "
-        f"only in chart_spec: {sorted(spec_names - fig_names)}")
+    assert sorted(chart_spec.BUILDERS) == [
+        "adaptive_evm", "amam", "bars", "bitwidth", "ccdf", "codesign",
+        "constellation", "gain_modulation", "grad", "psd", "three_loop",
+        "time", "train", "two_tone"]
 
 
-def test_psd_spec_carries_the_same_curve_as_figs():
+def test_psd_spec_carries_the_psd_curve():
     from padpd.metrics import psd
     rng = np.random.default_rng(0)
     y = rng.normal(size=4096) + 1j * rng.normal(size=4096)
@@ -212,7 +209,7 @@ def test_psd_spec_carries_the_same_curve_as_figs():
 
     panel = spec["panels"][0]
     assert panel["kind"] == "line"
-    assert panel["ylim"] == [-90, 5]           # same as figs.py
+    assert panel["ylim"] == [-90, 5]           # the old figs.py range
     f_want, p_want = psd(y, 100e6)
     s = panel["series"][0]
     assert np.allclose(blobs[s["x"]], f_want / 1e6, rtol=1e-5)

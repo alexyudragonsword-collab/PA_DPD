@@ -13,9 +13,13 @@ and did).
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
-from gui_qt import common  # noqa: F401  (sets sys.path before gui_core)
-from gui_qt.common import set_pref, tr
+# `python gui_qt/main.py` must work too, not only `python -m`
+ROOT = Path(__file__).resolve().parent.parent
+for _p in (str(ROOT), str(ROOT / "src")):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
 
 from PySide6.QtCore import Qt  # noqa: E402
 from PySide6.QtWidgets import (  # noqa: E402
@@ -39,6 +43,8 @@ from PySide6.QtWidgets import (  # noqa: E402
 )
 
 from gui_core import experiments  # noqa: E402
+from gui_qt import common  # noqa: E402
+from gui_qt.common import set_pref, tr  # noqa: E402
 from gui_qt.theme import palette, qss  # noqa: E402
 
 # (page id, rail label, rail group). Experiment pages are built from
@@ -356,7 +362,7 @@ class MainWindow(QMainWindow):
             self.rail_btns[pid].setText(tr(title))
         self._update_chips()
 
-    def closeEvent(self, event):                         # noqa: N802
+    def closeEvent(self, event):
         if common.live_worker_count() > 0:
             ans = QMessageBox.question(
                 self, "padpd", tr("有任务正在运行,确定要退出吗?"))
@@ -377,7 +383,16 @@ def main():
     win = MainWindow()
     win.setWindowIcon(common.app_icon())
     win.show()
-    sys.exit(app.exec())
+    ret = app.exec()
+    # Destroy the window while the QApplication still exists. A pyqtgraph
+    # widget left for interpreter finalization is torn down in GC order,
+    # which can segfault on the way out (measured, PySide6 6.11.3).
+    from shiboken6 import Shiboken
+    Shiboken.delete(win)
+    del win
+    import gc
+    gc.collect()
+    sys.exit(ret)
 
 
 if __name__ == "__main__":

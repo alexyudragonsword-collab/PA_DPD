@@ -1117,6 +1117,7 @@ _EN.update({
     "频谱:输入 vs 输出": "Spectrum: input vs output",
     "指标对比": "Metrics",
     "高级设置": "Advanced",
+    "需要 PyTorch:pip install -e .[nn]": "Needs PyTorch: pip install -e .[nn]",
     "ACLR 下邻道 (dBc)": "ACLR lower (dBc)",
     "ACLR 上邻道 (dBc)": "ACLR upper (dBc)",
     "工作区里的数据源。每个实验都在当前数据源上运行;数据源以引用保存"

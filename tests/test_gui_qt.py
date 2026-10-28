@@ -393,6 +393,31 @@ def test_grab_screenshot(app, window, tmp_path):
     assert out.stat().st_size > 10_000
 
 
+def test_signal_emit_does_not_leak_true():
+    """PySide6 6.12.0 drops a reference to True on every Signal.emit().
+
+    From Python 3.12 True is immortal and nothing happens; on 3.11 - the
+    CI and Windows build interpreter - True's refcount of about two
+    thousand reaches zero and the process aborts with "bool_dealloc".
+    Every repaint of a pyqtgraph view emits one signal, so that is a few
+    minutes of moving the mouse over a chart. Measured on 2026-10-28:
+    -1.0 per emit on 6.12.0, 0.0 on 6.11.3. pyproject keeps Python 3.11
+    below 6.12; this fails if that pin is lost.
+    """
+    from PySide6.QtCore import QObject, Signal
+
+    class Probe(QObject):
+        fired = Signal()
+
+    probe = Probe()
+    before = sys.getrefcount(True)
+    for _ in range(200):
+        probe.fired.emit()
+    lost = before - sys.getrefcount(True)
+    if sys.version_info < (3, 12):
+        assert lost < 50, f"True lost {lost} refs in 200 emits"
+
+
 def test_fnworker_live_registry(window):
     """closeEvent consults this registry before letting the window go
     while a QThread is still running."""

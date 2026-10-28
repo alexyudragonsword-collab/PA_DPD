@@ -735,6 +735,12 @@ python -m padpd_spike.probe
 `seq`）。`figs.py` 钉死了一套暗色板，而手机有桌面 GUI 从来没有的浅色模式，
 所以由 `ChartTheme.kt` 按主题映射，取值对齐 `gui_qt/themes.py`。
 
+> **2026-10-28 更新。** 桌面版重写后不再有 `figs.py` 与 `themes.py`：
+> 规格模块上移为 `gui_core/chart_spec.py`（`padpd_mobile/chart_spec.py` 与
+> `pages.py` 留作指向 `gui_core` 同一模块对象的别名），桌面用 pyqtgraph
+> 直接渲染同一批规格（`gui_qt/chartview.py`），配色在 `gui_qt/theme.py`。
+> 一张图从此只定义一次，由两个渲染器画。下文保留当时的写法。
+
 ### 画廊与数据来源标注
 
 启动即是画廊，14 条覆盖了全部四种原语和所有难缠的坐标轴特性：双 Y 轴、
@@ -754,7 +760,7 @@ log 轴、分类刻度、等比例、NaN 断口、阴影带。每条标了来源
 
 | 守卫 | 位置 | 防什么 |
 |---|---|---|
-| `chart_spec` 的 builder 必须与 `figs.py` 的 `*_fig` 一一对应 | `tests/test_mobile_api.py`（AST 读，不 import） | 桌面加了图、移动端没跟 |
+| `chart_spec` 的 builder 集合钉死（2026-10-28 前为与 `figs.py` 的 `*_fig` 一一对应） | `tests/test_mobile_api.py::test_the_chart_set_changes_only_on_purpose` | 一侧加了图、另一侧渲染器没跟 |
 | Kotlin 解析 **Python 真实产出**的规格 | `ChartSpecParseTest` + `app/src/test/resources/gallery_specs.json` | 字段改名 |
 | committed fixture 的键集必须与当前 Python 产出一致 | `tests/test_mobile_api.py` | fixture 过期后 Kotlin 测试对着昨天的形状继续通过 |
 

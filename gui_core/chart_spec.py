@@ -1,10 +1,13 @@
-"""Chart specifications: what ``gui_qt/figs.py`` draws, as data.
+"""Chart specifications: every chart padpd draws, as data.
 
-``figs.py`` has fifteen figure builders, but they rest on four primitives -
-multi-series XY lines, scatter, bars, and band/threshold overlays. Porting
-the *specs* rather than the drawing lets the Android side implement one
-renderer instead of fifteen, while the axis ranges, labels, legends, mask
-placement and decimation steps that were tuned there carry over unchanged.
+These started as a port of the desktop's matplotlib builders
+(``gui_qt/figs.py``, fifteen functions on four primitives - multi-series
+XY lines, scatter, bars, and band/threshold overlays) so Android could
+implement one renderer instead of fifteen. Since 2026-10-28 the desktop
+renders them too (``gui_qt/chartview.py``) and figs.py is gone: a chart is
+defined here once and drawn by two renderers. The axis ranges, labels,
+legends, mask placement and decimation steps tuned for figs.py carried
+over unchanged.
 
 A spec is plain JSON except for the numeric arrays, which are referenced
 by key and transported separately as float32 blobs (see ``api.blob``).
@@ -13,9 +16,8 @@ and rendering it through a JSON array of Python floats would cost more
 than the fit that produced it.
 
 Nothing here imports matplotlib, and nothing here imports a GUI. The
-functions mirror ``figs.py`` name for name (``psd_fig`` -> ``psd_spec``)
-so the two stay comparable - ``tests/test_mobile_api.py`` asserts they
-produce the same curve data.
+names still follow the old ``figs.py`` builders (``psd_fig`` ->
+``psd_spec``); ``tests/test_mobile_api.py`` pins the set.
 """
 
 from __future__ import annotations

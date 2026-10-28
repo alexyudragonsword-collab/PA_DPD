@@ -1,3 +1,5 @@
+# ruff: noqa: E501  - the style sheet is data; wrapping a rule mid-way
+#                     reads worse than a long line
 """Theme tokens for the desktop workbench: one palette, two consumers.
 
 The Qt style sheet and the chart renderer read the same tokens, so a

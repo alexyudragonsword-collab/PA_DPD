@@ -75,12 +75,14 @@ avoid packing several GB of CUDA runtime libraries into the bundle.
 Remaining details (antivirus false positives, missing DLLs, Chinese fonts)
 are covered in `packaging/README_packaging.md`.
 
-## 7.4 Deploying the Web Version
+## 7.4 The Web Version (Retired)
 
-The Web version is positioned as a team workbench, not an exe: on any machine
-with Python, run `pip install -e .[gui] && streamlit run gui/app.py`; add
-`--server.address 0.0.0.0` for LAN sharing. Both versions share the
-`gui_runs/` registry.
+The Streamlit web version (`gui/`) was retired on 2026-10-28. It and the
+desktop app each had hand-written pages that drifted apart, and keeping two
+interfaces in step cost more than "open it in a browser" was worth. There is
+now one screen contract (`gui_core/experiments.py`), shared by the desktop
+workbench and the Android app. `pip install -e .[gui]` still works and
+installs the desktop workbench.
 
 ## 7.5 QAT and RTL Generation (Pre-Silicon Bring-Up)
 

@@ -2,7 +2,7 @@
 
 All external data is unified internally as an **IQDataset**: a pair of
 sample-aligned complex baseband sequences (PA input `x`, output `y`) + sample
-rate + metadata. The GUI Data Manager page and the `padpd.data` loaders accept
+rate + metadata. The GUI Data source page and the `padpd.data` loaders accept
 the following four sources.
 
 ## 4.1 General Conventions
@@ -29,11 +29,11 @@ supported:
 | split_csv | `{train,val,test}_{input,output}.csv` (each with I,Q columns) | Pre-split, aligned sample by sample |
 | single_csv | `data.csv` (four columns: I_in,Q_in,I_out,Q_out) | Contiguous 0.6/0.2/0.2 split |
 
-GUI operation: on the Data Manager page, enter the directory → scan → select
-→ load. The datasets are pre-aligned, so no further delay alignment is
-needed.
+GUI operation: on the Data source page, under "Import measured", enter the
+OpenDPD directory (or Browse…) → pick a dataset → "Load dataset". The
+datasets are pre-aligned, so no further delay alignment is needed.
 
-![Loading an OpenDPD dataset on the Data Manager page](assets/qt_data.png)
+![Data source page: importing and previewing](assets/qt_data.png)
 
 ## 4.3 Cadence Envelope CSV
 

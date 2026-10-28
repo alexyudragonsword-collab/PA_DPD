@@ -3,6 +3,26 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-10-28 · GUI 重做:一套界面契约,桌面重写,Web 版退役
+
+- **为什么**:三套手写前端分叉(同一 DPD 页桌面 21 个输入、Web 12 个);
+  旧桌面建模页需 1730/1930 px(中/英);FAIL 显示成绿色;切语言丢结果。
+- **契约**:`gui_core/experiments.py`(参数 schema + show/warn 谓词、
+  run/present 拆分、对 spec 的判定、运行记录);`screens.py`/`chart_spec.py`
+  从 `padpd_mobile` 上移,原名留作同一模块对象的别名,Android 输出不变;
+  `workspace.py` 持久化数据源引用、模型(带来源)与 spec。
+- **桌面**(PySide6 + pyqtgraph):工作流导航 + 顶栏上下文 + 一个实验页模板;
+  改参数标过期、改 spec 即重判、语言/主题原地切换;同类比较 + 参数差异。
+  13 页在 1280 px 中英文下都放得下,英文界面无中文残留(测试强制)。
+- **Web 版退役**:`gui/`、`test_gui_web.py`、`.streamlit/` 删除,`[gui]` 改为
+  桌面依赖别名;CI test-gui、PyInstaller spec、Nuitka 参数同步。
+- **两个发现**:`check_mask` 余量恒 0.0(PSD 按带内峰值归一化)→ 新
+  `mask_margin_db`,默认 DPD 实为 +18.7 dB;PySide6 6.12.0 在 Python 3.11
+  上每次 `emit()` 少一个 `True` 引用,约两千次后中止 → <3.12 限 `<6.12`。
+- 手册 01/02/03 章中英重写,截图由 `scripts/make_gui_screenshots.py` 重新生成。
+- 指针:`docs/06_gui.md`、`cairn/工程约束与陷阱.md`「GUI:界面契约」「GUI:
+  PySide6 / pyqtgraph 的坑」。
+
 ## 2026-10-03 · 修虚拟热器件 FIR 每块重启,重测受影响数字
 
 - **根因**:`ThermalReferencePA.__call__` 每块调一次新的 `ReferencePA`,

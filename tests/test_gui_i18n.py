@@ -69,9 +69,7 @@ def test_page_sources_only_use_known_keys():
     """
     import ast
     missing = set()
-    for f in list((ROOT / "gui" / "views").glob("*.py")) + \
-            list((ROOT / "gui_qt").glob("*.py")) + \
-            [ROOT / "gui" / "app.py", ROOT / "gui" / "charts.py"]:
+    for f in list((ROOT / "gui_qt").glob("*.py")):
         tree = ast.parse(f.read_text(encoding="utf-8"))
         for node in ast.walk(tree):
             if not isinstance(node, ast.Call):

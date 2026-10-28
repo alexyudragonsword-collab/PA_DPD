@@ -1,12 +1,18 @@
-"""One function per screen, the mobile counterpart of ``gui_qt/pages/``.
+"""One function per screen: the presentation layer both front ends share.
 
-A screen is more than a service call. ``gui_qt/pages/waveform.py`` calls
-``services.make_waveform`` once and then does four more things with the
-result: reads fields off live objects, formats numbers to fixed
-precision, picks which curves to plot, and builds four figures. That work
-is presentation, not domain logic - it has no business in
-``gui_core/services.py`` - but it is also not something to reimplement in
-Kotlin.
+This began as the mobile counterpart of the desktop's hand-written pages
+(``gui_qt/pages/``, removed 2026-10-28). A screen is more than a service
+call. The old waveform page called ``services.make_waveform`` once and
+then did four more things with the result: read fields off live objects,
+formatted numbers to fixed precision, picked which curves to plot, and
+built four figures. That work is presentation, not domain logic - it has
+no business in ``gui_core/services.py`` - but it is also not something to
+reimplement in Kotlin.
+
+Each screen's formatting half is a ``present_<name>(result, lang)``
+function. Android calls the screen functions; the desktop calls the
+``present_*`` halves through ``gui_core.experiments``, which adds the
+parameter schema, verdicts and provenance on top.
 
 Reimplementing it there would cost twice. Live objects cannot cross the
 bridge, so ``wf.config.fft_size`` would need a general attribute reader
@@ -77,7 +83,7 @@ def waveform(bandwidth_mhz: float, qam: int, symbols: int, seed: int,
              cfr_papr_db: float | None = None, *, lang: str = "zh") -> dict:
     """Waveform Studio: generate a baseband OFDM waveform and describe it.
 
-    Mirrors ``gui_qt/pages/waveform.py``'s generate(), including its
+    Mirrors the old desktop waveform page's generate(), including its
     metric wording and precision. The CFR card reads "—" when clipping is
     off, matching the desktop rather than hiding the card, so the screen
     does not change shape when the checkbox moves.
@@ -123,7 +129,7 @@ def modeling(model_type: str, order: int, memory: int, drive: float,
              frontend: str, source: str = "", *, lang: str = "zh") -> dict:
     """PA Modeling, classical branch: fit a model and show the residual.
 
-    Mirrors the classical half of gui_qt/pages/modeling.py. The neural
+    Mirrors the classical half of the old desktop modeling page. The neural
     branch is absent rather than stubbed - torch has no Android wheel, so
     `fit_neural` cannot run here at all, and capabilities() already says
     so. The UI greys that family out; there is nothing for this module to
@@ -671,7 +677,8 @@ def manual(chapter_id: str = "", *, lang: str = "zh") -> dict:
     They are 162 KB on average and 300 KB at the largest; base64 would
     add a third to that and put the payload inside the screen's own JSON.
 
-    split_segments() exists because Streamlit could not reference local
+    split_segments() exists because Streamlit (the web GUI, retired
+    2026-10-28) could not reference local
     image files from Markdown. Compose has the same limitation for a
     different reason - it has no Markdown renderer at all - so the same
     slicing serves here.

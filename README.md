@@ -84,41 +84,38 @@ PA 行为建模(测试集 NMSE,~500 实参数):
 ## 图形界面(GUI)
 
 完整功能均可通过 GUI 使用(分析、结果比较、图形化仿真结果、输入/输出
-文件)。**三个前端**——Web、桌面、Android——功能同构,共享同一服务层与
-实验注册表。
-**注意**:PyPI 发行包只含 `padpd` 核心库;三个前端(`gui/`、`gui_qt/`、
-`android/`,共享 `gui_core/`)需 clone 本仓库使用,`[gui]`/`[gui-qt]`
-extras 只安装其第三方依赖。
+文件)。**两个前端**——桌面工作台与 Android——共享同一服务层、同一套界面
+契约(`gui_core/experiments.py`:参数 schema、对 spec 的判定、运行记录)与
+同一套图表规格。
+**注意**:PyPI 发行包只含 `padpd` 核心库;前端(`gui_qt/`、`android/`,
+共享 `gui_core/`)需 clone 本仓库使用,`[gui-qt]` extra 只安装其第三方依赖。
 
-### 方案 A / B:Web 工作台与桌面版
+### 桌面工作台
 
 ```bash
-# A:Web 工作台(Streamlit + Plotly,团队共享/远程)
-pip install -e .[gui]
-streamlit run gui/app.py
-
-# B:桌面版(PySide6,可打包 Windows exe)
-pip install -e .[gui-qt]
+pip install -e .[gui-qt]      # PySide6 + pyqtgraph,可打包 Windows exe
 python -m gui_qt.main
 ```
 
-8 个功能页:总览 / 波形工作台(PSD·CCDF·星座·CFR·导出)/ 数据管理
-(OpenDPD·Cadence CSV·.mat·.npz,自动对齐)/ PA 建模(经典 LS + 神经
-带进度)/ DPD 实验室(ILA/DLA,前后指标与图)/ 结果比较 / 部署(位宽
-扫描·ONNX·系数导出)/ PA-DPD 联合设计 / **内置双语图文用户手册**
-(`manual/`,8 章,整合全部文档,随界面语言切换)。两版均支持
-**中/英文切换**与**深色/浅色主题切换**(侧栏底部,偏好持久化且两版
-共享)。exe 打包见 `packaging/README_packaging.md`,导览见
-`docs/06_gui.md`。
+左侧按工作流导航:波形 → 数据源 → PA 模型 → DPD → 部署,其后是专题实验
+(增益调制 / 自适应跟踪 / 前端三环 / 联合设计 / 可微联合寻优 / 双音诊断)
+与结果比较、**内置双语图文用户手册**(`manual/`,8 章)。顶栏常驻当前
+数据源、模型数与**项目 Spec**;每个结果按 Spec 判定通过与否、带着产生它的
+参数与数据源,改参数后标为过期。数据源、模型与 Spec 持久化在工作区里。
+中/英文与浅色/深色**原地切换**,结果不丢。exe 打包见
+`packaging/README_packaging.md`,导览见 `docs/06_gui.md`。
 
-### 方案 C:Android app(离线,装在手机上)
+Streamlit Web 版(`gui/`)已于 2026-10-28 退役:两套手写界面逐渐分叉,
+同一个 DPD 页桌面 21 个输入、Web 12 个。
+
+### Android app(离线,装在手机上)
 
 `android/` 是一个 **Chaquopy** 工程:APK 里装着一个真正的 CPython 3.10,
 连同 numpy 和 scipy。**算的还是 `padpd` 本身**——同一份代码,同一个
 `gui_core` 服务层——只是界面换成了 Compose,图表由 Kotlin 渲染器按 Python
 发来的规格画。一切在本机跑完,**不联网,清单里零个 `uses-permission`**。
 
-桌面那九个功能页全部在上面,加一个图表画廊。两处选择在**构建时**做,
+旧桌面版的九个功能页全部在上面,加一个图表画廊。两处选择在**构建时**做,
 互相正交:
 
 | 选择 | 取值 | 怎么选 |
@@ -155,7 +152,7 @@ docs/                    # 中文文档
   03_roadmap.md          #   分阶段路线图(Phase 1~4)
   04_neural.md           #   神经建模(架构/训练/DLA/实测数字)
   05_performance_summary.md #  性能总览(Phase 1→2.5 全部指标一页汇总)
-  06_gui.md              #   GUI 导览(Web 版 + 桌面版 + exe 打包)
+  06_gui.md              #   GUI 导览(桌面工作台 + exe 打包)
 src/padpd/               # Python 包(代码与注释为英文)
   waveform/              #   802.11be 风格 OFDM + 16~4096-QAM
   pa/                    #   PA 行为模型:Saleh / MP / GMP / ReferencePA
@@ -182,9 +179,9 @@ src/padpd/               # Python 包(代码与注释为英文)
   │                      #     ONNX/定点系数/参考向量导出(FPGA 交接)
   plotting.py            #   标准对比图(PSD/星座/AM-AM/CCDF)
 manual/                  # 内置双语用户手册(zh/en 各 8 章 + 截图资产)
-gui_core/                # GUI 共享服务层(框架无关:计算服务 + 实验注册表)
-gui/                     # Web 工作台(Streamlit + Plotly,8 页)
-gui_qt/                  # 桌面版(PySide6 + matplotlib,8 页,QSS 深色主题)
+gui_core/                # 前端共享层(框架无关:计算服务、实验 schema 与判定、
+                         #   图表规格、工作区持久化、运行记录)
+gui_qt/                  # 桌面工作台(PySide6 + pyqtgraph,按 schema 生成页面)
 android/                 # Android app(Chaquopy + Compose,九页 + 图表画廊)
   app/src/main/python/padpd_mobile/  #   手机端 Python 适配层与图表规格
   app/src/main/java/com/padpd/       #   Compose 界面、两套导航壳、图表渲染器
@@ -208,7 +205,8 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
 - **Phase 2 / 2.5**:神经 PA 建模(GRU/DGRU/TCN)+ DLA Neural DPD;TCN 超 GMP ✅
 - **Phase 3**:定点部署(线性 + 神经 PTQ)+ ONNX/系数/参考向量导出 ✅
 - **Phase 4**:PA/DPD 联合设计(离散 Pareto + 可微梯度寻优)✅(Spectre 回环需 EDA)
-- **GUI**:三个前端(Streamlit Web 工作台 + PySide6 桌面版/exe 打包 + Android app)✅
+- **GUI**:桌面工作台(PySide6,exe 打包)+ Android app,共用一套界面契约 ✅
+  (Streamlit Web 版于 2026-10-28 退役)
 - **Phase 5**:现场硬化与硅前/硅后落地 ✅ —— 自适应 RLS DPD(跟踪 PA 漂移,
   满漂移领先冻结 DPD 10.4 dB EVM)、物理漏极效率、QAT、**RTL 生成器
   (可综合 Verilog DPD MAC,iverilog 逐位验证 0 错误)**、跨平台 CI + PyPI、
@@ -229,7 +227,7 @@ tests/                   # pytest 单元测试(含与 OpenDPD 原版指标的数
   步进 RX-IM3 标定补齐盲估不可辨识项)、**三环联合系统实验**
   (QMC + 去嵌 + 自适应 DPD 在漂移 PA 上同时闭环:原始环回 +33 dB
   失效 / 仅去嵌钉在 IRR -29 / 三环 -35.1 dB,镜像持续 <-60 dBc,
-  双 GUI 面板一键复现)、**完整实测源容器**(单 npz 承载 突发/阶跃
+  GUI 一键复现)、**完整实测源容器**(单 npz 承载 突发/阶跃
   探针/旁路标定/衰减步进/多工况 五个采集组,各解锁一类能力;离线 τ
   辨识 + 一键消费工具 + 示例文件,数据页显示完整度清单),手册
   §5.9 与第 4 章

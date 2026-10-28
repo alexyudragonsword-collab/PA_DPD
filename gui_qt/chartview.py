@@ -18,7 +18,13 @@ follow:
 
 from __future__ import annotations
 
+import os
+
 import numpy as np
+
+# pyqtgraph picks a Qt binding at import; name it rather than let it
+# guess, so a stray PyQt install can never be the one it finds
+os.environ.setdefault("PYQTGRAPH_QT_LIB", "PySide6")
 import pyqtgraph as pg
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import QVBoxLayout, QWidget

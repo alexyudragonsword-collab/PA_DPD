@@ -192,6 +192,16 @@ def _neural_available() -> bool:
         return False
 
 
+def _needs_torch(key, value):
+    """A live warning on a choice that needs PyTorch when it is missing,
+    shown before the run rather than as an ImportError after it."""
+    def warn(v, ctx):
+        if v.get(key) == value and not _neural_available():
+            return "需要 PyTorch:pip install -e .[nn]"
+        return None
+    return warn
+
+
 # ---------------------------------------------------------------------
 # workflow: waveform
 # ---------------------------------------------------------------------
@@ -294,7 +304,8 @@ PA_MODEL = Experiment(
             "可作为 DPD 的评估代理，也是部署页的输入。",
     params=[
         Param("family", "模型族", "choice", "classical",
-              ("classical", "neural"), group="模型"),
+              ("classical", "neural"), group="模型",
+              warn=_needs_torch("family", "neural")),
         Param("type", "类型", "choice", "GMP", _classical_types(),
               group="模型", show=_is("family", "classical")),
         Param("order", "非线性阶数", "int", 5, lo=1, hi=13, group="模型",
@@ -423,7 +434,8 @@ DPD = Experiment(
     summary="在当前数据源上辨识预失真器，按项目 spec 判定；"
             "结果和产生它的参数绑在一起。",
     params=[
-        Param("algo", "算法", "choice", "ILA", ("ILA", "DLA"), group="算法"),
+        Param("algo", "算法", "choice", "ILA", ("ILA", "DLA"), group="算法",
+              warn=_needs_torch("algo", "DLA")),
         Param("basis", "基函数", "choice", "GMP-510 (OpenDPD)", DPD_BASES,
               group="算法", show=_is("algo", "ILA")),
         Param("surrogate", "PA 代理", "model", "", group="算法",
@@ -866,11 +878,16 @@ def compare_runs(runs: list, lang: str = "zh") -> dict:
                  if isinstance(v, (int, float)) and not isinstance(v, bool)
                  and k not in _NOT_PLOTTED and k not in keys]
     rows = []
-    for n, r in zip(names, runs):
+    for n, r in zip(names, runs, strict=True):
         row = {tr("运行", lang): n, tr("时间", lang): r.when}
         for k in keys:
             v = r.metrics.get(k)
-            row[k] = f"{v:.2f}" if isinstance(v, (int, float)) else ""
+            if not isinstance(v, (int, float)):
+                row[k] = ""
+            elif not k.endswith(("_db", "_dbc")) and float(v).is_integer():
+                row[k] = f"{v:.0f}"          # a count, not a reading
+            else:
+                row[k] = f"{v:.2f}"
         rows.append(row)
     ckeys: list[str] = []
     for r in runs:
@@ -881,7 +898,7 @@ def compare_runs(runs: list, lang: str = "zh") -> dict:
         if len({repr(v) for v in vals}) > 1:
             diff.append({tr("参数", lang): k,
                          **{n: "—" if v is None else str(v)
-                            for n, v in zip(names, vals)}})
+                            for n, v in zip(names, vals, strict=True)}})
     charts = {}
     # dB metrics share an axis; a bit count or a MAC count does not
     plot = [k for k in keys if k.endswith(("_db", "_dbc"))]

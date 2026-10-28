@@ -23,15 +23,17 @@ for p in (ROOT, os.path.join(ROOT, "src")):
     if p not in sys.path:
         sys.path.insert(0, p)
 
-# gui_qt.main loads pages via importlib, invisible to static analysis
+# services and chart builders are imported inside functions, invisible
+# to static analysis; pyqtgraph comes in through its contrib hook
 hiddenimports = (
     collect_submodules("padpd")
     + collect_submodules("gui_core")
     + collect_submodules("gui_qt")
-    + ["matplotlib.backends.backend_qtagg", "scipy.signal"]
+    + ["scipy.signal"]
 )
 excludes = ["streamlit", "plotly", "playwright", "IPython", "pytest",
-            "tkinter", "PyQt5", "PyQt6"]
+            "tkinter", "PyQt5", "PyQt6", "pyqtgraph.examples",
+            "pyqtgraph.opengl", "pyqtgraph.jupyter"]
 if NO_TORCH:
     excludes += ["torch", "onnx", "onnxscript", "onnxruntime",
                  "nvidia", "triton"]
@@ -41,7 +43,6 @@ a = Analysis(  # noqa: F821
     pathex=[ROOT, os.path.join(ROOT, "src")],
     binaries=[],
     datas=[
-        (os.path.join(ROOT, "gui_qt", "style_template.qss"), "gui_qt"),
         (os.path.join(ROOT, "gui_qt", "assets"), os.path.join("gui_qt",
                                                               "assets")),
         (os.path.join(ROOT, "manual"), "manual"),

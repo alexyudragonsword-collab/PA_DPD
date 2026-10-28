@@ -30,6 +30,9 @@ for p in (str(ROOT), str(ROOT / "src")):
 # thread, which has been observed to deadlock (futex wait mid-import)
 # when the gui_web tests run after the Qt suite under load. Importing it
 # here removes that window entirely; skip silently if not installed.
+# The Streamlit GUI and its tests were retired on 2026-10-28; this stays
+# because it is cheap and any other worker-thread first import of pandas
+# would reopen the same window.
 try:
     import pandas  # noqa: F401
 except ImportError:

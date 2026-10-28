@@ -114,17 +114,10 @@ Nuitka onefile(Linux 需先 `apt-get install patchelf`;`pip install
 从仓库根运行,产物 `packaging/build_nuitka/padpd-desktop`,
 `QT_QPA_PLATFORM=offscreen` 下启动冒烟。
 
-## Streamlit Web 版怎么“打包”?
+## Web 版
 
-Web 版(`gui/`)定位是工作台/团队共享,不做 exe:任何有 Python 的机器
-
-```bash
-pip install -e .[gui]
-streamlit run gui/app.py
-```
-
-需要“像应用一样”的单机入口时,直接用桌面版(两版共享 `gui_runs/`
-实验注册表,数据互通)。
+Streamlit Web 版(`gui/`)已于 2026-10-28 退役,不再提供。单机入口就是
+桌面版;`pip install -e .[gui]` 现在安装的也是桌面依赖。
 
 ## 常见问题
 
