@@ -882,6 +882,149 @@ _EN = {
 }
 
 
+# ---- workbench experiments (gui_core/experiments.py, 2026-10) ----------
+_EN.update({
+    "802.11 发射模板": "802.11 emission template",
+    "ACLR · 较差一侧": "ACLR · worse side",
+    "APA 投影阶": "APA projection order",
+    "DLA · 神经直学": "DLA · neural direct learning",
+    "DLA 需要先在「PA 模型」页训练一个神经代理":
+        "DLA needs a neural surrogate: train one on the PA model page first",
+    "EVM 目标": "EVM target",
+    "ILA · 经典 LS": "ILA · classical LS",
+    "IM3 vs 音间距": "IM3 vs tone spacing",
+    "IM3 表 (CSV)": "IM3 table (CSV)",
+    "IQ 增益失衡": "IQ gain imbalance",
+    "K=1 即 NLMS,K 越大越接近 RLS":
+        "K=1 is NLMS; larger K moves towards RLS",
+    "LO 泄漏": "LO leakage",
+    "Mask 带外余量 (dB)": "Mask out-of-band margin (dB)",
+    "NMSE 损失 ≤ 1 dB": "NMSE loss ≤ 1 dB",
+    "OpenDPD 预设与样条类型忽略此项":
+        "Ignored by the OpenDPD presets and the spline types",
+    "PA 代理": "PA surrogate",
+    "PA 工作点与 DPD 复杂度联合权衡:离散 Pareto 扫描 drive,看先冲效率的顺序设计"
+    "在哪里撞墙。约 1 分钟。":
+        "Trade the PA operating point against DPD complexity: a discrete "
+        "Pareto sweep over drive shows where an efficiency-first "
+        "sequential design hits the wall. About a minute.",
+    "PA 模型": "PA model",
+    "PA 驱动 drive": "PA drive",
+    "PAE 与 DPD 系数 vs drive": "PAE and DPD coefficients vs drive",
+    "QMC 估计 IRR {irr:.1f} dB": "QMC-estimated IRR {irr:.1f} dB",
+    "三环联合 · 满漂移 EVM": "Three loops · EVM at full drift",
+    "仅去嵌 · 满漂移 EVM": "De-embed only · EVM at full drift",
+    "优化": "Optimization",
+    "位宽 vs NMSE": "Word length vs NMSE",
+    "先在「PA 模型」页拟合模型,再勾选要扫描的模型":
+        "Fit a model on the PA model page, then tick the models to sweep",
+    "冻结批处理 · 满漂移 EVM": "Frozen batch DPD · EVM at full drift",
+    "削峰": "Crest-factor reduction",
+    "原始环回已失效:满漂移时在空口 EVM 为 {raw:+.1f} dB,比信号本身还大,"
+    "所以没有画进图里,否则会把另外两条压扁。":
+        "The raw loopback fails: at full drift its over-the-air EVM is "
+        "{raw:+.1f} dB, larger than the signal itself, so it is left out "
+        "of the chart rather than flattening the other two curves.",
+    "双音诊断": "Two-tone diagnosis",
+    "发射 Mask · 带外余量": "Emission mask · out-of-band margin",
+    "只对带增益曲线的样条/MP 模型生效":
+        "Applies only to spline/MP models, which carry a gain curve",
+    "可微联合寻优": "Differentiable co-design",
+    "同时扫描 LUT 深度": "Also sweep LUT depth",
+    "固定 drive": "Fixed drive",
+    "在会漂移的合成 PA 上比较自适应 DPD 与冻结批处理 DPD 的逐块 EVM。":
+        "Block-by-block EVM of an adaptive DPD against a frozen batch DPD "
+        "on a drifting synthetic PA.",
+    "在当前数据源上拟合 PA 行为模型。拟合结果保存进工作区，可作为 DPD 的评估代理，"
+    "也是部署页的输入。":
+        "Fit a PA behavioral model on the current source. Fitted models are "
+        "kept in the workspace, serve as DPD evaluation surrogates and feed "
+        "the deployment page.",
+    "在当前数据源上辨识预失真器，按项目 spec 判定；结果和产生它的参数绑在一起。":
+        "Identify a predistorter on the current source and judge it against "
+        "the project spec; the result stays tied to the settings that "
+        "produced it.",
+    "场景": "Scenario",
+    "块数(冷到热)": "Blocks (cold to hot)",
+    "增益与相位轨迹": "Gain and phase trajectories",
+    "定点": "Fixed point",
+    "定点位宽扫描(bit-true)与硬件代价估计;样条/MP 模型可再扫 LUT 深度,"
+    "并导出 FPGA/ASIC 交接产物。":
+        "Bit-true word-length sweep with a hardware cost estimate; spline/MP "
+        "models can also sweep LUT depth; export FPGA/ASIC hand-off files.",
+    "实测源用它评估 DPD 后的输出;DLA 通过它反传梯度":
+        "Measured sources use it to evaluate the predistorted output; DLA "
+        "backpropagates through it",
+    "实测源需要一个评估代理:先在「PA 模型」页拟合一个模型":
+        "A measured source needs an evaluation surrogate: fit a model on the "
+        "PA model page first",
+    "寻优轨迹": "Optimization trajectory",
+    "导出交接产物…": "Export hand-off files…",
+    "带宽": "Bandwidth",
+    "带宽越大采样率越高,每块越慢(80 MHz 为演示默认)":
+        "Wider bandwidth means a higher sample rate and slower blocks "
+        "(80 MHz is the demo default)",
+    "建议记忆深度 {d}": "suggested memory depth {d}",
+    "恒包络阶跃探针:辨识热/陷阱时间常数,并用辨识出的 α 配置状态条件化样条。":
+        "Constant-envelope step probe: identify thermal/trapping time "
+        "constants and configure a state-conditioned spline from the "
+        "identified alphas.",
+    "把 drive 当作可学习参数,内层闭式 LS-DPD、外层梯度,在 EVM 约束下找最高效率。"
+    "需要 PyTorch。":
+        "Treat drive as a learnable parameter, closed-form LS-DPD inside, "
+        "gradients outside, and find the best efficiency within the EVM "
+        "constraint. Needs PyTorch.",
+    "探针": "Probe",
+    "改善": "Change",
+    "最窄可用位宽": "narrowest usable word length",
+    "波形": "Waveform",
+    "漂移 (drift)": "Drifting (drift)",
+    "漂移 PA + TX 前端镜像与 LO 泄漏 + 被污染的观测环回:比较原始环回、仅去嵌与"
+    "三环联合(QMC + 去嵌 + 自适应 DPD)。":
+        "Drifting PA, TX image and LO leakage, contaminated observation "
+        "loopback: raw loopback against de-embedding only against all three "
+        "loops (QMC + de-embedding + adaptive DPD).",
+    "状态样条增益": "State-spline gain",
+    "生成 802.11be 风格 OFDM 基带波形，看 PSD、CCDF、星座与削峰代价；"
+    "可导出为 IQDataset。":
+        "Generate an 802.11be-style OFDM baseband waveform and inspect its "
+        "PSD, CCDF, constellation and crest-factor cost; export it as an "
+        "IQDataset.",
+    "留空则用内置示例 examples/two_tone_example.csv":
+        "Leave empty to use the bundled examples/two_tone_example.csv",
+    "目标": "Target",
+    "目标 PAPR": "Target PAPR",
+    "相位失衡按 10 倍联动:0.3 dB 约等于 3°,IRR 约 30 dB":
+        "Phase imbalance tracks at 10x: 0.3 dB is about 3°, IRR about 30 dB",
+    "神经网络": "Neural network",
+    "线性热网络约为 1": "about 1 for a linear thermal network",
+    "网络结构": "Architecture",
+    "自热 (thermal)": "Self-heating (thermal)",
+    "自适应 · 满漂移 EVM": "Adaptive · EVM at full drift",
+    "自适应跟踪": "Adaptive tracking",
+    "被 IRR 钉住": "pinned by the IRR",
+    "观测窗太短,不足以判定": "observation window too short to judge",
+    "训练轮数": "Epochs",
+    "评估口径:{conv}": "Evaluation convention: {conv}",
+    "读一张 IM3 随音间距变化的表(电路仿真或实测),在训练任何 DPD 之前预判它该留多少"
+    "记忆。":
+        "Read an IM3-versus-tone-spacing table (circuit simulation or "
+        "measurement) to size the DPD's memory before training any DPD.",
+    "调制": "Modulation",
+    "输入": "Input",
+    "迟滞比": "Hysteresis ratio",
+    "逐块 EVM": "EVM per block",
+    "逐块 EVM 与镜像残差": "EVM and image residual per block",
+    "遗忘因子": "Forgetting factor",
+    "镜像残差 · 满漂移": "Image residual at full drift",
+    "隐藏单元": "Hidden units",
+    "静态对照 (static)": "Static control (static)",
+    "频谱": "Spectrum",
+    "频谱:实测 vs 预测": "Spectrum: measured vs predicted",
+    "频谱与 Mask": "Spectrum and mask",
+})
+
+
 def tr(s: str, lang: str = "zh") -> str:
     """Translate a Chinese UI string; unknown strings pass through."""
     if lang == "en":

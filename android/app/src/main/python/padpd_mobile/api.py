@@ -129,7 +129,7 @@ def capabilities(lang: str = "zh") -> str:
 
 
 def _chart_names() -> list:
-    from . import chart_spec
+    from gui_core import chart_spec
     return sorted(chart_spec.BUILDERS)
 
 
@@ -240,7 +240,7 @@ def call(fn: str, args_json: str = "{}") -> str:
 
 
 def _build_chart(name: str, args, kwargs) -> dict:
-    from . import chart_spec
+    from gui_core import chart_spec
     lang = kwargs.pop("lang", "zh")
     spec, blobs = chart_spec.build(name, *args, lang=lang, **kwargs)
     # chart_spec numbers its own keys from zero per chart; namespace them
@@ -281,7 +281,7 @@ def page(name: str, args_json: str = "{}") -> str:
         payload = json.loads(args_json) if args_json else {}
         args = _deref(payload.get("args", []))
         kwargs = _deref(payload.get("kwargs", {}))
-        from . import pages
+        from gui_core import screens as pages
         built = pages.build(name, *args, **kwargs)
         lang = built.get("lang", "zh")
         charts = {slot: _build_chart(spec_name, spec_args,
@@ -320,7 +320,7 @@ def delete_runs(ids_json: str) -> str:
     stay safe to call, while this destroys records.
     """
     try:
-        from . import pages
+        from gui_core import screens as pages
         remaining = pages.delete_runs(json.loads(ids_json))
         return json.dumps({"ok": True, "remaining": remaining})
     except Exception as e:                       # noqa: BLE001

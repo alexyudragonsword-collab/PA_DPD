@@ -1,6 +1,6 @@
 """The mobile screen layer, and the guards that keep it honest.
 
-``padpd_mobile/pages.py`` is the Android counterpart of
+``gui_core/screens.py`` (``padpd_mobile.pages``) is the counterpart of
 ``gui_qt/pages/``: it assembles a screen's metrics and chart specs so the
 bridge is crossed once per view. These tests run on the desktop - no
 emulator - because everything they check is Python.
@@ -763,20 +763,23 @@ def _comment_depth(text: str) -> int:
 
 
 def test_every_tr_key_in_the_screen_layer_has_a_translation():
-    """The Python half of the same rule, for padpd_mobile.
+    """The Python half of the same rule, for the shared screen layer.
 
-    tests/test_gui_i18n.py walks gui/ and gui_qt/ for tr() calls but not
-    android/, so the screen layer's own strings - the gain-modulation
-    verdict among them - were outside every existing guard. Same AST
-    walk, pointed at pages.py.
+    tests/test_gui_i18n.py walks the GUI packages for tr() calls; the
+    screen layer's own strings - the gain-modulation verdict among them -
+    were once outside every guard. The layer now lives in gui_core
+    (screens.py, chart_spec.py, experiments.py), so this walks every
+    module there: a new one is covered the moment it exists, instead of
+    when someone remembers to add its path.
     """
     import ast
 
     from gui_core import i18n
-    tree = ast.parse((MOBILE / "padpd_mobile" / "pages.py").read_text(
-        encoding="utf-8"))
+    trees = [ast.parse(f.read_text(encoding="utf-8"))
+             for f in sorted((ROOT / "gui_core").glob("*.py"))
+             if f.name != "i18n.py"]
     missing = set()
-    for node in ast.walk(tree):
+    for node in (n for tree in trees for n in ast.walk(tree)):
         if not isinstance(node, ast.Call):
             continue
         fn = node.func
@@ -788,7 +791,7 @@ def test_every_tr_key_in_the_screen_layer_has_a_translation():
         if isinstance(arg, ast.Constant) and isinstance(arg.value, str):
             if CJK.search(arg.value) and arg.value not in i18n._EN:
                 missing.add(arg.value)
-    assert not missing, f"pages.py tr() keys missing from i18n: {missing}"
+    assert not missing, f"gui_core tr() keys missing from i18n: {missing}"
 
 
 def test_every_chinese_string_in_kotlin_has_a_translation():
