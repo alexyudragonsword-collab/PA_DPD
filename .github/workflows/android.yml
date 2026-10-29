@@ -18,6 +18,11 @@ on:
       # not also touch android/ would otherwise never be exercised.
       - ".github/scripts/*android*"
       - ".github/scripts/*gradle*"
+      # stagePythonSources ships gui_core/ inside the APK, and since
+      # 2026-10-28 gui_core/screens.py and chart_spec.py *are* the app's
+      # screen and chart modules. A gui_core-only change used to reach
+      # main without this workflow ever building it.
+      - "gui_core/**"
   pull_request:
     paths:
       - "android/**"
@@ -26,6 +31,11 @@ on:
       # not also touch android/ would otherwise never be exercised.
       - ".github/scripts/*android*"
       - ".github/scripts/*gradle*"
+      # stagePythonSources ships gui_core/ inside the APK, and since
+      # 2026-10-28 gui_core/screens.py and chart_spec.py *are* the app's
+      # screen and chart modules. A gui_core-only change used to reach
+      # main without this workflow ever building it.
+      - "gui_core/**"
 
 permissions:
   contents: read
