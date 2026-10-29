@@ -1117,6 +1117,9 @@ _EN.update({
     "频谱:输入 vs 输出": "Spectrum: input vs output",
     "指标对比": "Metrics",
     "高级设置": "Advanced",
+    "这些运行来自不同实验({which}),只有同名指标可以对照。":
+        "These runs come from different experiments ({which}); only "
+        "metrics with the same name can be read against each other.",
     "需要 PyTorch:pip install -e .[nn]": "Needs PyTorch: pip install -e .[nn]",
     "ACLR 下邻道 (dBc)": "ACLR lower (dBc)",
     "ACLR 上邻道 (dBc)": "ACLR upper (dBc)",

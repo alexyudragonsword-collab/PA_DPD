@@ -64,7 +64,16 @@ class _DSpin(_NoWheel, QDoubleSpinBox):
 
 
 class _Combo(_NoWheel, QComboBox):
-    pass
+    """A combo that does not size itself to its longest item. Model names
+    run to 40+ characters ("GMP-510 (OpenDPD) @ ReferencePA d=0.14
+    160MHz/1024QAM"); sized to fit, one widened the whole form past the
+    setup column and pushed the inputs beside it out of view."""
+
+    def __init__(self):
+        super().__init__()
+        self.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.setMinimumContentsLength(8)
 
 
 class _Field:

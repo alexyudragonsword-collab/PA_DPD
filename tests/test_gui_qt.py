@@ -271,7 +271,32 @@ def _visible_chinese(window) -> list:
         if cb.isVisible():
             out += [cb.itemText(i) for i in range(cb.count())
                     if cjk.search(cb.itemText(i))]
+            if cb.count() == 0 and cjk.search(cb.placeholderText()):
+                out.append(cb.placeholderText())
     return out
+
+
+def test_a_long_model_name_does_not_widen_the_setup_form(app, window):
+    """Model names run to 40+ characters. A combo sized to its longest
+    item widened the DPD form past its column once a surrogate picker
+    was shown (DLA), pushing the second algorithm button and every input
+    edge out of view - found in a screenshot, not by a test."""
+    from gui_qt import common
+    ws = common.state().workspace
+    if not ws.models:
+        _run(app, window, "pa_model", type="MP", order=5, memory=3)
+    window.workspace_changed()
+    page = window.page("dpd")
+    window.navigate("dpd")
+    page.form.set_values({"algo": "DLA"})
+    app.processEvents()
+    try:
+        assert not page.form.fields["surrogate"].row.isHidden()
+        assert len(page.form.fields["surrogate"].widget.currentText()) > 30
+        sa = page.form.parentWidget().parentWidget()
+        assert page.form.minimumSizeHint().width() <= sa.viewport().width()
+    finally:
+        page.form.set_values({"algo": "ILA"})
 
 
 def test_a_fitted_model_lands_in_the_workspace_and_the_pickers(app, window):
@@ -306,17 +331,22 @@ def test_deploy_sweeps_a_workspace_model(app, window):
 
 def test_compare_lines_up_runs_of_one_kind_and_shows_what_differs(
         app, window):
+    """A gain-modulation probe is filed as a pa_model run too. Run between
+    two fits, it used to be one of the "two newest" picked, and the chart
+    set its droop next to a model's NMSE."""
+    from gui_core import experiments
     _run(app, window, "pa_model", family="classical", type="MP", order=5,
          memory=2)
+    _run(app, window, "gain_modulation", dut="static")
     _run(app, window, "pa_model", family="classical", type="MP", order=5,
          memory=4)
-    window.pages["pa_model"].open_compare.emit("pa_model")
+    window.pages["pa_model"].btn_cmp.click()
     app.processEvents()
     page = window.pages["compare"]
     assert window.stack.currentWidget() is page
     assert page.kind() == "pa_model"
     assert len(page.picked()) == 2
-    assert {r.kind for r in page.picked()} == {"pa_model"}
+    assert {experiments.cohort(r) for r in page.picked()} == {"classical"}
     diff_keys = {row[next(iter(row))] for row in page.last["diff"]}
     assert "memory" in diff_keys
     assert "bars" in page.last["charts"]

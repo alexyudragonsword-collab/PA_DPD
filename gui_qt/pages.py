@@ -159,13 +159,13 @@ class SourcesPage(_Page):
         odr.addWidget(self.od_root, 1)
         odr.addWidget(self.btn_od_browse)
         ml.addLayout(odr)
-        odr2 = QHBoxLayout()
         self.od_ds = QComboBox()
         self.btn_od_load = QPushButton()
         self.btn_od_load.clicked.connect(self.add_opendpd)
-        odr2.addWidget(self.od_ds, 1)
-        odr2.addWidget(self.btn_od_load)
-        ml.addLayout(odr2)
+        # stacked, not side by side: "no datasets found" plus "Load
+        # dataset" is wider than the setup column in English
+        ml.addWidget(self.od_ds)
+        ml.addWidget(self.btn_od_load)
         ml.addStretch(1)
         sl.addWidget(_scroll(more), 1)
         self.msg = label("", "help")
@@ -382,6 +382,7 @@ class SourcesPage(_Page):
         self.l_od.setText(tr("OpenDPD 目录"))
         self.btn_od_browse.setText(tr("浏览…"))
         self.btn_od_load.setText(tr("加载数据集"))
+        self.od_ds.setPlaceholderText(tr("未找到数据集"))
         self.btn_consume.setText(tr("运行完整源工具"))
         if hasattr(self, "view"):
             self.refresh_list()
@@ -511,28 +512,39 @@ class ComparePage(_Page):
                 return k
         return "pa_model"
 
-    def focus(self, kind: str):
-        """Open on one kind with its two newest runs picked."""
-        if kind in self.kind_btns:
-            self.kind_btns[kind].setChecked(True)
-        self.refresh(pick_newest=2)
+    def focus(self, run_id: str):
+        """Open on a run's kind with that run and the newest earlier run
+        of the same experiment picked."""
+        run = common.state().runstore.get(run_id) if run_id else None
+        if run is not None and run.kind in self.kind_btns:
+            self.kind_btns[run.kind].setChecked(True)
+        self.refresh(like=run)
 
-    def refresh(self, pick_newest: int = 0):
+    def refresh(self, like=None):
         store = common.state().runstore
         was = set(self.picked_ids())
         self._runs = store.list(self.kind())
         self.list.blockSignals(True)
         self.list.clear()
-        for i, r in enumerate(self._runs):
+        for r in self._runs:
             it = QListWidgetItem(f"{r.name}\n{r.when} · {r.run_id}")
             it.setData(Qt.ItemDataRole.UserRole, r.run_id)
             it.setFlags(Qt.ItemFlag.ItemIsUserCheckable
                         | Qt.ItemFlag.ItemIsEnabled
                         | Qt.ItemFlag.ItemIsSelectable)
-            on = (r.run_id in was) if not pick_newest else i < pick_newest
-            it.setCheckState(Qt.CheckState.Checked if on
-                             else Qt.CheckState.Unchecked)
+            it.setCheckState(Qt.CheckState.Unchecked)
             self.list.addItem(it)
+        if like is None:
+            pick = was
+        else:
+            same = [r.run_id for r in self._runs
+                    if experiments.cohort(r) == experiments.cohort(like)
+                    and r.timestamp <= like.timestamp]
+            pick = set(same[:2]) | {like.run_id}
+        for i in range(self.list.count()):
+            it = self.list.item(i)
+            if it.data(Qt.ItemDataRole.UserRole) in pick:
+                it.setCheckState(Qt.CheckState.Checked)
         self.list.blockSignals(False)
         self.compare()
 

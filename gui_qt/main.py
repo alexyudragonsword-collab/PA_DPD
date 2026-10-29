@@ -262,9 +262,9 @@ class MainWindow(QMainWindow):
         self.rail_btns[pid].setChecked(True)
         self.current = pid
 
-    def open_compare(self, kind: str):
+    def open_compare(self, run_id: str):
         self.navigate("compare")
-        self.pages["compare"].focus(kind)
+        self.pages["compare"].focus(run_id)
 
     def workspace_changed(self):
         """Sources, models or spec changed: refresh the bar and every built

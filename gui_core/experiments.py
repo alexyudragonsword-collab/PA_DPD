@@ -852,6 +852,18 @@ def synthetic_source_params(v: dict) -> dict:
 
 KIND_LABELS = {"pa_model": "PA 模型", "dpd": "DPD", "deploy": "部署"}
 
+
+def cohort(run) -> str:
+    """Which experiment inside a kind a run came from.
+
+    A kind is coarse on purpose - the adaptive and three-loop records are
+    "dpd" so their EVM lines up with batch DPD - but it also files a
+    gain-modulation probe under "pa_model", whose metrics (droop, phase
+    drift) share nothing with a model fit's NMSE. The record's algo, or
+    for a model fit its family, tells them apart.
+    """
+    return str(run.config.get("algo") or run.config.get("family") or "")
+
 # metric keys that are labels, not numbers to plot
 _NOT_PLOTTED = {"convention"}
 
@@ -907,6 +919,10 @@ def compare_runs(runs: list, lang: str = "zh") -> dict:
                                                 for r in runs]
                                            for k in plot}), {})
     notes = []
+    if len({cohort(r) for r in runs}) > 1:
+        notes.append(tr("这些运行来自不同实验({which}),只有同名指标可以对照。",
+                        lang).format(which=" / ".join(
+                            sorted({cohort(r) or "—" for r in runs}))))
     if len(runs) >= 2 and not diff:
         notes.append(tr("这些运行的输入完全相同;差异只来自随机性或数据源"
                         "内容。", lang))

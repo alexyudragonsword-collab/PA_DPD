@@ -87,7 +87,7 @@ def main():
     run("codesign")
     shot("qt_codesign")
 
-    win.pages["pa_model"].open_compare.emit("pa_model")
+    win.pages["pa_model"].btn_cmp.click()
     shot("qt_compare")
 
     win.navigate("sources")

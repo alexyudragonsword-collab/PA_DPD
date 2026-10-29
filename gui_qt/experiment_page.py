@@ -292,7 +292,7 @@ class ExperimentPage(QWidget):
     """Setup | results for one ``gui_core.experiments.Experiment``."""
 
     ran = Signal(object)                 # Outcome
-    open_compare = Signal(str)           # run kind
+    open_compare = Signal(str)           # run id
 
     def __init__(self, exp: experiments.Experiment):
         super().__init__()
@@ -391,7 +391,8 @@ class ExperimentPage(QWidget):
         self.btn_repro.clicked.connect(self.reproduce)
         self.btn_cmp = QPushButton()
         self.btn_cmp.clicked.connect(
-            lambda: self.open_compare.emit(self._run_kind()))
+            lambda: self.open_compare.emit(
+                self.outcome.run_id if self.outcome else ""))
         acts.addWidget(self.btn_repro)
         acts.addWidget(self.btn_cmp)
         self.action_btns = []
@@ -489,12 +490,6 @@ class ExperimentPage(QWidget):
         return True if w is None else w.wait(timeout_ms)
 
     # ---- render ------------------------------------------------------
-    def _run_kind(self) -> str:
-        if self.outcome is None or not self.outcome.run_id:
-            return ""
-        run = common.state().runstore.get(self.outcome.run_id)
-        return run.kind if run else ""
-
     def render(self):
         lang, theme = common.PREFS["lang"], common.PREFS["theme"]
         if self.outcome is None:
