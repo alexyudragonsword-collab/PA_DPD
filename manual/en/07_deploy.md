@@ -25,6 +25,19 @@ and degrade significantly below W12.
 | Reference-vector CSV | Bit-true input/output sample sequences | Sample-by-sample comparison in RTL simulation |
 | ONNX (neural models) | Standard compute graph with numerical verification (max err ~1e-6) | Import into toolchains/accelerators |
 
+For linear models the hand-off also carries what an integer RTL needs: the
+coefficient JSON's `fixed_point` section gives the input exponent
+`in_scale_exp`, one exponent per basis column `col_scale_exp`, and the finest
+accumulator LSB `acc_lsb_exp` that the fixed-point model chose on the
+reference block; the reference CSV appends `i_in_code,q_in_code` integer
+input codes after its four float columns. Note (correction):
+`FixedPointPolyModel` is a **float emulation** of the quantization loss —
+the basis `x|x|^k` is computed in float64, the accumulate is float64 and the
+output is not quantized, and the exponents follow the reference block's peaks
+(not causal). The CSV's output columns are therefore a float reference that
+an integer implementation cannot reproduce sample for sample; the hand-off
+gives the same exponents, and the output format is the implementer's choice.
+
 Command-line equivalents: `python scripts/export_deploy.py`,
 `scripts/quantize_dpd.py`, `scripts/quantize_neural_pa.py`.
 

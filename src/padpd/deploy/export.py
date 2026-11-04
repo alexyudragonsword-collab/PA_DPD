@@ -42,11 +42,16 @@ def _int_codes(x: np.ndarray, n_bits: int):
     return c, None, int(np.log2(step))
 
 
-def export_linear_coeffs(model, w_bits: int, path: str) -> dict:
+def export_linear_coeffs(model, w_bits: int, path: str,
+                         fixed_point_meta: dict | None = None) -> dict:
     """Write quantized integer coefficients of a linear-params model to JSON.
 
     Includes the model class/config, bit width, scale exponent, and the
-    integer real/imag coefficient codes. Returns the written dict.
+    integer real/imag coefficient codes. ``fixed_point_meta`` (from
+    :meth:`FixedPointPolyModel.scale_exponents` on the reference block) adds
+    the input and per-column exponents the float emulation used, so an
+    integer implementation does not have to re-derive them. Returns the
+    written dict.
     """
     if getattr(model, "coeffs", None) is None:
         raise ValueError("model must be fitted before export")
@@ -62,6 +67,16 @@ def export_linear_coeffs(model, w_bits: int, path: str) -> dict:
         "coeffs_real": cr.tolist(),
         "coeffs_imag": ci.tolist(),
     }
+    if fixed_point_meta is not None:
+        payload["fixed_point"] = {
+            **fixed_point_meta,
+            "note": "exponents FixedPointPolyModel picked from the peaks "
+                    "of the reference block (block-adaptive, not causal): "
+                    "input value = code * 2**in_scale_exp, basis column "
+                    "c = code * 2**col_scale_exp[c]; the output is a "
+                    "float64 accumulate and is not quantized, so no output "
+                    "format is defined",
+        }
     with open(path, "w") as f:
         json.dump(payload, f, indent=1)
     return payload
@@ -111,14 +126,28 @@ def export_lut(lut: dict, w_bits: int, path: str) -> dict:
 def export_reference_vectors(model, x: np.ndarray, path: str,
                              n: int = 4096) -> None:
     """Run ``model`` on the first ``n`` samples of ``x`` and dump the
-    input/output IQ as CSV for bit-true RTL verification."""
+    input/output IQ as CSV for RTL verification.
+
+    For a :class:`FixedPointPolyModel` two more columns follow the four float
+    ones: ``i_in_code,q_in_code``, the integer input codes it quantized to
+    (value = code * 2**in_scale_exp, see ``scale_exponents``). They are
+    appended, not substituted, so readers of the first four columns keep
+    working."""
     x = np.asarray(x, dtype=complex)[:n]
     y = model(x)
+    codes = None
+    if hasattr(model, "scale_exponents"):
+        cr, ci, _ = _int_codes(x, model.sig_bits)
+        codes = list(zip(cr.tolist(), ci.tolist(), strict=True))
     with open(path, "w") as f:
-        f.write("i_in,q_in,i_out,q_out\n")
-        for xi, yi in zip(x, y, strict=True):
-            f.write(f"{xi.real:.10e},{xi.imag:.10e},"
-                    f"{yi.real:.10e},{yi.imag:.10e}\n")
+        extra = ",i_in_code,q_in_code" if codes else ""
+        f.write("i_in,q_in,i_out,q_out" + extra + "\n")
+        for k, (xi, yi) in enumerate(zip(x, y, strict=True)):
+            row = (f"{xi.real:.10e},{xi.imag:.10e},"
+                   f"{yi.real:.10e},{yi.imag:.10e}")
+            if codes:
+                row += f",{codes[k][0]},{codes[k][1]}"
+            f.write(row + "\n")
 
 
 def export_onnx(neural_model, path: str, frame_length: int = 200,

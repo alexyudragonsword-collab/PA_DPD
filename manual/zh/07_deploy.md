@@ -21,6 +21,15 @@
 | 参考向量 CSV | bit-true 输入/输出样本序列 | RTL 仿真逐样本比对 |
 | ONNX(神经模型) | 标准计算图,含数值验证(max err ~1e-6) | 工具链/加速器导入 |
 
+线性模型的交接件还带两样东西,供整数 RTL 直接使用:系数 JSON 的
+`fixed_point` 段给出定点模型在参考块上选定的输入指数 `in_scale_exp`、每列
+指数 `col_scale_exp` 与最细累加器 LSB `acc_lsb_exp`;参考向量 CSV 在四列
+浮点之后追加 `i_in_code,q_in_code` 两列整数输入码。注意(更正):
+`FixedPointPolyModel` 是量化损失的**浮点模拟**——基函数 `x|x|^k` 用
+float64 计算、累加是 float64、输出不量化,指数由参考块峰值决定(非因果)。
+因此 CSV 的输出列是浮点参考,整数实现无法逐样本复现;交接件给出的是
+"同一套指数",输出格式由实现方定义。
+
 命令行等价入口:`python scripts/export_deploy.py`、
 `scripts/quantize_dpd.py`、`scripts/quantize_neural_pa.py`。
 

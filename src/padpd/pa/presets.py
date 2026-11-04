@@ -30,6 +30,6 @@ def gmp_opendpd_510() -> GMPModel:
 
 def ddr_volterra_default() -> DDRVolterraModel:
     """DDR-Volterra, dynamic order 1 (Zho/Pedro/Brazil 2006 style),
-    K=5, M=15 -> ~155 complex coefficients; comparable memory span to the
+    K=5, M=15 -> 140 complex coefficients; comparable memory span to the
     GMP baseline while systematically covering the r<=1 cross terms."""
     return DDRVolterraModel(order=5, memory_depth=15, dynamic_order=1)

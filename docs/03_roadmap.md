@@ -101,6 +101,10 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
       ①神经模型 → ONNX(onnxruntime 数值验证,max err ~1e-6);②线性模型
       → 整数定点系数 JSON(整数码 + 2 的幂 scale,硬件 `acc+=code_w*code_x`
       后移位);③bit-true 参考输入/输出向量 CSV,供 RTL 逐样本比对。
+      **更正(2026-11-04,PA_DPD#2)**:③ 不是整数 bit-true——基函数与累加
+      是 float64、输出不量化、指数随参考块峰值而定;现在 JSON 带
+      `fixed_point`(输入/逐列指数、累加器 LSB),CSV 追加整数输入码两列,
+      dsp_ip 的整数参考由此复现同一套指数(见 manual 7.2)。
 - [ ] 剪枝/蒸馏(蒸馏需 GPU)
 - [ ] FPGA 原型(HLS 或 RTL),用上面的 ONNX/系数/参考向量逐样本比对
 - [ ] SDR/GNU Radio 台架闭环验证
