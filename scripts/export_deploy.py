@@ -3,7 +3,9 @@
 
 For the given OpenDPD dataset, fits the classical DPD bases and exports:
 - quantized integer coefficients (JSON) for GMP and DDR predistorters,
-- bit-true reference input/output vectors (CSV) for RTL verification,
+- reference input/output vectors (CSV) for RTL verification, with the
+  integer input codes and the per-column exponents the float emulation
+  used (see the note on FixedPointPolyModel: it is not an integer datapath),
 - (if a neural checkpoint is given) an ONNX model + reference vectors.
 
 Everything lands under <out>/<dataset>/ so a hardware team can implement
@@ -12,7 +14,7 @@ and check the datapath sample-for-sample against these files.
 Example:
     python scripts/export_deploy.py \\
         --dataset-dir ../OpenDPD/datasets/DPA_160MHz \\
-        --pa-model models/DPA_200MHz_tcn_h16_f200.pt --w-bits 16
+        --pa-model models/DPA_160MHz_dgru_h8_f200.pt --w-bits 16
 """
 
 import argparse
@@ -53,9 +55,13 @@ def main():
                               fit_kwargs={"regularization": 1e-9})
         ila.fit_measured(tr.x, tr.y)
         model = ila.dpd_model
-        cpath = os.path.join(out, f"{label}_w{args.w_bits}_coeffs.json")
-        p = export_linear_coeffs(model, args.w_bits, cpath)
         fp = FixedPointPolyModel(model, args.w_bits, args.w_bits)
+        # the exponents FixedPointPolyModel picks on the reference block, so an
+        # integer implementation can reproduce them instead of re-deriving them
+        meta = fp.scale_exponents(te.x[:args.n_vectors])
+        cpath = os.path.join(out, f"{label}_w{args.w_bits}_coeffs.json")
+        p = export_linear_coeffs(model, args.w_bits, cpath,
+                                 fixed_point_meta=meta)
         vpath = os.path.join(out, f"{label}_w{args.w_bits}_refvec.csv")
         export_reference_vectors(fp, te.x, vpath, n=args.n_vectors)
         print(f"{label}: {p['n_coeffs']} coeffs "

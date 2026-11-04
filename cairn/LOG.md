@@ -3,6 +3,21 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-11-04 · 部署导出对整数 RTL 自描述(PA_DPD#2,fix/export-for-integer-rtl)
+
+- dsp_ip 做 `dpd_poly` RTL 时发现 `FixedPointPolyModel` 不是整数 bit-true:基函数 `x|x|^k` 与累加
+  是 float64、输出不量化、指数取参考块峰值(非因果),且指数不在交接件里。**算法不改,ACLR 文档数不动。**
+- `FixedPointPolyModel.scale_exponents(x)`:返回 `__call__` 在同块上用的输入 / 逐列 / 累加器 LSB 指数;
+  `export_linear_coeffs(..., fixed_point_meta=)` 写进 JSON 的 `fixed_point` 段;`export_reference_vectors`
+  对定点模型在四列浮点**之后**追加 `i_in_code,q_in_code`(不替换,dsp_ip 等按列号读的下游不受影响)。
+- 实测 DPA_160MHz W16/W12 × GMP/DDR:旧 JSON 键与 CSV 前四列逐字节相同;dsp_ip 自推的 e_in / 逐列 e_c /
+  输入码与导出值全部相等(4/4)。
+- 文档纠错(追加更正,不覆盖):模块 / 类 docstring 写明"浮点模拟、输出不量化";`ddr_volterra_default`
+  "~155"→ 140 系数(实测 basis 140 列);`export_deploy.py` 示例 checkpoint 改为存在且同数据集的
+  `DPA_160MHz_dgru_h8_f200.pt`;manual zh/en §7.2、`docs/03_roadmap.md` 部署交接链条目。
+- 测试:`tests/test_export.py` 形状 4→6 列,新增 4 条(输入码 = 量化输入、非定点模型仍 4 列、逐列指数正是
+  `__call__` 用的、JSON 带 meta 且不带时无新键)。
+
 ## 2026-10-29 · 截图巡检发现的两个 GUI 缺陷(已修)
 
 - 用户要多看截图,25 张巡检图里看出两处测试没覆盖的问题:
