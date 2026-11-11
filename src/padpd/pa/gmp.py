@@ -11,7 +11,8 @@ Basis:
 
 ``tap_spacing`` s multiplies every delay (m and l above), keeping the
 memory span fixed in seconds at a higher sampling rate; see
-:mod:`padpd.pa.memory_polynomial`.
+:mod:`padpd.pa.memory_polynomial`, including why one uniform spacing does
+not cover a TX lowpass and a time-defined PA at once.
 """
 
 from __future__ import annotations

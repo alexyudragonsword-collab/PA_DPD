@@ -11,7 +11,9 @@
   `DriftingReferencePA`、`ThermalReferencePA` 同样支持。
 - `MemoryPolynomialModel` / `GMPModel` 新参数 `tap_spacing`(默认 1,
   保存文件不变)。20 MHz × 4 信号、PA 抽头 12.5 ns 时，GMP-ILA 的 EVM
-  从 -28.6 dB 到 -46.4 dB。
+  从 -28.6 dB 到 -46.4 dB。这是 DPD 直接驱动 PA 的情形；DPD 与 PA 之间
+  有逐样本记忆的基带低通时，等间隔基函数只能对上一种尺度，增益大部分
+  消失(见 `docs/03_roadmap.md` 6.5.5 的补充)。
 - 新增 `CascadePA`:两级 PA 作为一个 `PAModel`,级间回退只改两级之间的
   电平，`stage_backoff_db` 给出每级回退。总小信号增益是两级之积(单个
   `ReferencePA` 约 1.2,来自 FIR 增益),不另做归一。

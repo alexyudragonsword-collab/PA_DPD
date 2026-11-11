@@ -12,7 +12,9 @@ and the acceptance numbers agreed on it, all measured on 2026-11-11:
 - a 20 MHz x K signal with taps fixed at 12.5 ns sees heavier memory,
   -11.0 dB at K = 4, where sample-spaced taps stay at -19.9 dB;
 - a DPD needs tap-spaced memory to follow: GMP-ILA at K = 4 reaches an
-  EVM of -46.4 dB with tap_spacing 4 and -28.6 dB without;
+  EVM of -46.4 dB with tap_spacing 4 and -28.6 dB without. The DPD drives
+  the PA directly here; with a per-sample TX lowpass in between, matched
+  spacing alone did about as well as no DPD (issue #4, closing comment);
 - CascadePA is one PAModel whose interstage backoff changes only the
   level between the stages, and reports each stage's own backoff.
 """
