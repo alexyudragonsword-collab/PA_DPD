@@ -64,3 +64,63 @@ def test_fit_measured_linearizes(setup):
 def test_unfitted_dpd_raises():
     with pytest.raises(RuntimeError):
         ILAPredistorter()(np.zeros(8, dtype=complex))
+
+
+# ------------------------------------------------- iteration divergence
+# Issue #4 (mmw60_trx, then reproduced here): a fixed second ILA iteration
+# loses the first one's result near saturation. Numbers measured
+# 2026-11-11 on 80 MHz 256-QAM, 8 symbols, seed 0, default GMP.
+
+@pytest.fixture(scope="module")
+def wf256():
+    return generate_ofdm(OFDMConfig(bandwidth_hz=80e6, qam_order=256,
+                                    n_symbols=8, seed=0))
+
+
+def _evm(pa, ila, wf):
+    return evm_of_signal(pa(ila(wf.x)), wf).db
+
+
+def test_near_saturation_the_best_iteration_is_kept(wf256):
+    pa = ReferencePA(drive=0.18)
+    fixed = ILAPredistorter(n_iterations=2, keep_best=False).fit(pa, wf256.x)
+    best = ILAPredistorter(n_iterations=2).fit(pa, wf256.x)
+    assert best.best_iteration == 1
+    assert _evm(pa, best, wf256) < _evm(pa, fixed, wf256) - 6
+    # measured -38.3 vs -28.7 dB
+
+
+def test_at_the_default_drive_the_result_is_unchanged(wf256):
+    """Iterating still helps away from saturation; keeping the best must
+    then keep the last, i.e. the same model as the fixed loop."""
+    pa = ReferencePA()                                   # drive 0.14
+    fixed = ILAPredistorter(n_iterations=2, keep_best=False).fit(pa, wf256.x)
+    best = ILAPredistorter(n_iterations=2).fit(pa, wf256.x)
+    assert best.best_iteration == 2
+    np.testing.assert_array_equal(best(wf256.x), fixed(wf256.x))  # -67.2
+
+
+def test_diverging_iterations_stop_early(wf256):
+    calls = []
+
+    def pa(u):
+        calls.append(1)
+        return ReferencePA(drive=0.22)(u)
+
+    ila = ILAPredistorter(n_iterations=4).fit(pa, wf256.x)
+    # pass 0 (no DPD), pass 1 checks model 1, pass 2 finds model 2 worse
+    assert len(calls) == 3 and len(ila.history) == 3
+    assert ila.best_iteration == 1
+    assert ila.history[2] > ila.history[1]               # -9.8 vs -22.0
+
+
+def test_keep_best_off_is_the_fixed_loop(wf256):
+    calls = []
+
+    def pa(u):
+        calls.append(1)
+        return ReferencePA()(u)
+
+    ila = ILAPredistorter(n_iterations=3, keep_best=False).fit(pa, wf256.x)
+    assert len(calls) == 3                               # no extra check pass
+    assert ila.best_iteration == 3 and len(ila.history) == 3

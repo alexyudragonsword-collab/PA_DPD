@@ -5,6 +5,18 @@
 
 ## [未发布]
 
+### ILA 迭代按观测保留最好的一次
+- `ILAPredistorter.fit` 默认每轮在 PA 上量一次误差(pa(dpd(x)) 对 G·x 的
+  NMSE),保留最好的预失真器，一旦某轮变差就停。饱和附近第二轮会发散：
+  ReferencePA、80 MHz 256-QAM,drive 0.18 时 EVM 由 -28.7 dB(固定 2 轮)
+  回到 -38.3 dB,drive 0.22 由 -11.2 回到 -24.6。默认 drive 0.14 仍保留第 2
+  轮，结果逐位不变(-67.2 dB)。
+- 代价是比 `n_iterations` 多一次 PA 调用;`n_iterations` 变成上限。
+  `keep_best=False` 恢复原来的固定轮数。拟合后 `history` 给出每轮观测
+  误差,`best_iteration` 给出保留的是第几轮。
+- 饱和附近的已发表数字(docs/05 §2.2、联合设计扫描)受影响，见
+  `cairn/LOG.md` 2026-11-11 条目;文档数字尚待同步。
+
 ### PA 记忆按时间定义、级联 PA(PA_DPD#4)
 - `ReferencePA(fs=, fir_fs=)`:匹配网络 FIR 的抽头按 `fs / fir_fs` 个
   样本间隔放置，记忆跨度以秒固定;不给时逐位不变。非整数比报错。
