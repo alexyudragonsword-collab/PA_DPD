@@ -11,14 +11,17 @@ taps sit 12.5 ns (4 samples) apart (issue #4): MP order 7, memory 4
 fits to -27.3 dB with sample-spaced taps and -36.4 dB with
 tap_spacing 4; a GMP-ILA DPD reaches an EVM of -28.6 dB and -46.4 dB.
 
-That gain holds only when the DPD drives the PA directly. Uniform spacing
-stretches every delay, so it matches one memory scale. In a full TX chain
-a baseband lowpass between the DPD and the PA adds per-sample memory on
-top of the PA's taps tens of samples apart, and no single spacing covers
-both: on mmw60_trx's chain (80 MHz x K, 8 dB backoff) matched spacing read
--18.6 / -20.9 / -18.5 dB at K = 4 / 8 / 32, about what no DPD gives
-(issue #4, closing comment). Covering both needs a mixed delay set - a few
-per-sample taps plus a few far ones - which is not implemented.
+That number is for a DPD driving the PA directly. In a full TX chain a
+baseband lowpass between the DPD and the PA adds per-sample memory, and
+uniform spacing stretches every delay, so it matches one memory scale.
+On mmw60_trx's chain (11be 80 MHz x K, 2x oversampling, 8 dB backoff,
+best ILA iteration kept) matched spacing came within 0.6 dB of a
+per-sample-memory PA when the PA taps were 64 samples apart (-25.2 vs
+-25.8 dB), but stayed 4-6 dB short at 8-16 samples apart, where no
+uniform spacing tried helped (issue #4, follow-up to the closing
+comment; an earlier reading there was spoiled by ILA divergence). A mixed
+delay set - a few per-sample taps plus a few far ones - may close that
+gap; it is not implemented.
 """
 
 from __future__ import annotations
