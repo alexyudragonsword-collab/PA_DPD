@@ -53,6 +53,10 @@ GMP 行为模型验证集 NMSE:**-57.8 dB**(52 系数),优于 Memory Polynomial 
 > FAIL"。那是 ILA 固定迭代 2 次、第 2 次在饱和附近发散的读数，不是峰值不可逆。
 > `ILAPredistorter` 改为按观测保留最好一轮(PA_DPD#4)后，无 CFR 的 DPD 已
 > Mask PASS,EVM 与加 CFR 相当;CFR 的价值在带外(ACLR 再好约 16 dB)。
+>
+> **再更正(扫 drive 后)**:0.18 恰是带内 EVM 交叉点。浅于它 CFR 的削峰地板
+> (约 -37.6 dB)反而拖累带内 EVM;深于它 CFR 带内也更好，且把 Mask 可通过的
+> drive 从 0.18 推到 0.20。扫描表见 `docs/05_performance_summary.md` §2.2。
 
 拟合好的模型/DPD 可持久化复用:`model.save("gmp.npz")` → `padpd.pa.load_model(...)`;`dpd.save(...)` → `ILAPredistorter.load(...)`。
 

@@ -62,12 +62,15 @@ robustness also far exceeds the polynomials (see Chapter 6).
 3. **Choose iterative-DPD iterations by observation**: near saturation the
    second ILA iteration diverges, and a fixed iteration count mistakes that
    for "this operating point cannot be linearized". `ILAPredistorter` keeps
-   the best observed iteration by default (`keep_best`). Adding CFR at deep
-   compression buys out-of-band margin (drive 0.18: ACLR -40.6 → -56.3 dBc)
-   while in-band EVM stays about the same.
+   the best observed iteration by default (`keep_best`). CFR pushes the
+   usable operating point deeper (the mask-passing drive goes from 0.18 to
+   0.20), but it has a clipping floor of about -37.6 dB that hurts in-band
+   EVM at shallower drives. Decide on CFR by sweeping the drive to find
+   the crossover, not from a single point.
    (Correction 2026-11-11: this used to say DPD diverges, CFR restores
    invertibility and only "CFR + DPD" passes the mask; that has been
-   overturned.)
+   overturned. A later note that CFR only buys out-of-band margin held
+   only at drive 0.18, the crossover point, and has been corrected too.)
 
 ## 5.5 Metric Conventions
 

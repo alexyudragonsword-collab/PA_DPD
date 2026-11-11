@@ -23,6 +23,12 @@ EVM / -40.6 dBc / mask PASS; **CFR (8 dB) + DPD** gives -36.9 dB /
 > -27.7 dB / FAIL because the peaks are non-invertible. That reading came
 > from the second ILA iteration diverging; ILA now keeps the best observed
 > iteration.
+>
+> Further correction (after a drive sweep): 0.18 is exactly where the two
+> in-band EVMs cross. Below it, CFR's clipping floor (about -37.6 dB) makes
+> in-band EVM worse; above it, CFR is better in band too, and it extends the
+> mask-passing drive from 0.18 to 0.20 (sweep table in the performance
+> summary, section 2.2).
 
 ## 6.2 Real Data: PA Modeling (OpenDPD Datasets, Test-Set NMSE)
 
@@ -82,7 +88,10 @@ numerical verification with max err ~1e-6.
   meets the spec at -43.5 with drive 0.17 / 33.3% PAE / only 23 coefficients.
   (Correction 2026-11-11: previously 32.3% / -20.7 and 24.1% / -40.6. The
   EVMs were affected by ILA iteration divergence and the PAE used an older
-  efficiency proxy; the wall has not moved.)
+  efficiency proxy; the wall has not moved.) On a 0.005 grid the EVM falls
+  smoothly, the feasibility boundary lies between 0.18 and 0.185, and the
+  co-design optimum is 0.18 / 34.8% PAE; what jumps is the DPD cost, not
+  the EVM.
 - Gradient optimization (spec -38 dB): a conservative drive of 0.08
   (11.8% PAE) is automatically optimized to 0.146 (**20.9% PAE**) while still
   meeting the spec. This PAE is the differentiable proxy, a different

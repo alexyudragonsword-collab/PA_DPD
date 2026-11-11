@@ -13,9 +13,9 @@ and the acceptance numbers agreed on it, all measured on 2026-11-11:
   -11.0 dB at K = 4, where sample-spaced taps stay at -19.9 dB;
 - a DPD needs tap-spaced memory to follow: GMP-ILA at K = 4 reaches an
   EVM of -46.4 dB with tap_spacing 4 and -28.6 dB without. The DPD drives
-  the PA directly here; with a per-sample TX lowpass in between, matched
-  spacing still came within 0.6 dB of a per-sample PA with taps 64
-  samples apart, but fell 4-6 dB short at 8-16 apart (issue #4 follow-up);
+  the PA directly here; with a per-sample TX lowpass in between the cost
+  of time-defined memory was 0.5-2.3 dB of extra backoff for the same EVM
+  (issue #4 follow-ups; see padpd.pa.memory_polynomial);
 - CascadePA is one PAModel whose interstage backoff changes only the
   level between the stages, and reports each stage's own backoff.
 """
