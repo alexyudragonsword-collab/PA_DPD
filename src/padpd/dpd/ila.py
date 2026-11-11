@@ -20,8 +20,17 @@ drive 0.14 -63.5 / -67.2 / -65.5 dB, but drive 0.18 -38.3 / -28.7 /
 #4, where mmw60_trx saw the same on a soft-compressing Rapp PA). A fixed
 iteration count therefore published a divergence as "this operating
 point cannot be linearized" (docs/05 section 2.2). ``fit`` now measures
-every predistorter on the PA, keeps the best one, and stops as soon as an
-iteration is worse than the best so far.
+every predistorter on the PA and stops once an iteration is clearly worse
+than the best so far, keeping the last one that was not.
+
+"Clearly" is ``keep_best_tol_db`` (1 dB). The check is the NMSE on the
+training signal, and near the floor it does not rank two good iterations
+the way the validation EVM does: at 320 MHz / 4096-QAM, 10 symbols,
+drive 0.14, iteration 2 read 0.7 dB worse on the check (-57.9 vs -58.6)
+but 1.2 dB better in validation EVM (-64.2 vs -63.0). So a later
+iteration within the tolerance is kept; one beyond it is a divergence
+(at 20 symbols the same setup read 7.8 dB worse, and keeping iteration 1
+moves the validation EVM from -50.4 to -58.0 dB).
 """
 
 from __future__ import annotations
@@ -45,7 +54,8 @@ class ILAPredistorter:
                  n_iterations: int = 2,
                  target_gain: complex | None = None,
                  fit_kwargs: dict | None = None,
-                 keep_best: bool = True):
+                 keep_best: bool = True,
+                 keep_best_tol_db: float = 1.0):
         """``target_gain`` fixes the linearization target G in y ≈ G*x.
 
         By default G is estimated as the least-squares scalar gain of the
@@ -57,8 +67,10 @@ class ILAPredistorter:
         ill-conditioned measured data).
 
         ``keep_best`` (default) measures each predistorter on the PA -
-        the NMSE of pa(dpd(x)) against G*x on the training signal - keeps
-        the best and stops at the first iteration that is worse. That
+        the NMSE of pa(dpd(x)) against G*x on the training signal. A
+        model more than ``keep_best_tol_db`` worse than the best so far
+        ends the loop and the previous kept model stays; otherwise the
+        newest model is kept (see the module docstring for why not the minimum). That
         costs one PA pass more than ``n_iterations`` (the last model's
         own check); the other checks are the next iteration's pass
         anyway. ``n_iterations`` becomes an upper bound. ``False``
@@ -70,6 +82,7 @@ class ILAPredistorter:
         self.model_factory = model_factory or GMPModel
         self.n_iterations = n_iterations
         self.keep_best = keep_best
+        self.keep_best_tol_db = float(keep_best_tol_db)
         self.history: list[float] = []
         self.best_iteration: int | None = None
         self.dpd_model: PAModel | None = None
@@ -83,7 +96,8 @@ class ILAPredistorter:
             return self._fit_fixed(pa, x)
         u = x
         self.history = []
-        best = None                      # (error dB, model, iteration)
+        best = None                      # lowest check error so far, dB
+        kept = None                      # (model, iteration)
         for it in range(self.n_iterations + 1):
             y = pa(u)
             if it == 0 and self.target_gain is None:
@@ -92,16 +106,17 @@ class ILAPredistorter:
             err = _error_db(y, self.target_gain * x)
             self.history.append(err)
             if it > 0:                   # this pass measured model `it`
-                if best is not None and err >= best[0]:
+                if best is not None and err > best + self.keep_best_tol_db:
                     break                # diverging: later passes only worsen
-                best = (err, self.dpd_model, it)
+                best = err if best is None else min(best, err)
+                kept = (self.dpd_model, it)
             if it == self.n_iterations:
                 break
             model = self.model_factory()
             model.fit(y / self.target_gain, u, **self.fit_kwargs)
             self.dpd_model = model
             u = model(x)
-        self.dpd_model, self.best_iteration = best[1], best[2]
+        self.dpd_model, self.best_iteration = kept
         return self
 
     def _fit_fixed(self, pa, x) -> ILAPredistorter:

@@ -18,9 +18,10 @@ alignment** enabled; if it is still scattered, check that the sample rate is
 correct and that the I/Q columns are mapped properly.
 
 **Q: EVM gets worse after DPD / DPD does not converge?**
-The operating point is too deep (peaks enter the PA's non-invertible region).
-Lower the drive, or enable CFR (target PAPR 7–8 dB) before running DPD; see
-Section 5.4.
+ILA already keeps the best observed iteration, so iteration divergence no
+longer makes it worse. If it is still clearly worse than no DPD, the
+operating point is too deep: lower the drive, or enable CFR (target PAPR
+7–8 dB) before running DPD; see Section 5.4.
 
 **Q: Can neural training inside the GUI reach paper-grade accuracy?**
 The GUI defaults to epochs ≤ 100 and hidden ≤ 32, intended for interactive

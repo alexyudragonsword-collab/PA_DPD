@@ -32,6 +32,9 @@ PA 建模 NMSE -39.2 dB、DPD 后 ACLR -52.8 / EVM(谱) -54.0。
 - [x] CFR 削峰模块(`padpd.cfr.cfr_clip_filter`,迭代削峰滤波);
       drive=0.18 深压缩工作点 CFR(8 dB)+DPD:EVM -27.7 → -36.9 dB、
       ACLR -31.7 → -56.3 dBc、mask FAIL → PASS(见 00_overview §6.4)
+      *更正(2026-11-11)*:-27.7 / -31.7 / FAIL 是固定 2 轮 ILA 第 2 轮
+      发散的读数;保留最好一轮后无 CFR 即 -37.7 dB / -40.6 dBc / PASS,
+      CFR 的增益在带外(见 05 §2.2)。
 - [x] 模型持久化:`PAModel.save` / `padpd.pa.load_model` /
       `ILAPredistorter.save/load`(npz,亦为 FPGA 系数下发格式起点)
 - [x] CI:GitHub Actions push/PR 全量 pytest
@@ -170,6 +173,11 @@ GMP(1020)都低。**浮点更准 + 量化更稳 + 算力更省,三项全赢。**
 - 可逆性壁垒是**突变**的:DPD 代价在 0.17 前平坦(23),0.20 骤升到上限并
   失败——说明"效率-线性度"边界不能靠事后 DPD 平滑跨越,必须设计时就把
   DPD 一并考虑。这正是"先设计 PA、再补救线性度"范式的根本局限。
+
+> **更正(2026-11-11)**:上表 EVM 出自固定 2 轮 ILA,墙边第 2 轮发散;
+> 保留最好一轮后 0.17/0.20/0.24 为 -43.5/-34.0/-25.0(0.14 不变 -50.4),
+> **墙的位置不变**。PAE 列是旧效率代理(0.70·⟨|y|⟩/Vmax);现行
+> `drain_efficiency`(功率加权)读 28.2/33.3/37.9/43.4%。见 05 §3.6。
 
 ### 可微梯度联合寻优(80 MHz/256-QAM,EVM spec -38 dB)
 

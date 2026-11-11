@@ -59,10 +59,15 @@ robustness also far exceeds the polynomials (see Chapter 6).
    modeling, yet as a DPD basis it wins across the board with 55% of the
    parameters (8.5 dB ahead on GaN). Choose the basis by directly evaluating
    the post-DPD metrics.
-3. **CFR first at deep-compression operating points**: when peaks enter the
-   PA's non-invertible region, DPD diverges; CFR trades a bounded EVM cost
-   (clipping) for restored invertibility — only "CFR + DPD" achieves mask
-   PASS.
+3. **Choose iterative-DPD iterations by observation**: near saturation the
+   second ILA iteration diverges, and a fixed iteration count mistakes that
+   for "this operating point cannot be linearized". `ILAPredistorter` keeps
+   the best observed iteration by default (`keep_best`). Adding CFR at deep
+   compression buys out-of-band margin (drive 0.18: ACLR -40.6 → -56.3 dBc)
+   while in-band EVM stays about the same.
+   (Correction 2026-11-11: this used to say DPD diverges, CFR restores
+   invertibility and only "CFR + DPD" passes the mask; that has been
+   overturned.)
 
 ## 5.5 Metric Conventions
 

@@ -212,8 +212,14 @@ DPD 前加 **CFR 削峰**(`padpd.cfr.cfr_clip_filter`,迭代削峰滤波 ICF):
 | 链路 | EVM | ACLR(上邻道) | Mask |
 |------|-----|--------------|------|
 | PA(无 DPD) | -18.3 dB | -28.8 dBc | FAIL |
-| DPD(无 CFR) | -27.7 dB(峰值不可逆,受限) | -31.7 dBc | FAIL |
+| DPD(无 CFR) | -37.7 dB | -40.6 dBc | PASS |
 | **CFR(8 dB)+ DPD** | **-36.9 dB** | **-56.3 dBc** | **PASS** |
+
+> **更正(2026-11-11)**:此前此行登 -27.7 dB(峰值不可逆，受限)/ -31.7 dBc /
+> FAIL,上段也据此写"ILA 发散、需 CFR 回到可逆区"。发散的其实是固定 2 轮
+> ILA 的第 2 轮;`ILAPredistorter` 改为按观测保留最好一轮后，无 CFR 已
+> PASS,带内 EVM 与加 CFR 相当。CFR 在这里换来的是带外余量(ACLR 多约
+> 16 dB),不是可逆性。
 
 规律:DPD 收敛后残余 EVM ≈ CFR 自身代价(本例 -37.6 dB),即线性化
 已完全,瓶颈转移到削峰失真——这是 CFR 目标 PAPR 的选取依据(教科书式

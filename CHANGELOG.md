@@ -7,15 +7,22 @@
 
 ### ILA 迭代按观测保留最好的一次
 - `ILAPredistorter.fit` 默认每轮在 PA 上量一次误差(pa(dpd(x)) 对 G·x 的
-  NMSE),保留最好的预失真器，一旦某轮变差就停。饱和附近第二轮会发散：
+  NMSE);某轮比最好的一轮差超过 `keep_best_tol_db`(1 dB)即停，保留之前
+  的一轮，否则保留最新一轮。容差是因为训练信号上的检查在 1 dB 内排不准
+  验证 EVM(320 MHz/4096-QAM 10 符号：第 2 轮检查差 0.7 dB,验证却好
+  1.2 dB)。饱和附近第二轮会发散：
   ReferencePA、80 MHz 256-QAM,drive 0.18 时 EVM 由 -28.7 dB(固定 2 轮)
   回到 -38.3 dB,drive 0.22 由 -11.2 回到 -24.6。默认 drive 0.14 仍保留第 2
   轮，结果逐位不变(-67.2 dB)。
 - 代价是比 `n_iterations` 多一次 PA 调用;`n_iterations` 变成上限。
   `keep_best=False` 恢复原来的固定轮数。拟合后 `history` 给出每轮观测
   误差,`best_iteration` 给出保留的是第几轮。
-- 饱和附近的已发表数字(docs/05 §2.2、联合设计扫描)受影响，见
-  `cairn/LOG.md` 2026-11-11 条目;文档数字尚待同步。
+- 已发表数字同步(README、docs/00、docs/05、手册 zh/en,旧值留更正说明):
+  drive 0.18 无 CFR 由 -27.7 dB / FAIL 变为 -37.7 dB / -40.6 dBc / PASS,
+  "CFR 是深压缩前提"的结论撤回(CFR 的价值在带外);联合设计墙边 EVM 改善
+  3-4 dB,墙不动;320 MHz 基线脚本默认配置 -50.4 → -58.0 dB。
+- 同时更正联合设计的 PAE:文档值出自旧代理 0.70·⟨|y|⟩/Vmax,现行
+  `drain_efficiency`(功率加权)读 33.3%(0.17)/ 43.4%(0.24)。
 
 ### PA 记忆按时间定义、级联 PA(PA_DPD#4)
 - `ReferencePA(fs=, fir_fs=)`:匹配网络 FIR 的抽头按 `fs / fir_fs` 个

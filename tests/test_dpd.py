@@ -124,3 +124,22 @@ def test_keep_best_off_is_the_fixed_loop(wf256):
     ila = ILAPredistorter(n_iterations=3, keep_best=False).fit(pa, wf256.x)
     assert len(calls) == 3                               # no extra check pass
     assert ila.best_iteration == 3 and len(ila.history) == 3
+
+
+def test_a_close_later_iteration_is_not_thrown_away():
+    """The check is training-signal NMSE; within 1 dB it does not rank two
+    good iterations the way validation EVM does. Measured 2026-11-11 at
+    320 MHz / 4096-QAM, 10 symbols, drive 0.14: iteration 2 checks 0.7 dB
+    worse (-57.9 vs -58.6) but validates 1.2 dB better (-64.2 vs -63.0)."""
+    def wf(seed):
+        return generate_ofdm(OFDMConfig(bandwidth_hz=320e6, qam_order=4096,
+                                        n_symbols=10, seed=seed))
+    train, val = wf(0), wf(1)
+    pa = ReferencePA()
+    ila = ILAPredistorter(n_iterations=2).fit(pa, train.x)
+    assert ila.history[2] > ila.history[1]              # checks worse ...
+    assert ila.best_iteration == 2                      # ... and is kept
+    assert evm_of_signal(pa(ila(val.x)), val).db < -63.5   # measured -64.2
+    strict = ILAPredistorter(n_iterations=2, keep_best_tol_db=0.0)
+    strict.fit(pa, train.x)
+    assert strict.best_iteration == 1

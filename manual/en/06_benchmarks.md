@@ -11,9 +11,18 @@ full analysis in `docs/05_performance_summary.md`).
 | 160 MHz / 1024-QAM | -19.0 dB | **-57.4 dB** | -31 → -55 dBc | FAIL → PASS |
 | 320 MHz / 4096-QAM | -19.0 dB | **-64.2 dB** | -31 → -66 dBc | FAIL → PASS |
 
-Deep-compression operating point (drive 0.18): DPD alone only reaches
--27.7 dB EVM / mask FAIL because the peaks are non-invertible;
-**CFR (8 dB) + DPD** achieves -36.9 dB / -56.3 dBc / PASS.
+The 320 MHz row is the 10-symbol configuration; with the script's default
+of 20 symbols it reads -58.0 dB (see the correction in the performance
+summary, section 2.1).
+
+Deep-compression operating point (drive 0.18): DPD alone reaches -37.7 dB
+EVM / -40.6 dBc / mask PASS; **CFR (8 dB) + DPD** gives -36.9 dB /
+-56.3 dBc / PASS, so CFR buys about 16 dB of out-of-band margin.
+
+> Correction (2026-11-11): this used to say DPD alone only reaches
+> -27.7 dB / FAIL because the peaks are non-invertible. That reading came
+> from the second ILA iteration diverging; ILA now keeps the best observed
+> iteration.
 
 ## 6.2 Real Data: PA Modeling (OpenDPD Datasets, Test-Set NMSE)
 
@@ -68,11 +77,16 @@ numerical verification with max err ~1e-6.
 
 ## 6.5 PA/DPD Co-Design (Synthetic Chain)
 
-- Discrete Pareto (EVM spec -40 dB): the 32.3% PAE operating point reached by
-  sequential design is **non-invertible** (DPD only reaches -20.7); co-design
-  meets the spec at -40.6 with drive 0.17 / 24.1% PAE / only 23 coefficients.
+- Discrete Pareto (EVM spec -40 dB): the 43.4% PAE operating point reached by
+  sequential design **hits the wall** (DPD only reaches -25.0); co-design
+  meets the spec at -43.5 with drive 0.17 / 33.3% PAE / only 23 coefficients.
+  (Correction 2026-11-11: previously 32.3% / -20.7 and 24.1% / -40.6. The
+  EVMs were affected by ILA iteration divergence and the PAE used an older
+  efficiency proxy; the wall has not moved.)
 - Gradient optimization (spec -38 dB): a conservative drive of 0.08
   (11.8% PAE) is automatically optimized to 0.146 (**20.9% PAE**) while still
-  meeting the spec.
+  meeting the spec. This PAE is the differentiable proxy, a different
+  convention from the bullet above (by `drain_efficiency` the same two
+  drives read 16.8% → 29.2%).
 
 ![Co-Design Pareto sweep](assets/qt_codesign.png)
