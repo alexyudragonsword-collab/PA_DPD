@@ -70,14 +70,14 @@ class ILAPredistorter:
         the NMSE of pa(dpd(x)) against G*x on the training signal. A
         model more than ``keep_best_tol_db`` worse than the best so far
         ends the loop and the previous kept model stays; otherwise the
-        newest model is kept (see the module docstring for why not the minimum). That
-        costs one PA pass more than ``n_iterations`` (the last model's
-        own check); the other checks are the next iteration's pass
-        anyway. ``n_iterations`` becomes an upper bound. ``False``
-        restores the fixed-count loop exactly: the last model, no extra
-        pass. After ``fit``, ``history`` holds the observed error per
-        pass (``history[0]`` is without DPD) and ``best_iteration`` the
-        1-based iteration whose model was kept.
+        newest model is kept (the module docstring says why not the
+        minimum). That costs one PA pass more than ``n_iterations``
+        (the last model's own check); the other checks are the next
+        iteration's pass anyway. ``n_iterations`` becomes an upper
+        bound. ``False`` restores the fixed-count loop exactly: the
+        last model, no extra pass. After ``fit``, ``history`` holds the
+        observed error per pass (``history[0]`` is without DPD) and
+        ``best_iteration`` the 1-based iteration whose model was kept.
         """
         self.model_factory = model_factory or GMPModel
         self.n_iterations = n_iterations
