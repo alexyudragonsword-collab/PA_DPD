@@ -3,6 +3,21 @@
 本文件按倒序记录实质进展——最新条目紧跟本行之下。每条保持简短,只写摘要
 与指针;结论沉淀进 `cairn/<topic>.md`。
 
+## 2026-11-11 · PA 记忆按时间定义、tap_spacing、CascadePA(PA_DPD#4)
+
+- mmw60_trx 的 60 GHz 链路把 PHY 时钟 ×K,PA 跑在 K 倍采样率、K 倍带宽的
+  信号上;`ReferencePA` 抽头逐样本，记忆随 1/fs 缩短。
+- **我们第一次回复测错了工作点**:测的是"同一 20 MHz 信号升采样"(只证明
+  模型对采样率不变),对方更正为"带宽随 K 变宽"。在那上面，固定 12.5 ns
+  的抽头记忆更重(-11.0 dB),不是更轻;逐样本抽头保持 -20 dB。
+- 改动:`ReferencePA(fs, fir_fs)` 只支持整数比;MP/GMP `tap_spacing`
+  (默认不写进 get_config,旧文件和旧读者不受影响);`CascadePA`(级间
+  回退只改中间电平，可读每级回退;save 直接报错以免丢系数)。
+- 实测:GMP-ILA EVM -28.6 → -46.4 dB(20 MHz × 4,tap_spacing 4)。
+- 发现:单个 `ReferencePA` 的小信号增益是 1.2 不是 1(FIR 直流增益 1.230),
+  级联 1.42;如实写进文档，没有在级联里归一。
+- 测试 `tests/test_pa_time_memory.py`(21 条)。下游：wifi_trx_cal#4 透传。
+
 ## 2026-11-04 · 部署导出对整数 RTL 自描述(PA_DPD#2,fix/export-for-integer-rtl)
 
 - dsp_ip 做 `dpd_poly` RTL 时发现 `FixedPointPolyModel` 不是整数 bit-true:基函数 `x|x|^k` 与累加

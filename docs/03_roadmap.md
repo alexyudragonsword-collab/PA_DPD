@@ -328,6 +328,23 @@ conj³ 分支服务建模方向;TX 侧闭环抵消系统性试了**六种方案*
 (所有采集共用一个定标系数——逐采集归一化会抹掉衰减步进与突发高低段
 的相对功率信息)。
 
+### 6.5.5 PA 记忆按时间定义、级联 PA(PA_DPD#4,mmw60_trx 提出)✅
+姊妹库 mmw60_trx 的 60 GHz 链路把同一 PHY 时钟 ×K:PA 跑在 K 倍采样率、
+K 倍带宽的信号上。`ReferencePA` 的抽头原来逐样本排，记忆随 1/fs 缩短。
+- `ReferencePA(fs=, fir_fs=)`:抽头定义在 `fir_fs` 上，按 `fs / fir_fs`
+  个样本间隔放置(只支持正整数比，其余报错);两者都不给时逐位不变。
+  `DriftingReferencePA`、`ThermalReferencePA` 透传。
+- `MemoryPolynomialModel` / `GMPModel(tap_spacing=)`:基函数延迟乘以间隔，
+  默认 1 时系数与保存文件逐字节不变。
+- `CascadePA(first, second, interstage_backoff_db=)`:级间回退只改两级
+  之间的电平，读得出每级各自的回退量。
+
+实测(记忆贡献 = 与"FIR 收为直流增益"的同一 PA 的输出差):同一信号升采样
+K = 1/8/32 均 -20.1 dB(模型对采样率不变);20 MHz × 4 信号、抽头固定
+12.5 ns 时 -11.0 dB(逐样本 -19.9 dB)。此时 GMP-ILA 的 EVM:逐样本抽头
+-28.6 dB,`tap_spacing=4` 为 -46.4 dB。下游链路:wifi_trx_cal 给
+`calibrate_dpd` 透传 `tap_spacing`(wifi_trx_cal#4)后 mmw60_trx 才能用。
+
 ## 当前待办
 
 **需硬件/EDA**:FPGA 上板、SDR/仪器在环、Spectre 在环联合设计。

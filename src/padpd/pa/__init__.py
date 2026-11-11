@@ -3,6 +3,7 @@ import ast
 import numpy as np
 
 from .base import PAModel, basis_cond, nmse_db
+from .cascade import CascadePA
 from .ddr import DDRVolterraModel
 from .drift import DriftingReferencePA
 from .gmp import GMPModel
@@ -58,6 +59,7 @@ __all__ = [
     "GMPModel",
     "DDRVolterraModel",
     "ReferencePA",
+    "CascadePA",
     "DriftingReferencePA",
     "WienerHammersteinPA",
     "SplineMemoryPolynomial",

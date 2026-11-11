@@ -5,6 +5,17 @@
 
 ## [未发布]
 
+### PA 记忆按时间定义、级联 PA(PA_DPD#4)
+- `ReferencePA(fs=, fir_fs=)`:匹配网络 FIR 的抽头按 `fs / fir_fs` 个
+  样本间隔放置，记忆跨度以秒固定;不给时逐位不变。非整数比报错。
+  `DriftingReferencePA`、`ThermalReferencePA` 同样支持。
+- `MemoryPolynomialModel` / `GMPModel` 新参数 `tap_spacing`(默认 1,
+  保存文件不变)。20 MHz × 4 信号、PA 抽头 12.5 ns 时，GMP-ILA 的 EVM
+  从 -28.6 dB 到 -46.4 dB。
+- 新增 `CascadePA`:两级 PA 作为一个 `PAModel`,级间回退只改两级之间的
+  电平，`stage_backoff_db` 给出每级回退。总小信号增益是两级之积(单个
+  `ReferencePA` 约 1.2,来自 FIR 增益),不另做归一。
+
 ### 桌面工作台重做,Web 版退役
 - **一套界面契约**:`gui_core/experiments.py` 为每个实验声明参数 schema
   (类型、范围、单位、分组、何时适用)、run/present 拆分、对项目 spec 的
